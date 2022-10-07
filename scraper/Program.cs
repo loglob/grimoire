@@ -1,13 +1,4 @@
 ﻿
-public readonly record struct Spell(
-	string name, int level, string school,
-	string castingTime, bool ritual,
-	string range,
-	string components,
-	string duration, bool concentration,
-	string[] @class,
-	string source,
-	string description, string? upcast);
 
 public static class Program
 {

@@ -10,7 +10,6 @@ using HtmlAgilityPack;
 public class DndSpells
 {
 	private HttpClient client = new HttpClient() { BaseAddress = new Uri("https://www.dnd-spells.com") };
-	private Semaphore requestPool = new Semaphore(1,1);
 
 	/// <summary>
 	/// The minimum time between HTTP requests
@@ -34,6 +33,16 @@ public class DndSpells
 	}
 
 	public readonly record struct SpellHeader(string name, int level, string school, string castingTime, bool ritual, bool concentration, string[] @class, string source);
+
+	public readonly record struct Spell(
+		string name, int level, string school,
+		string castingTime, bool ritual,
+		string range,
+		string components,
+		string duration, bool concentration,
+		string[] @class,
+		string source, int page,
+		string description, string? upcast);
 
 	private void checkTableHeader(HtmlNode header)
 	{
@@ -153,7 +162,6 @@ public class DndSpells
 
 		// split by horizontal lines
 		var sections = body.ChildNodes.SplitBy(n => n.Name == "hr").ToArray();
-		var properties = sections[0];
 
 		var htmlDesc = string.Join(' ', sections[1]
 			.Where(n => !string.IsNullOrWhiteSpace(n.InnerText))
@@ -166,14 +174,12 @@ public class DndSpells
 
 		string[] splitDescriptions = htmlDesc.Split(separator, 2, StringSplitOptions.TrimEntries);
 
+		var srcTxt = sections[2][0].InnerText.Split(null as char[], 3);
+		Util.AssertEqual("Page:", srcTxt[0], "Bad source format");
+
 		// parse properties
 		{
-			// THe format is too inconsistent for this sanity check
-			/*if(properties.FirstOrDefault(n => n.Name == "span") is HtmlNode span)
-			{
-				if(! span.InnerText.ToLower().Contains(header.source.ToLower()))
-					throw new FormatException($"Wrong source: Header has {header.source}, but page {span.InnerText}");
-			}*/
+			var properties = sections[0];
 
 			Util.AssertEqual(header.school, properties.First(n => n.Name == "p").InnerText, "Wrong school");
 			Util.AssertEqual("p", properties[properties.Length - 1].Name, "Bad page format");
@@ -204,7 +210,7 @@ public class DndSpells
 			if(isCons)
 				dur = dur.Substring(consPrefix.Length).Trim();
 
-			if(splitDescriptions[0].StartsWith('('))
+			if(splitDescriptions[0].StartsWith('(') && comp.Contains('M'))
 			{
 				var compDesc = splitDescriptions[0].Split(')', 2, StringSplitOptions.TrimEntries);
 				comp += ' ' + compDesc[0] + ')';
@@ -219,7 +225,7 @@ public class DndSpells
 				comp,
 				dur, header.concentration,
 				header.@class,
-				header.source,
+				header.source, int.Parse(srcTxt[1]),
 				splitDescriptions[0], splitDescriptions.Length > 1 ? splitDescriptions[1] : null );
 		}
 	}
