@@ -5,10 +5,17 @@ using HtmlAgilityPack;
 
 internal static class Util
 {
-	public static async Task<T?> LoadJsonAsync<T>(string filename)
+	public static async Task<T> LoadJsonAsync<T>(string filename)
 	{
 		using(var f = File.OpenRead(filename))
-			return await JsonSerializer.DeserializeAsync<T>(f);
+		{
+			var res = await JsonSerializer.DeserializeAsync<T>(f);
+
+			if(res is null)
+				throw new FormatException($"Failed parsing JSON of {typeof(T).Name}");
+			else
+				return res;
+		}
 	}
 
 	public static async Task StoreJsonAsync<T>(this T obj, string filename)
@@ -73,5 +80,23 @@ internal static class Util
 			node.InnerHtml.Split(null as char[], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
 		clean(node);
+	}
+
+	public static IEnumerable<T> Squeeze<T>(this IEnumerable<T> ls)
+		=> ls.Squeeze(EqualityComparer<T>.Default);
+
+	public static IEnumerable<T> Squeeze<T>(this IEnumerable<T> ls, IEqualityComparer<T> comp)
+	{
+		T? last = default;
+		bool first = true;
+
+		foreach (var x in ls)
+		{
+			if(first || !comp.Equals(last, x))
+				yield return x;
+
+			last = x;
+			first = false;
+		}
 	}
 }

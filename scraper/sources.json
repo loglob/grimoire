@@ -1,0 +1,24 @@
+[
+	{
+		"fullName": "Xanathar's Guide to Everything",
+		"shorthand": "XGE"
+	},
+	{
+		"fullName": "Player's Handbook",
+		"shorthand": "PHB"
+	},
+	{
+		"fullName": "Tasha's Cauldron of Everything",
+		"shorthand": "TCE"
+	},
+	{
+		"fullName": "Elemental Evil Player's Companion",
+		"shorthand": "EE",
+		"alts": [ "Elemental Evil" ]
+	},
+	{
+		"fullName": "Homebrew Sheet",
+		"shorthand": "HB",
+		"alts": [ "Homebrew" ]
+	}
+]

@@ -83,8 +83,7 @@ public class DndWiki
 		{
 			try
 			{
-				if(await Util.LoadJsonAsync<SpellHeader[]>(cache) is SpellHeader[] sh)
-					return sh;
+				return await Util.LoadJsonAsync<SpellHeader[]>(cache);
 			} catch(Exception)
 			{}
 

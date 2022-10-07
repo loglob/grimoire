@@ -59,8 +59,7 @@ public class DndSpells
 		{
 			try
 			{
-				if(await Util.LoadJsonAsync<SpellHeader[]>(cache) is SpellHeader[] x)
-					return x;
+				return await Util.LoadJsonAsync<SpellHeader[]>(cache);
 			}
 			catch(Exception) {}
 
