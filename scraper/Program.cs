@@ -25,6 +25,6 @@ public static class Program
 
 	public static async Task Main(string[] args)
 	{
-		await DndSpells();
+		Console.WriteLine($"Loaded {(await new DndWiki().SpellHeaders()).Length} spells");
 	}
 }

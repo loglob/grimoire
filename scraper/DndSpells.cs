@@ -16,22 +16,6 @@ public class DndSpells
 	/// </summary>
 	public int RateLimit { get; init; } = 200;
 
-	private static void clean(HtmlNode node)
-	{
-		node.InnerHtml = string.Join(' ',
-			node.InnerHtml.Split(null as char[], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-
-		for (int i = node.ChildNodes.Count; i-- > 0;)
-		{
-			var c = node.ChildNodes[i];
-
-			if(c.Name == "#text" && string.IsNullOrWhiteSpace(c.InnerText))
-				node.RemoveChild(c);
-			else
-				clean(c);
-		}
-	}
-
 	public readonly record struct SpellHeader(string name, int level, string school, string castingTime, bool ritual, bool concentration, string[] @class, string source);
 
 	public readonly record struct Spell(
@@ -90,7 +74,7 @@ public class DndSpells
 		if(table is null)
 			throw new FormatException("Failed parsing dnd-spells website: Spell table not found");
 
-		clean(table);
+		table.Clean();
 
 		try
 		{
@@ -158,7 +142,7 @@ public class DndSpells
 
 		var body = query[0];
 
-		clean(body);
+		body.Clean();
 
 		// split by horizontal lines
 		var sections = body.ChildNodes.SplitBy(n => n.Name == "hr").ToArray();
@@ -292,10 +276,7 @@ public class DndSpells
 		}
 
 		if(Directory.Exists("cache"))
-		{
-			using(var f = File.Create(cache))
-				await JsonSerializer.SerializeAsync(f, output);
-		}
+			await output.StoreJsonAsync(cache);
 	}
 
 }

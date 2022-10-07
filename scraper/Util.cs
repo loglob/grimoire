@@ -8,9 +8,13 @@ internal static class Util
 	public static async Task<T?> LoadJsonAsync<T>(string filename)
 	{
 		using(var f = File.OpenRead(filename))
-		{
 			return await JsonSerializer.DeserializeAsync<T>(f);
-		}
+	}
+
+	public static async Task StoreJsonAsync<T>(this T obj, string filename)
+	{
+		using(var f = File.Create(filename))
+			await JsonSerializer.SerializeAsync(f, obj);
 	}
 
 	public static async Task<HtmlDocument> GetDocumentAsync(this HttpClient client, string url)
@@ -48,5 +52,26 @@ internal static class Util
 			else
 				cur.Add(x);
 		}
+	}
+
+	private static void clean(HtmlNode node)
+	{
+		for (int i = node.ChildNodes.Count; i-- > 0;)
+		{
+			var c = node.ChildNodes[i];
+
+			if(c.Name == "#text" && string.IsNullOrWhiteSpace(c.InnerText))
+				node.RemoveChild(c);
+			else
+				clean(c);
+		}
+	}
+
+	public static void Clean(this HtmlNode node)
+	{
+		node.InnerHtml = string.Join(' ',
+			node.InnerHtml.Split(null as char[], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+		clean(node);
 	}
 }
