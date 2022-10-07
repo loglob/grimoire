@@ -33,7 +33,7 @@ public class DndSpells
 		}
 	}
 
-	public record SpellHeader(string name, int level, string school, string castingTime, bool ritual, bool concentration, string[] @class, string source);
+	public readonly record struct SpellHeader(string name, int level, string school, string castingTime, bool ritual, bool concentration, string[] @class, string source);
 
 	private void checkTableHeader(HtmlNode header)
 	{
@@ -131,7 +131,7 @@ public class DndSpells
 		var id = string.Join('-', header.name
 			.Split()
 			.Select(w => new string(w
-				.Where(c => (int)c < 0x7F)
+				.Where(c => Char.IsLetter(c) || c == '-')
 				.Select(char.ToLower)
 				.ToArray())
 		)	);
@@ -162,7 +162,7 @@ public class DndSpells
 		const string separator = "<span>At higher level</span>";
 
 		if(htmlDesc.Contains("higher level") && !htmlDesc.Contains(separator))
-			await Console.Error.WriteLineAsync("Couldn't properly parse upcast section");
+			await Console.Error.WriteLineAsync("[WARN] Possibly failed parsing an upcast section");
 
 		string[] splitDescriptions = htmlDesc.Split(separator, 2, StringSplitOptions.TrimEntries);
 
@@ -213,8 +213,14 @@ public class DndSpells
 				splitDescriptions[0] = compDesc[1].StartsWith(br) ? compDesc[1].Substring(br.Length) : compDesc[1];
 			}
 
-			return new Spell(header.name, header.castingTime, range, comp, dur, header.source,
-				splitDescriptions[0], splitDescriptions.Length > 1 ? splitDescriptions[1] : null);
+			return new Spell( header.name, header.level, header.school,
+				header.castingTime, header.ritual,
+				range,
+				comp,
+				dur, header.concentration,
+				header.@class,
+				header.source,
+				splitDescriptions[0], splitDescriptions.Length > 1 ? splitDescriptions[1] : null );
 		}
 	}
 
@@ -270,10 +276,10 @@ public class DndSpells
 				//Console.Error.WriteLine(e.StackTrace);
 			}
 
-			if(!(s is null))
+			if(s.HasValue)
 			{
-				output.Add(s);
-				yield return s;
+				output.Add(s.Value);
+				yield return s.Value;
 			}
 
 			await timer;

@@ -1,10 +1,17 @@
-﻿public record Spell(string name,
-	string castingTime,
-	string range, string components, string duration, string source, string description, string? upcast);
+﻿
+public readonly record struct Spell(
+	string name, int level, string school,
+	string castingTime, bool ritual,
+	string range,
+	string components,
+	string duration, bool concentration,
+	string[] @class,
+	string source,
+	string description, string? upcast);
 
 public static class Program
 {
-	public static async Task Main(string[] args)
+	public static async Task DndSpells()
 	{
 		var sp = new DndSpells();
 		var headers = await sp.SpellHeaders();
@@ -13,7 +20,6 @@ public static class Program
 
 		int cur = 0;
 		int len = 0;
-		int pos = Console.CursorTop;
 
 		await foreach (var d in sp.SpellDetails(headers))
 		{
@@ -24,5 +30,10 @@ public static class Program
 		}
 
 		Console.WriteLine($"\nFinished scraping {cur} of {headers.Length} spells");
+	}
+
+	public static async Task Main(string[] args)
+	{
+		await DndSpells();
 	}
 }
