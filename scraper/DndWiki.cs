@@ -74,41 +74,26 @@ public class DndWiki
 
 
 	}
-
-	public async Task<SpellHeader[]> SpellHeaders()
-	{
-		const string cache = "cache/wikidot_headers";
-
-		if(File.Exists(cache))
+	public Task<SpellHeader[]> SpellHeaders()
+		=> Util.Cached("cache/wikidot_headers", async () =>
 		{
-			try
+			var doc = await client.GetDocumentAsync("/spells");
+			doc.DocumentNode.Clean();
+
+			var buf = new SpellHeader[10][];
+
+			Parallel.For(0, 10, i => buf[i] = spellLevel(doc, i).ToArray());
+
+			var ret = new SpellHeader[buf.Sum(x => x.Length)];
+			int c = 0;
+
+			foreach(var b in buf)
 			{
-				return await Util.LoadJsonAsync<SpellHeader[]>(cache);
-			} catch(Exception)
-			{}
+				Array.Copy(b, 0, ret, c, b.Length);
+				c += b.Length;
+			}
 
-			Console.Error.WriteLine("[WARN] Invalid cache");
-		}
+			return ret;
+		});
 
-		var doc = await client.GetDocumentAsync("/spells");
-		doc.DocumentNode.Clean();
-
-		var buf = new SpellHeader[10][];
-
-		Parallel.For(0, 10, i => buf[i] = spellLevel(doc, i).ToArray());
-
-		var ret = new SpellHeader[buf.Sum(x => x.Length)];
-		int c = 0;
-
-		foreach(var b in buf)
-		{
-			Array.Copy(b, 0, ret, c, b.Length);
-			c += b.Length;
-		}
-
-		if(Directory.Exists("cache"))
-			await ret.StoreJsonAsync(cache);
-
-		return ret;
-	}
 }

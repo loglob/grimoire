@@ -51,72 +51,51 @@ public class DndSpells
 	}
 
 
-	public async Task<SpellHeader[]> SpellHeaders()
-	{
-		const string cache = "cache/dnd-spells_SpellHeaders";
-
-		if(File.Exists(cache))
+	public Task<SpellHeader[]> SpellHeaders()
+		=> Util.Cached("cache/dnd-spells_SpellHeaders", async () =>
 		{
+			var doc = await (client.GetDocumentAsync("/spells"));
+			var table = doc.GetElementbyId("example");
+
+			if(table is null)
+				throw new FormatException("Failed parsing dnd-spells website: Spell table not found");
+
+			table.Clean();
+
 			try
 			{
-				return await Util.LoadJsonAsync<SpellHeader[]>(cache);
+				checkTableHeader(table.ChildNodes.FindFirst("thead"));
 			}
-			catch(Exception) {}
+			catch(Exception ex)
+			{
+				Console.Error.WriteLine(ex.Message);
+				Console.Error.WriteLine("Continuing despite format error. Table header is:\n" + table.FirstChild.OuterHtml);
+			}
 
-			Console.Error.WriteLine("Cache Invalid; continuing");
-		}
+			return table.ChildNodes.FindFirst("tbody").ChildNodes.Where(cn => cn.Name == "tr")
+				.Select(r => {
+					var fields = r.ChildNodes.Where(c => c.Name == "td").Skip(1).Select(c => WebUtility.HtmlDecode(c.InnerText)).ToArray();
 
-		var doc = await (client.GetDocumentAsync("/spells"));
+					if(fields.Length != 8)
+						Console.Error.WriteLine($"Row with too many cells! Got {fields.Length}, expected 8");
 
-		var table = doc.GetElementbyId("example");
+					const string oinw = "(Open in new Window)";
+					const string rit = "(Ritual)";
 
-		if(table is null)
-			throw new FormatException("Failed parsing dnd-spells website: Spell table not found");
+					if(fields[0].EndsWith(oinw, StringComparison.OrdinalIgnoreCase))
+						fields[0] = fields[0].Substring(0, fields[0].Length - oinw.Length).Trim();
 
-		table.Clean();
+					if(fields[0].EndsWith(rit, StringComparison.OrdinalIgnoreCase))
+					{
+						Util.AssertEqual("yes", fields[4].ToLower(), "Ritual tags don't match");
+						fields[0] = fields[0].Substring(0, fields[0].Length - rit.Length).Trim();
+					}
 
-		try
-		{
-			checkTableHeader(table.ChildNodes.FindFirst("thead"));
-		}
-		catch(Exception ex)
-		{
-			Console.Error.WriteLine(ex.Message);
-			Console.Error.WriteLine("Continuing despite format error. Table header is:\n" + table.FirstChild.OuterHtml);
-		}
-
-		var spells = table.ChildNodes.FindFirst("tbody").ChildNodes.Where(cn => cn.Name == "tr")
-			.Select(r => {
-				var fields = r.ChildNodes.Where(c => c.Name == "td").Skip(1).Select(c => WebUtility.HtmlDecode(c.InnerText)).ToArray();
-
-				if(fields.Length != 8)
-					Console.Error.WriteLine($"Row with too many cells! Got {fields.Length}, expected 8");
-
-				const string oinw = "(Open in new Window)";
-				const string rit = "(Ritual)";
-
-				if(fields[0].EndsWith(oinw, StringComparison.OrdinalIgnoreCase))
-					fields[0] = fields[0].Substring(0, fields[0].Length - oinw.Length).Trim();
-
-				if(fields[0].EndsWith(rit, StringComparison.OrdinalIgnoreCase))
-				{
-					Util.AssertEqual("yes", fields[4].ToLower(), "Ritual tags don't match");
-					fields[0] = fields[0].Substring(0, fields[0].Length - rit.Length).Trim();
-				}
-
-				return new SpellHeader( fields[0], int.Parse(fields[1]), fields[2],
-					fields[3], fields[4].ToLower() == "yes", fields[5].ToLower() == "yes",
-					fields[6].Split(), fields[7]);
-			}).ToArray();
-
-		if(Directory.Exists("cache"))
-		{
-			using(var f = File.Create(cache))
-				await JsonSerializer.SerializeAsync(f, spells);
-		}
-
-		return spells;
-	}
+					return new SpellHeader( fields[0], int.Parse(fields[1]), fields[2],
+						fields[3], fields[4].ToLower() == "yes", fields[5].ToLower() == "yes",
+						fields[6].Split(), fields[7]);
+				}).ToArray();
+		});
 
 	private async Task<Spell> spellDetails(SpellHeader header)
 	{

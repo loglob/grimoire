@@ -99,4 +99,25 @@ internal static class Util
 			first = false;
 		}
 	}
+
+	public static async Task<T> Cached<T>(string cache, Func<Task<T>> task)
+	{
+		if(File.Exists(cache))
+		{
+			try
+			{
+				return await Util.LoadJsonAsync<T>(cache);
+			} catch(Exception)
+			{}
+
+			Console.Error.WriteLine("[WARN] Invalid cache");
+		}
+
+		var ret = await task();
+
+		if(Directory.Exists(Path.GetDirectoryName(cache)))
+			await ret.StoreJsonAsync(cache);
+
+		return ret;
+	}
 }
