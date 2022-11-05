@@ -16,7 +16,8 @@ public class DndWiki
 		bool concentration, string duration,
 		string description,
 		string? upcast,
-		string[] classes
+		string[] classes,
+		string? statBlock
 	);
 
 	/// <summary>
@@ -140,10 +141,16 @@ public class DndWiki
 				duration = d;
 		}
 
+		string[] pars = content.ChildNodes
+			.Skip(4)
+			.TakeWhile(x => x.Name == "p")
+			.Select(n => n.InnerText.Trim())
+			.ToArray();
+
 		string? upcast;
 		string desc;
 		{
-			var du = content.ChildNodes.Skip(4).SkipLast(2).Select(n => n.InnerText.Trim()).ToArray();
+			var du = pars.SkipLast(1);
 			var d = du.TakeWhile(x => !x.StartsWith("At Higher Levels."));
 			var u = du.Skip(d.Count()).Select((s,i) => (i == 0) ? s.Substring(17).TrimStart() : s);
 
@@ -156,14 +163,28 @@ public class DndWiki
 
 		string[] classes;
 		{
-			var cs = content.ChildNodes[content.ChildNodes.Count - 2].InnerText;
+			var cs = pars[pars.Length - 1];
 			Util.AssertEqual("spell lists", cs.Substring(0, 11).ToLower(), "Expected class list");
 			classes = cs.Substring(12).Split(new[]{' ', ','}, RemoveEmptyEntries).ToArray();
 		}
 
+		string? statBlock = null;
+		var trailing = content.ChildNodes.Skip(4 + pars.Length);
+
+		if(trailing.First().Name == "table")
+		{
+			statBlock = trailing.First().OuterHtml;
+			trailing = trailing.Skip(1);
+		}
+		else
+			statBlock = null;
+
+		Util.AssertEqual("div", string.Join(' ', trailing.Select(x => x.Name)),
+			"Bad trailing tags");
+
 		return new Spell(name, source, school, level, cTime, ritual, range, shape,
 			components, materials, concentration, duration,
-			desc, upcast, classes);
+			desc, upcast, classes, statBlock);
 	}
 
 	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
