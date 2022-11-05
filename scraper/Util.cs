@@ -59,6 +59,9 @@ internal static class Util
 			else
 				cur.Add(x);
 		}
+
+		if(cur.Any())
+			yield return cur.ToArray();
 	}
 
 	private static void clean(HtmlNode node)
@@ -119,5 +122,62 @@ internal static class Util
 			await ret.StoreJsonAsync(cache);
 
 		return ret;
+	}
+
+	public static async IAsyncEnumerable<Tval> PartiallyCached<Tkey, Tval>(
+		string cache, IEnumerable<Tkey> keys, Func<Tkey, Task<Tval>> task, Func<Tkey, string>? progress = null)
+		where Tkey : notnull
+	{
+		Dictionary<Tkey, Tval> dict = new Dictionary<Tkey, Tval>();
+
+		if(File.Exists(cache))
+		{
+			try
+			{
+				dict = await Util.LoadJsonAsync<Dictionary<Tkey, Tval>>(cache);
+			} catch(Exception)
+			{
+				Console.Error.WriteLine("[WARN] Invalid cache");
+			}
+		}
+
+		int count = keys.Count();
+		int i = 0;
+		int nlen = 0;
+
+		foreach(var k in keys)
+		{
+			if(progress != null)
+			{
+				string name = progress(k);
+				Console.Write($"{++i}/{count}: {name}");
+				if(name.Length < nlen)
+					Console.Write(new string(' ', nlen - name.Length));
+				else
+					nlen = name.Length;
+				Console.CursorLeft = 0;
+			}
+
+			if(dict.TryGetValue(k, out var v))
+				yield return v;
+			else
+			{
+				try
+				{
+					dict[k] = await task(k);
+				} catch(Exception ex)
+				{
+					if(progress != null)
+						Console.WriteLine();
+					Console.Error.WriteLine(ex.Message);
+				}
+
+				if(dict.TryGetValue(k, out var y))
+					yield return y;
+			}
+		}
+
+		if(Directory.Exists(Path.GetDirectoryName(cache)))
+			await dict.StoreJsonAsync(cache);
 	}
 }

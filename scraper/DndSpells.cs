@@ -192,69 +192,12 @@ public class DndSpells
 		}
 	}
 
-	public async IAsyncEnumerable<Spell> SpellDetails(SpellHeader[] headers)
-	{
-		var mapped = new Dictionary<string, SpellHeader>();
-
-		foreach(var h in headers)
-		{
-			if(!mapped.TryAdd(h.name, h))
-				await Console.Error.WriteLineAsync($"[WARN] Dropping duplicate spell {h.name} from {h.source}");
-		}
-
-		const string cache = "cache/dnd-spells_Details";
-		var output = new List<Spell>();
-
-		if(File.Exists(cache))
-		{
-			Spell[]? cached = null;
-
-			try
-			{
-				cached = await Util.LoadJsonAsync<Spell[]>(cache);
-			}
-			catch (Exception)
-			{}
-
-			if(!(cached is null))
-			{
-				foreach(var c in cached)
-				{
-					output.Add(c);
-
-					if( mapped.Remove(c.name) )
-						yield return c;
-				}
-			}
-		}
-
-
-		foreach(var v in mapped.Values)
+	public IAsyncEnumerable<Spell> SpellDetails(SpellHeader[] headers)
+		=> Util.PartiallyCached("cache/dnd-spells_Details", headers, async (h) =>
 		{
 			var timer = Task.Delay(RateLimit);
-			Spell? s = null;
-
-			try
-			{
-				s = await spellDetails(v);
-			} catch(Exception e)
-			{
-				Console.Error.WriteLine($"Error parsing spell '{v.name}': {e.Message}");
-				Console.Error.WriteLine();
-				//Console.Error.WriteLine(e.StackTrace);
-			}
-
-			if(s.HasValue)
-			{
-				output.Add(s.Value);
-				yield return s.Value;
-			}
-
+			var s = await spellDetails(h);
 			await timer;
-		}
-
-		if(Directory.Exists("cache"))
-			await output.StoreJsonAsync(cache);
-	}
-
+			return s;
+		});
 }

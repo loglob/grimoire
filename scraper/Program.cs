@@ -1,4 +1,6 @@
-﻿public readonly record struct SourceBook(string fullName, string shorthand, string[]? alts)
+﻿using System.Text.Json;
+
+public readonly record struct SourceBook(string fullName, string shorthand, string[]? alts)
 {
 	public bool Matches(string src)
 	{
@@ -61,29 +63,13 @@ public static class Program
 
 	public static async Task Main(string[] args)
 	{
-		var sources = (await new DndWiki().SpellHeaders())
-			.Select(s => s.source)
-			.Concat((await new DndSpells().SpellHeaders())
-				.Select(s => s.source));
+		var wiki = new DndWiki();
+		var n = await wiki.SpellNames();
+		var s = wiki.Spells(n);
 
-		var books = await Util.LoadJsonAsync<SourceBook[]>("sources.json");
-		var maps = new Dictionary<string, SourceBook>();
+		await foreach (var x in s)
+		{ }
 
-		foreach (var s in sources)
-		{
-			if(s is null)
-				continue;
-			try
-			{
-				maps.TryAdd(s, FindSource(books, s));
-			}
-			catch (Exception ex)
-			{
-				await Console.Error.WriteLineAsync(ex.Message);
-			}
-		}
-
-		foreach(var kvp in maps)
-			Console.WriteLine($"{kvp.Key} -> {kvp.Value}");
+		return;
 	}
 }
