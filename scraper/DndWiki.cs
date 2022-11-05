@@ -106,27 +106,29 @@ public class DndWiki
 		content.ChildNodes[3].Clean();
 		var props =  content.ChildNodes[3].ChildNodes.SplitBy(n => n.Name == "br").ToArray();
 
-		Util.AssertEqual("2 2 2 2", string.Join(' ', props.Select(l => l.Length.ToString())),
-			"Expected 4 lines á 2 fields");
+		if(props.Count() != 4 || props.Any(p => p.Count() < 2))
+			throw new FormatException($"Expected 4 lines with at least 2 fields each; Got [{string.Join(' ', props.Select(l => l.Length.ToString()))}]");
 
-		Util.AssertEqual("Casting Time:", props[0][0].InnerText, "Bad casting time format");
-		string cTime = props[0][1].InnerText.Trim();
+		Func<HtmlNode[], string, string> chkProb = (pr, f) =>
+		{
+			Util.AssertEqual(f.ToLower() + ":", pr[0].InnerText.ToLower(), $"Bad {f} format");
+			return string.Join(' ', pr.Skip(1).Select(x => x.InnerText.Trim()));
+		};
+
+		string cTime = chkProb(props[0], "casting time");
 
 		string range;
 		string? shape;
-		Util.AssertEqual("Range:", props[1][0].InnerText, "Bad range/shape format");
-		(range, shape) = parseParen(props[1][1].InnerText.Trim());
+		(range, shape) = parseParen(chkProb(props[1], "range"));
 
 		string components;
 		string? materials;
-		Util.AssertEqual("Components:", props[2][0].InnerText, "Bad components format");
-		(components, materials) = parseParen(props[2][1].InnerText.Trim());
+		(components, materials) = parseParen(chkProb(props[2], "components"));
 
 		bool concentration;
 		string duration;
 		{
-			Util.AssertEqual("Duration:", props[3][0].InnerText, "Bad duration format");
-			var d = props[3][1].InnerText.Trim();
+			var d = chkProb(props[3], "duration");
 
 			if(concentration = d.StartsWith("Concentration")) // don't trust the page's native whitespace
 			{
