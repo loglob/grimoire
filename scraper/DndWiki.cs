@@ -14,8 +14,7 @@ public class DndWiki
 		string range, string? shape,
 		string components, string? materials,
 		bool concentration, string duration,
-		string description,
-		string? upcast,
+		string description, string? upcast,
 		string[] classes,
 		string? statBlock
 	);
@@ -141,46 +140,49 @@ public class DndWiki
 				duration = d;
 		}
 
-		string[] pars = content.ChildNodes
-			.Skip(4)
-			.TakeWhile(x => x.Name == "p")
-			.Select(n => n.InnerText.Trim())
-			.ToArray();
+		var rest = content.ChildNodes.Skip(4).SkipLast(1).ToList();
+		string? statBlock;
 
-		string? upcast;
-		string desc;
+		if(rest.Last().Name == "table")
 		{
-			var du = pars.SkipLast(1);
-			var d = du.TakeWhile(x => !x.StartsWith("At Higher Levels."));
-			var u = du.Skip(d.Count()).Select((s,i) => (i == 0) ? s.Substring(17).TrimStart() : s);
-
-			if(! d.Any())
-				throw new FormatException("Empty description");
-
-			desc = string.Join('\n', d);
-			upcast = u.Any() ? string.Join('\n', u) : null;
-		}
-
-		string[] classes;
-		{
-			var cs = pars[pars.Length - 1];
-			Util.AssertEqual("spell lists", cs.Substring(0, 11).ToLower(), "Expected class list");
-			classes = cs.Substring(12).Split(new[]{' ', ','}, RemoveEmptyEntries).ToArray();
-		}
-
-		string? statBlock = null;
-		var trailing = content.ChildNodes.Skip(4 + pars.Length);
-
-		if(trailing.First().Name == "table")
-		{
-			statBlock = trailing.First().OuterHtml;
-			trailing = trailing.Skip(1);
+			var x = rest.Last();
+			rest.Remove(x);
+			statBlock = x.OuterHtml;
 		}
 		else
 			statBlock = null;
 
-		Util.AssertEqual("div", string.Join(' ', trailing.Select(x => x.Name)),
-			"Bad trailing tags");
+		string[] classes;
+		{
+			var cs = rest.Last();
+			var csTxt = cs.InnerText;
+			Util.AssertEqual("p", cs.Name, "Expected class list to be a paragraph");
+			Util.AssertEqual("spell lists", csTxt.Substring(0, 11).ToLower(), "Expected class list");
+
+			rest.Remove(cs);
+			classes = csTxt.Substring(12).Split(new[]{' ', ','}, RemoveEmptyEntries).ToArray();
+		}
+
+		string? upcast;
+		string desc = string.Join('\n', rest.Select(x => x.OuterHtml));
+		{
+			var d = rest.TakeWhile(x => !x.InnerText.TrimStart().ToLower().StartsWith("at higher levels"));
+			var u = rest.Skip(d.Count()).Select((x,i) => {
+				if(i == 0)
+				{
+					x.Clean();
+					Util.AssertEqual("strong", x.ChildNodes[0].Name, $"{name}: Bad upcast format");
+					x.ChildNodes.RemoveAt(0);
+				}
+				return x;
+			}).ToList();
+
+			if(!d.Any())
+				throw new FormatException("Empty description");
+
+			desc = string.Join('\n', d.Select(x => x.OuterHtml));
+			upcast = u.Any() ? string.Join('\n', u.Select(s => s.OuterHtml)) : null;
+		}
 
 		return new Spell(name, source, school, level, cTime, ritual, range, shape,
 			components, materials, concentration, duration,
