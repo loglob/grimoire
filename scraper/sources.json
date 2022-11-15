@@ -20,5 +20,38 @@
 		"fullName": "Homebrew Sheet",
 		"shorthand": "HB",
 		"alts": [ "Homebrew" ]
+	},
+	{
+		"fullName": "Strixhaven: A Curriculum of Chaos",
+		"shorthand": "SCC",
+		"alts": [ "Strixhaven" ]
+	},
+	{
+		"fullName": "Fizban's Treasury of Dragons",
+		"shorthand": "FTD",
+		"alts": [ "Fizban" ]
+	},
+	{
+		"fullName": "Explorer's Guide to Wildemount",
+		"shorthand": "EGW",
+		"alts": [ "Wildemount" ]
+	},
+	{
+		"fullName": "Acquisitions Incorporated",
+		"shorthand": "AI",
+		"alts": [ "Acquisitions Inc." ]
+	},
+	{
+		"fullName": "Icewind Dale: Rime of the Frostmaiden",
+		"shorthand": "ID:RF"
+	},
+	{
+		"fullName": "Lost Laboratory of Kwalish",
+		"shorthand": "LLK"
+	},
+	{
+		"fullName": "Guildmaster's Guide to Ravnica",
+		"shorthand": "GGR",
+		"alts": [ "Ravnica" ]
 	}
 ]

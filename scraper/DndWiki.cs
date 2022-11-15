@@ -8,7 +8,7 @@ public class DndWiki
 
 	public readonly record struct Spell(
 		string name,
-		string? source,
+		string source,
 		School school, int level,
 		string castingTime, bool ritual,
 		string range, string? shape,
@@ -51,7 +51,7 @@ public class DndWiki
 			return (str, null);
 	}
 
-	private async Task<Spell> details(string name)
+	private async Task<Spell> details(string name, IEnumerable<SourceBook> sources)
 	{
 		string cName = new string(string.Join('-', name.Split(new[]{ ' ', '/', ':' }))
 			.Where(c => c < 0x7F && c != '\'')
@@ -71,7 +71,7 @@ public class DndWiki
 		{
 			var ctl = content.ChildNodes[1].InnerText.Split(':', 2, TrimEntries);
 			Util.AssertEqual("Source", ctl[0], "Bad source format");
-			source = ctl[1];
+			source = sources.FindSource(ctl[1].Split('/')[0]).shorthand;
 		}
 
 
@@ -171,7 +171,8 @@ public class DndWiki
 				if(i == 0)
 				{
 					x.Clean();
-					Util.AssertEqual("strong", x.ChildNodes[0].Name, $"{name}: Bad upcast format");
+					string ahl = x.ChildNodes[0].InnerText.Trim().ToLower();
+					Util.AssertEqual("at higher levels", ahl.Length > 17 ? ahl : ahl.Substring(0, 16), "Bad upcast format");
 					x.ChildNodes.RemoveAt(0);
 				}
 				return x;
@@ -189,11 +190,11 @@ public class DndWiki
 			desc, upcast, classes, statBlock);
 	}
 
-	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
+	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names, IEnumerable<SourceBook> sources)
 		=> Util.PartiallyCached("cache/wikidot_spells", names, async (string n) =>
 		{
 			var timer = Task.Delay(RateLimit);
-			var x = await details(n);
+			var x = await details(n, sources);
 			await timer;
 			return x;
 		}, x => x);

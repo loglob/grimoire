@@ -49,7 +49,7 @@ public static class Program
 		Console.WriteLine($"\nFinished scraping {cur} of {headers.Length} spells");
 	}
 
-	public static SourceBook FindSource(IEnumerable<SourceBook> books, string source)
+	public static SourceBook FindSource(this IEnumerable<SourceBook> books, string source)
 	{
 		var b = books.Where(b => b.Matches(source)).ToArray();
 
@@ -61,15 +61,42 @@ public static class Program
 			return b[0];
 	}
 
+	// note: http://dnd5e.wikidot.com/wondrous-items contains a full list of these aliases
+	public static async Task<SourceBook[]> GetSources()
+	{
+		using(var f = File.OpenRead("sources.json"))
+		{
+			if(await JsonSerializer.DeserializeAsync<SourceBook[]>(f) is SourceBook[] ret)
+				return ret;
+			else
+				throw new Exception();
+		}
+	}
+
 	public static async Task Main(string[] args)
 	{
 		var wiki = new DndWiki();
+		SourceBook[] sources = await GetSources();
+		var db = sources.ToDictionary(x => x.shorthand, x => new List<DndWiki.Spell>());
+		Console.WriteLine($"Found {sources.Length} sources");
+
 		var n = await wiki.SpellNames();
-		var s = wiki.Spells(n);
+		Console.WriteLine($"Processing {n.Length} spells...");
 
-		await foreach (var x in s)
-		{ }
+		await foreach(var x in wiki.Spells(n, sources))
+		{
+			db[x.source].Add(x);
+		}
 
-		return;
+		Directory.CreateDirectory("./dbs");
+		foreach (var kvp in db)
+		{
+			if(kvp.Value.Any())
+				await kvp.Value.StoreJsonAsync($"./dbs/{kvp.Key}.json");
+			else
+				Console.WriteLine($"[Warn] No spells for source '{kvp.Key}'");
+		}
+
+		await sources.ToDictionary(s => s.shorthand, s => s.fullName).StoreJsonAsync("./dbs/index.json");
 	}
 }
