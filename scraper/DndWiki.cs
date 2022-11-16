@@ -26,18 +26,6 @@ public class DndWiki
 				.ToArray();
 		});
 
-	private static (string, string?) parseParen(string str)
-	{
-		if(str.EndsWith(')'))
-		{
-			var spl = str.Split('(', TrimEntries);
-			Util.AssertEqual(2, spl.Length, "Too many '('");
-
-			return (spl[0], spl[1].Substring(0,spl[1].Length - 1));
-		}
-		else
-			return (str, null);
-	}
 
 	private async Task<Spell> details(string name, IEnumerable<SourceBook> sources)
 	{
@@ -66,29 +54,7 @@ public class DndWiki
 		bool ritual;
 		School school;
 		int level;
-		{
-			var lvlLine = content.ChildNodes[2].InnerText.Split();
-
-			if(lvlLine.Length < 2 || lvlLine.Skip(2).Any(x => x[0] != '('))
-				throw new FormatException("Invalid school/level format");
-
-			ritual = lvlLine.Length >= 3 && lvlLine[2].ToLower() == "(ritual)";
-
-			if (lvlLine[1] == "cantrip")
-			{
-				level = 0;
-				school = Enum.Parse<School>(lvlLine[0], true);
-			}
-			else
-			{
-				school = Enum.Parse<School>(lvlLine[1], true);
-				Util.AssertEqual(lvlLine[0].Substring(3), "-level", "Bad level format");
-				level = lvlLine[0][0] - '0';
-
-				if(level < 1 || level > 9)
-					throw new FormatException($"Bad spell level {lvlLine[0][0]}");
-			}
-		}
+		(level, school, ritual) = Common.parseLevel(content.ChildNodes[2].InnerText);
 
 
 		content.ChildNodes[3].Clean();
@@ -105,28 +71,15 @@ public class DndWiki
 
 		string cTime = chkProb(props[0], "casting time");
 
-		string range;
-		string? shape;
-		(range, shape) = parseParen(chkProb(props[1], "range"));
+		string range = Common.parseParen(chkProb(props[1], "range")).Item1;
 
 		string components;
 		string? materials;
-		(components, materials) = parseParen(chkProb(props[2], "components"));
+		(components, materials) = Common.parseParen(chkProb(props[2], "components"));
 
 		bool concentration;
 		string duration;
-		{
-			var d = chkProb(props[3], "duration");
-
-			if(concentration = d.StartsWith("Concentration")) // don't trust the page's native whitespace
-			{
-				var spl = d.Split(null as char[], 4, RemoveEmptyEntries | TrimEntries);
-				Util.AssertEqual("concentration, up to", string.Join(' ', spl.Take(3)).ToLower(), "Bad duration format");
-				duration = spl[3];
-			}
-			else
-				duration = d;
-		}
+		(concentration, duration) = Common.parseDuration(chkProb(props[3], "duration"));
 
 		var rest = content.ChildNodes.Skip(4).SkipLast(1).ToList();
 		string? statBlock;
@@ -173,7 +126,7 @@ public class DndWiki
 			upcast = u.Any() ? string.Join('\n', u.Select(s => s.OuterHtml)) : null;
 		}
 
-		return new Spell(name, source, school, level, cTime, ritual, range, shape,
+		return new Spell(name, source, school, level, cTime, ritual, range,
 			components, materials, concentration, duration,
 			desc, upcast, classes, statBlock);
 	}

@@ -206,8 +206,18 @@ public class Latex
 				break;
 			}
 
-			str.Append(code, w, m.Index - w);
-			expand(str, macros[m.Value]);
+
+			if(macros.TryGetValue(m.Value, out string subst))
+			{
+				str.Append(code, w, m.Index - w);
+				expand(str, subst);
+			}
+			else
+			{
+				str.Append(code, w, m.Index + m.Length - w);
+				Console.Error.WriteLine($"Skipping unknown macro: {m.Value}");
+			}
+
 			w = m.Index + m.Length;
 		}
 	}
@@ -225,14 +235,35 @@ public class Latex
 		return str.ToString();
 	}
 
-	internal Spell ExtractSpell(string code)
+	internal Spell ExtractSpell(string code, string source)
 	{
         var spel = latexCmd(ref code, true);
 		var spl = code.Split(config.upcastAnchor, 2, StringSplitOptions.TrimEntries);
 
-		Console.WriteLine(string.Join("\n\t", spel.arguments.Where(a => a.mandatory).Select(a => a.value)));
+		var props = spel.arguments.Where(a => a.mandatory).Select(p => p.value).Take(7).ToArray();
+		Util.AssertEqual(7, props.Length, "Bad arity of spell-defining function");
 
-		throw new Exception($"not implemented");
+		var name = props[0];
+		var lsr = Common.parseLevel(props[1]);
+		var time = props[2];
+		var range = props[3];
+
+		string comp; string? mat;
+		(comp, mat) = Common.parseParen(props[4]);
+
+		var cd = Common.parseDuration(props[5]);
+		var classes = props[6].Split(new[]{' ', '\t', ','}, StringSplitOptions.RemoveEmptyEntries).ToArray();
+
+		return new Spell(
+			name, source,
+			lsr.school, lsr.level,
+			time, lsr.ritual,
+			range,
+			comp, mat,
+			cd.concentration, cd.duration,
+			Expand(spl[0]), spl.Length > 1 ? Expand(spl[1]) : null,
+			classes, null
+		);
 	}
 
 	public IEnumerable<Spell> ExtractSpells(string doc, string source)
@@ -245,7 +276,7 @@ public class Latex
 
 			try
 			{
-				spell = ExtractSpell(snip);
+				spell = ExtractSpell(snip, source);
 			}
 			catch (System.Exception ex)
 			{
