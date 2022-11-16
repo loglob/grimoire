@@ -11,7 +11,8 @@ public class Latex
 	/// </summary>
 	/// <param name="spellAnchor"> A latex command that initializes a spell description </param>
 	/// <param name="upcastAnchor"> A latex command that initiates an upcast section </param>
-	public readonly record struct Config(string spellAnchor, string upcastAnchor);
+	/// <param name="environments"> Maps latex environments onto equivalent HTML tags</param>
+	public readonly record struct Config(string spellAnchor, string upcastAnchor, Dictionary<string, string> environments);
 
 	private readonly Config config;
 	private readonly Dictionary<string, string> macros = new Dictionary<string, string>{
@@ -19,7 +20,9 @@ public class Latex
 		{ @"\{", "{" },
 		{ @"\}", "}" },
 		{ @"\[", "[" },
-		{ @"\]", "]" }
+		{ @"\]", "]" },
+		{ @"\,", " " },
+		{ @"\ ", " " }
 	};
 
 	public Latex(Config config)
@@ -88,35 +91,23 @@ public class Latex
 	/// <summary>
 	/// Parses a latex command invocation.
 	/// </summary>
-	internal Command latexCmd(ref string line, bool expandArgs = false)
+	internal Command latexCmd(string line, out int read, int? arity = null)
 	{
 		var parens = new Stack<char>();
 		var args = new List<(bool, string)>();
 		var arg = new StringBuilder();
 
         Util.AssertEqual('\\', line[0], "Expected a latex command");
-        int off = line.Skip(1).TakeWhile(char.IsLetterOrDigit).Count();
-
-        if(off == 0)
-            throw new FormatException($"Expected name after '\\', got '{line.Substring(1,10)}'");
-
-        string name = line.Substring(1, off);
+        int len = 1 + Math.Max(1, line.Skip(1).TakeWhile(char.IsLetterOrDigit).Count());
+        string name = line.Substring(0, len);
 		bool esc = false;
 
-		for (int i = 1+off; i <= line.Length; i++)
+		for (read = len; read < line.Length; read++)
 		{
-            if(i == line.Length)
-            {
-                line = "";
-                break;
-            }
-			if(line[i] == '\n')
-			{
-				line = line.Substring(i + 1);
+			if(line[read] == '\n')
 				break;
-			}
 
-			char c = line[i];
+			char c = line[read];
 
             if(!esc && (c == ']' || c == '}'))
             {
@@ -127,10 +118,16 @@ public class Latex
 
                 if(parens.Count == 0)
                 {
-					string a = arg.ToString();
-					args.Add((c == '}', expandArgs ? Expand(a) : a ));
+					args.Add((c == '}', arg.ToString()));
                     arg.Clear();
-                    continue;
+
+					if(arity is int a && args.Count(x => x.Item1) >= a)
+					{
+						read++;
+						break;
+					}
+
+					continue;
                 }
             }
 
@@ -147,13 +144,12 @@ public class Latex
 
             if(parens.Count == 0)
             {
-				if(c == '\n' && i + 1 < line.Length && line[i + 1] == '\n')
+				if(c == '\n')
 					break;
-				if(char.IsWhiteSpace(c))
+				else if(char.IsWhiteSpace(c))
                     continue;
-
-                line = line.Substring(i);
-                break;
+				else
+	                break;
             }
 
 			if(c == '\\')
@@ -162,10 +158,36 @@ public class Latex
 				esc = false;
 		}
 
+		line = line.Substring(read);
         Util.AssertEqual(0, parens.Count, "Unmatched parenthesis");
 
         return new Command(name, args.ToArray());
 
+	}
+
+	internal (string inner, Command closing) closeEnvironment(string code, out int skip)
+	{
+		var bs = new Queue<int>(code.Indices(@"\begin"));
+		var es = new Queue<int>(code.Indices(@"\end"));
+
+		while(es.Any())
+		{
+			if(!bs.Any() || es.Peek() < bs.Peek())
+			{
+				int ind = es.Dequeue();
+				var cmd = latexCmd(code.Substring(ind), out skip, 1);
+				skip += ind;
+
+				return (code.Substring(0, ind), cmd);
+			}
+			else
+			{
+				bs.Dequeue();
+				es.Dequeue();
+			}
+		}
+
+		throw new FormatException("Missing closing \\end");
 	}
 
 	/// <summary>
@@ -179,12 +201,11 @@ public class Latex
 
 		foreach(var i in r.Matches(code).Select(m => m.Index))
 		{
-			string ln = code.Substring(i);
-			var cmd = latexCmd(ref ln);
+			var cmd = latexCmd(code.Substring(i), out var _, 2);
 
 			if(cmd.arguments.Count() < 2)
 				continue;
-			if(cmd.arguments.Take(2).Any(a => !a.mandatory))
+			if(cmd.arguments.Any(a => !a.mandatory))
 				continue;
 
 			macros[cmd.arguments[0].value.Trim()] = cmd.arguments[1].value;
@@ -193,40 +214,139 @@ public class Latex
 
 	private void expand(StringBuilder str, string code)
 	{
-		var cmd = new Regex(@"\\(\\|\w+)\*?");
-		int w = 0;
-
-		while(true)
+		int w = 0, l;
+		for (int i = 0; (i = code.IndexOf('\\', i)) >= 0; i += l)
 		{
-			var m = cmd.Match(code, w);
+			var cmd = latexCmd(code.Substring(i), out l);
+			str.Append(code, w, i - w);
+			redo:
 
-			if(!m.Success)
+			if(macros.TryGetValue(cmd.name, out string subst))
 			{
-				str.Append(code.Substring(w));
+				if(new Regex(@"^\\(.|\w+)$").IsMatch(subst) && subst != cmd.name)
+				{// special case to handle aliasing. NOT PROPER LATEX
+					cmd = cmd with {name = subst};
+					goto redo;
+				}
+				if(cmd.arguments.Length > 0)
+					Console.Error.WriteLine($"[Warn] discarding {cmd.arguments.Length} argument(s) to {cmd.name}");
+
+				expand(str, subst);
+			}
+			else switch(cmd.name)
+			{
+				case @"\end":
+					Console.Error.WriteLine($"Orphaned \\end{{{cmd.arguments.FirstOrDefault(a => a.mandatory).value}}}");
+				break;
+
+				case @"\begin":
+				{
+					var env = cmd.arguments.FirstOrDefault(a => a.mandatory).value;
+
+					if(config.environments.TryGetValue(env, out string tag))
+					{
+						var match = closeEnvironment(code.Substring(i + l), out int ll);
+						l += ll;
+
+						str.Append($"<{tag} class=\"{env}\">");
+
+						switch(tag)
+						{
+							case "table":
+							{
+								bool header = true;
+								foreach(var row in match.inner.Split('\n'))
+								{
+									str.Append("<tr>");
+
+									foreach (var cell in row.Split('&'))
+									{
+										str.Append(header ? "<th>" : "<td>");
+										expand(str, cell);
+										str.Append(header ? "</th>" : "</td>");
+									}
+
+									str.Append("</tr>");
+									header = false;
+								}
+							}
+							break;
+
+							case "ul":
+							case "il":
+							{
+								foreach(var il in match.inner.Split(@"\Item"))
+								{
+									str.Append("<il>");
+									expand(str, il);
+									str.Append("</il>");
+								}
+							}
+							break;
+
+							default:
+								expand(str, match.inner);
+							break;
+						}
+
+						str.Append($"</{tag}>");
+					}
+					else if(env is null)
+						Console.Error.WriteLine("[Warn] skipping malformed \\begin");
+					else
+						Console.Error.WriteLine($"[Warn] skipping unknown environment {env}");
+				}
+				break;
+
+				case @"\textit":
+				{
+					if(!cmd.arguments.Any(a => a.mandatory))
+					{
+						Console.Error.WriteLine($"[Warn] skipping malformed \\textit");
+						continue;
+					}
+					if(cmd.arguments.Count() > 1)
+						Console.Error.WriteLine($"[Warn] discarding superfluous arguments to \\textit");
+
+					str.Append("<i>");
+					expand(str, cmd.arguments.First(a => a.mandatory).value);
+					str.Append("</i>");
+				}
+				break;
+
+				case @"\textbf":
+				{
+					if(!cmd.arguments.Any(a => a.mandatory))
+					{
+						Console.Error.WriteLine($"[Warn] skipping malformed \\textit");
+						continue;
+					}
+					if(cmd.arguments.Count() > 1)
+						Console.Error.WriteLine($"[Warn] discarding superfluous arguments to \\textit");
+
+					str.Append("<b>");
+					expand(str, cmd.arguments.First(a => a.mandatory).value);
+					str.Append("</b>");
+				}
+				break;
+
+				default:
+					Console.Error.WriteLine($"[Warn] Discarding unknown macro: {cmd.name}");
+				// don't increment w, leading to larger writeback
 				break;
 			}
 
-
-			if(macros.TryGetValue(m.Value, out string subst))
-			{
-				str.Append(code, w, m.Index - w);
-				expand(str, subst);
-			}
-			else
-			{
-				str.Append(code, w, m.Index + m.Length - w);
-				Console.Error.WriteLine($"Skipping unknown macro: {m.Value}");
-			}
-
-			w = m.Index + m.Length;
+			w = i + l;
 		}
+
+		str.Append(code.Substring(w));
 	}
 
 	/// <summary>
 	/// Fully expands a code snippet
 	/// Applies learned macros recursively
 	/// </summary>
-	/// <param name="code"></param>
+	/// <param name="code">The latex source code to expand</param>
 	/// <returns></returns>
 	public string Expand(string code)
 	{
@@ -237,10 +357,10 @@ public class Latex
 
 	internal Spell ExtractSpell(string code, string source)
 	{
-        var spel = latexCmd(ref code, true);
-		var spl = code.Split(config.upcastAnchor, 2, StringSplitOptions.TrimEntries);
+        var spel = latexCmd(code, out int len, 7);
+		var spl = code.Substring(len).Split(config.upcastAnchor, 2, StringSplitOptions.TrimEntries);
 
-		var props = spel.arguments.Where(a => a.mandatory).Select(p => p.value).Take(7).ToArray();
+		var props = spel.arguments.Where(a => a.mandatory).Select(p => Expand(p.value)).ToArray();
 		Util.AssertEqual(7, props.Length, "Bad arity of spell-defining function");
 
 		var name = props[0];

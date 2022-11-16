@@ -45,7 +45,7 @@ public static class Program
 			if(kvp.Value.Any())
 				kvp.Value.StoreJson($"./dbs/{kvp.Key}.json");
 			else
-				Console.WriteLine($"[Warn] No spells for source '{kvp.Key}'");
+				Console.Error.WriteLine($"[Warn] No spells for source '{kvp.Key}'");
 		}
 
 		sources.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("./dbs/index.json");

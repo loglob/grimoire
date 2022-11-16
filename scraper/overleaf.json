@@ -3,6 +3,10 @@
 	"password": "--PASSWORD HERE (see olspy docs)--",
 	"latex": {
 		"spellAnchor": "\\spell",
-		"upcastAnchor": "At higher levels"
+		"upcastAnchor": "At higher levels",
+		"environments": {
+			"DndTable": "table",
+			"itemize": "ul"
+		}
 	}
 }
