@@ -1,0 +1,8 @@
+{
+	"projectID": "--PROJECT ID HERE--",
+	"password": "--PASSWORD HERE (see olspy docs)--",
+	"latex": {
+		"spellAnchor": "\\spell",
+		"upcastAnchor": "At higher levels"
+	}
+}
