@@ -26,6 +26,19 @@ public readonly record struct SourceBook(string fullName, string shorthand, stri
 	}
 }
 
+public readonly record struct Spell(
+	string name,
+	string source,
+	School school, int level,
+	string castingTime, bool ritual,
+	string range, string? shape,
+	string components, string? materials,
+	bool concentration, string duration,
+	string description, string? upcast,
+	string[] classes,
+	string? statBlock
+);
+
 public static class Program
 {
 	public static async Task DndSpells()
@@ -77,16 +90,22 @@ public static class Program
 	{
 		var wiki = new DndWiki();
 		SourceBook[] sources = await GetSources();
-		var db = sources.ToDictionary(x => x.shorthand, x => new List<DndWiki.Spell>());
+		var db = sources.ToDictionary(x => x.shorthand, x => new List<Spell>());
 		Console.WriteLine($"Found {sources.Length} sources");
-
+/*
 		var n = await wiki.SpellNames();
-		Console.WriteLine($"Processing {n.Length} spells...");
+		Console.WriteLine($"Processing {n.Length} spells from DnDWiki...");
 
 		await foreach(var x in wiki.Spells(n, sources))
 		{
 			db[x.source].Add(x);
-		}
+		}*/
+
+		var ol = new Overleaf(await Util.LoadJsonAsync<Overleaf.Config>("overleaf.json"));
+		var hb = db["HB"];
+
+		foreach(var s in await ol.Spells("HB"))
+			hb.Add(s);
 
 		Directory.CreateDirectory("./dbs");
 		foreach (var kvp in db)

@@ -1,0 +1,3 @@
+[submodule "olspy"]
+	path = scraper/olspy
+	url = https://github.com/loglob/olspy

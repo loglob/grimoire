@@ -6,18 +6,6 @@ public class DndWiki
 {
 	private HttpClient client = new HttpClient() { BaseAddress = new Uri("http://dnd5e.wikidot.com") };
 
-	public readonly record struct Spell(
-		string name,
-		string source,
-		School school, int level,
-		string castingTime, bool ritual,
-		string range, string? shape,
-		string components, string? materials,
-		bool concentration, string duration,
-		string description, string? upcast,
-		string[] classes,
-		string? statBlock
-	);
 
 	/// <summary>
 	/// The minimum time between HTTP requests
