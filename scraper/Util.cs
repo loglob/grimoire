@@ -1,15 +1,16 @@
 using System.Collections.Generic;
 using System.Text;
-using System.Text.Json;
+using Newtonsoft.Json;
 using HtmlAgilityPack;
 
 internal static class Util
 {
-	public static async Task<T> LoadJsonAsync<T>(string filename)
+	public static T LoadJson<T>(string filename)
 	{
-		using(var f = File.OpenRead(filename))
+		using(var f = File.OpenText(filename))
+        using(var j = new JsonTextReader(f))
 		{
-			var res = await JsonSerializer.DeserializeAsync<T>(f);
+			var res = new JsonSerializer().Deserialize<T>(j);
 
 			if(res is null)
 				throw new FormatException($"Failed parsing JSON of {typeof(T).Name}");
@@ -18,10 +19,10 @@ internal static class Util
 		}
 	}
 
-	public static async Task StoreJsonAsync<T>(this T obj, string filename)
+	public static void StoreJson<T>(this T obj, string filename)
 	{
-		using(var f = File.Create(filename))
-			await JsonSerializer.SerializeAsync(f, obj);
+		using(var f = File.CreateText(filename))
+			new JsonSerializer().Serialize(f, obj);
 	}
 
 	public static async Task<HtmlDocument> GetDocumentAsync(this HttpClient client, string url)
@@ -109,7 +110,7 @@ internal static class Util
 		{
 			try
 			{
-				return await Util.LoadJsonAsync<T>(cache);
+				return Util.LoadJson<T>(cache);
 			} catch(Exception)
 			{}
 
@@ -119,7 +120,7 @@ internal static class Util
 		var ret = await task();
 
 		if(Directory.Exists(Path.GetDirectoryName(cache)))
-			await ret.StoreJsonAsync(cache);
+			ret.StoreJson(cache);
 
 		return ret;
 	}
@@ -134,7 +135,7 @@ internal static class Util
 		{
 			try
 			{
-				dict = await Util.LoadJsonAsync<Dictionary<Tkey, Tval>>(cache);
+				dict = Util.LoadJson<Dictionary<Tkey, Tval>>(cache);
 			} catch(Exception)
 			{
 				Console.Error.WriteLine("[WARN] Invalid cache");
@@ -178,6 +179,6 @@ internal static class Util
 		}
 
 		if(Directory.Exists(Path.GetDirectoryName(cache)))
-			await dict.StoreJsonAsync(cache);
+			dict.StoreJson(cache);
 	}
 }

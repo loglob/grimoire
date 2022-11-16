@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-
-public readonly record struct SourceBook(string fullName, string shorthand, string[]? alts)
+﻿public readonly record struct SourceBook(string fullName, string shorthand, string[]? alts)
 {
 	public bool Matches(string src)
 	{
@@ -41,27 +39,6 @@ public readonly record struct Spell(
 
 public static class Program
 {
-	public static async Task DndSpells()
-	{
-		var sp = new DndSpells();
-		var headers = await sp.SpellHeaders();
-
-		Console.WriteLine($"Loaded {headers.Length} spell headers. Parsing details...");
-
-		int cur = 0;
-		int len = 0;
-
-		await foreach (var d in sp.SpellDetails(headers))
-		{
-			Console.CursorLeft = 0;
-			len = Math.Max(d.name.Length, len);
-
-			Console.Write($"Parsed {++cur}/{headers.Length}: {d.name}{new string(' ', len - d.name.Length)}");
-		}
-
-		Console.WriteLine($"\nFinished scraping {cur} of {headers.Length} spells");
-	}
-
 	public static SourceBook FindSource(this IEnumerable<SourceBook> books, string source)
 	{
 		var b = books.Where(b => b.Matches(source)).ToArray();
@@ -75,21 +52,14 @@ public static class Program
 	}
 
 	// note: http://dnd5e.wikidot.com/wondrous-items contains a full list of these aliases
-	public static async Task<SourceBook[]> GetSources()
-	{
-		using(var f = File.OpenRead("sources.json"))
-		{
-			if(await JsonSerializer.DeserializeAsync<SourceBook[]>(f) is SourceBook[] ret)
-				return ret;
-			else
-				throw new Exception();
-		}
-	}
+	public static SourceBook[] GetSources()
+	    => Util.LoadJson<SourceBook[]>("sources.json");
+	
 
 	public static async Task Main(string[] args)
 	{
 		var wiki = new DndWiki();
-		SourceBook[] sources = await GetSources();
+		SourceBook[] sources = GetSources();
 		var db = sources.ToDictionary(x => x.shorthand, x => new List<Spell>());
 		Console.WriteLine($"Found {sources.Length} sources");
 /*
@@ -101,21 +71,21 @@ public static class Program
 			db[x.source].Add(x);
 		}*/
 
-		var ol = new Overleaf(await Util.LoadJsonAsync<Overleaf.Config>("overleaf.json"));
+		var ol = new Overleaf(Util.LoadJson<Overleaf.Config>("overleaf.json"));
 		var hb = db["HB"];
 
-		foreach(var s in await ol.Spells("HB"))
+		foreach(var s in await ol.Spells("HB", false))
 			hb.Add(s);
 
 		Directory.CreateDirectory("./dbs");
 		foreach (var kvp in db)
 		{
 			if(kvp.Value.Any())
-				await kvp.Value.StoreJsonAsync($"./dbs/{kvp.Key}.json");
+				kvp.Value.StoreJson($"./dbs/{kvp.Key}.json");
 			else
 				Console.WriteLine($"[Warn] No spells for source '{kvp.Key}'");
 		}
 
-		await sources.ToDictionary(s => s.shorthand, s => s.fullName).StoreJsonAsync("./dbs/index.json");
+		sources.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("./dbs/index.json");
 	}
 }
