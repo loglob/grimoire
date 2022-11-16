@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 /// <summary>
 /// Scraper for processing LaTeX documents
@@ -13,26 +14,81 @@ public class Latex
 	public readonly record struct Config(string spellAnchor, string upcastAnchor);
 
 	private readonly Config config;
+	private readonly Dictionary<string, string> macros = new Dictionary<string, string>{
+		{ @"\\", "\n" },
+		{ @"\{", "{" },
+		{ @"\}", "}" },
+		{ @"\[", "[" },
+		{ @"\]", "]" }
+	};
 
 	public Latex(Config config)
 	{
 		this.config = config;
 	}
 
-	/// <summary>
-	/// Turns latex line breaks into paragraph line breaks
-	/// </summary>
-	internal List<string> splLines(IEnumerable<string> lines)
-		=> lines.SplitBy(string.IsNullOrWhiteSpace, true)
-			.Select(x => string.Join(' ', x))
-			.ToList();
+    internal record Command(string name, (bool mandatory, string value)[] arguments);
 
-    internal record Command(string name, (bool,string)[] arguments);
+	/// <summary>
+	/// Joins lines, handles comments, ensures that newlines = paragraph breaks.
+	/// De-escapes \% and nothing else
+	/// </summary>
+	/// <param name="lines"></param>
+	/// <returns></returns>
+	public static string JoinLines(string[] lines)
+	{
+		var sb = new StringBuilder();
+		bool wasEmpty = true;
+
+		foreach (var l in lines.Select(l => l.Trim()))
+		{
+			if(l.Length == 0)
+			{
+				if(!wasEmpty)
+					sb.Append('\n');
+
+				wasEmpty = true;
+				continue;
+			}
+			else if(l[0] == '%') // comment-lines are completely ignored
+				continue;
+			else
+				wasEmpty = false;
+
+			int w = 0;
+			bool esc = false;
+
+			for (int i = 0; i <= l.Length; i++)
+			{
+				if(i == l.Length)
+				{
+					sb.Append(l.Substring(w));
+					break;
+				}
+				if(l[i] == '%')
+				{
+					sb.Append(l, w, esc ? i - w - 1 : i - w);
+					w = i;
+
+					if(!esc)
+						break;
+				}
+				else if(l[i] == '\\')
+					esc = !esc;
+				else
+					esc = false;
+			}
+
+			sb.Append(' ');
+		}
+
+		return sb.ToString();
+	}
 
 	/// <summary>
 	/// Parses a latex command invocation.
 	/// </summary>
-	internal Command latexCmd(ref string line)
+	internal Command latexCmd(ref string line, bool expandArgs = false)
 	{
 		var parens = new Stack<char>();
 		var args = new List<(bool, string)>();
@@ -45,6 +101,7 @@ public class Latex
             throw new FormatException($"Expected name after '\\', got '{line.Substring(1,10)}'");
 
         string name = line.Substring(1, off);
+		bool esc = false;
 
 		for (int i = 1+off; i <= line.Length; i++)
 		{
@@ -53,84 +110,150 @@ public class Latex
                 line = "";
                 break;
             }
+			if(line[i] == '\n')
+			{
+				line = line.Substring(i + 1);
+				break;
+			}
 
-            char c = line[i];
+			char c = line[i];
 
-            if(parens.Count == 0)
+            if(!esc && (c == ']' || c == '}'))
             {
-                if(char.IsWhiteSpace(c))
-                    continue;
-                
-                line = line.Substring(i);
-                break;
-            }
+            	if(parens.Count == 0)
+					break;
 
-            if(c == ']' || c == '}')
-            {
-                Util.AssertEqual(parens.Pop(), c, "Bad parenthesis");
+				Util.AssertEqual(parens.Pop(), c, "Bad parenthesis");
 
                 if(parens.Count == 0)
                 {
-                    args.Add((c == '}', arg.ToString()));
+					string a = arg.ToString();
+					args.Add((c == '}', expandArgs ? Expand(a) : a ));
                     arg.Clear();
                     continue;
                 }
             }
-            
+
             if(parens.Count > 0)
                 arg.Append(c);
-            
-            if(c == '[')
-                parens.Push(']');
-            else if(c == '{')
-                parens.Push('}');
+
+			if(!esc)
+			{
+				if(c == '[')
+					parens.Push(']');
+				else if(c == '{')
+					parens.Push('}');
+			}
+
+            if(parens.Count == 0)
+            {
+				if(c == '\n' && i + 1 < line.Length && line[i + 1] == '\n')
+					break;
+				if(char.IsWhiteSpace(c))
+                    continue;
+
+                line = line.Substring(i);
+                break;
+            }
+
+			if(c == '\\')
+				esc = !esc;
+			else
+				esc = false;
 		}
 
         Util.AssertEqual(0, parens.Count, "Unmatched parenthesis");
-        
+
         return new Command(name, args.ToArray());
 
 	}
 
-	internal Spell ExtractSpell(List<string> lines)
+	/// <summary>
+	/// Extracts simple \newcommand definitions from the given latex source code
+	/// Skips commands with arguments
+	/// </summary>
+	/// <param name="lines"></param>
+	public void LearnMacros(string code)
 	{
-        string l0 = lines[0];
-        var spel = latexCmd(ref l0);
+		var r = new Regex(@"\\(re)?newcommand");
 
-        if(string.IsNullOrWhiteSpace(l0))
-            lines.RemoveAt(0);
-        else
-            lines[0] = l0;
+		foreach(var i in r.Matches(code).Select(m => m.Index))
+		{
+			string ln = code.Substring(i);
+			var cmd = latexCmd(ref ln);
 
-		throw new Exception($": {spel.name}: not implemented");
+			if(cmd.arguments.Count() < 2)
+				continue;
+			if(cmd.arguments.Take(2).Any(a => !a.mandatory))
+				continue;
+
+			macros[cmd.arguments[0].value.Trim()] = cmd.arguments[1].value;
+		}
 	}
 
-	public IEnumerable<Spell> ExtractSpells(string[] lines, string source)
+	private void expand(StringBuilder str, string code)
 	{
-		var indices = Enumerable.Range(0, lines.Length)
-			.Where(i => lines[i].TrimStart().StartsWith(config.spellAnchor))
-			.ToArray();
+		var cmd = new Regex(@"\\(\\|\w+)\*?");
+		int w = 0;
 
-		for (int i = 0; i < indices.Length; i++)
+		while(true)
+		{
+			var m = cmd.Match(code, w);
+
+			if(!m.Success)
+			{
+				str.Append(code.Substring(w));
+				break;
+			}
+
+			str.Append(code, w, m.Index - w);
+			expand(str, macros[m.Value]);
+			w = m.Index + m.Length;
+		}
+	}
+
+	/// <summary>
+	/// Fully expands a code snippet
+	/// Applies learned macros recursively
+	/// </summary>
+	/// <param name="code"></param>
+	/// <returns></returns>
+	public string Expand(string code)
+	{
+		var str = new StringBuilder();
+		expand(str, code);
+		return str.ToString();
+	}
+
+	internal Spell ExtractSpell(string code)
+	{
+        var spel = latexCmd(ref code, true);
+		var spl = code.Split(config.upcastAnchor, 2, StringSplitOptions.TrimEntries);
+
+		Console.WriteLine(string.Join("\n\t", spel.arguments.Where(a => a.mandatory).Select(a => a.value)));
+
+		throw new Exception($"not implemented");
+	}
+
+	public IEnumerable<Spell> ExtractSpells(string doc, string source)
+	{
+		var code = doc.Split(@"\begin{document}", 2)[1].Split(@"\end{document}",2)[0];
+
+		foreach(var snip in code.Spans(config.spellAnchor))
 		{
 			Spell spell;
 
 			try
 			{
-                int until = (i == indices.Length - 1) ? lines.Length : indices[i + 1];
-				var ll = splLines(new ArraySegment<string>(lines, indices[i], until - indices[i]));
-				ll[0].Substring(config.spellAnchor.Length);
-				spell = ExtractSpell(ll);
+				spell = ExtractSpell(snip);
 			}
 			catch (System.Exception ex)
 			{
-				Console.WriteLine($"At {lines[indices[i]]}: {ex.Message}");
+				Console.WriteLine($"At '{snip.Substring(0,25)}{(snip.Length > 25 ? "..." : "")}': {ex.Message}");
 				continue;
 			}
 
 			yield return spell;
 		}
-
-		yield break;
 	}
 }

@@ -181,4 +181,26 @@ internal static class Util
 		if(Directory.Exists(Path.GetDirectoryName(cache)))
 			dict.StoreJson(cache);
 	}
+
+	public static IEnumerable<int> Indices(this string text, string s)
+	{
+		for (int i = 0; (i = text.IndexOf(s,i)) >= 0; i++)
+			yield return i;
+	}
+
+	/// <summary>
+	/// All substring that are started by s and ended by the start of the next substring, or end of file
+	/// </summary>
+	/// <param name="text"></param>
+	/// <param name="s"></param>
+	/// <returns></returns>
+	public static IEnumerable<string> Spans(this string text, string s)
+	{
+		var ind = text.Indices(s).ToArray();
+
+		for (int i = 1; i < ind.Length; i++)
+			yield return text.Substring(ind[i - 1], ind[i] - ind[i - 1]);
+
+		yield return text.Substring(ind[ind.Length - 1]);
+	}
 }

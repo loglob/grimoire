@@ -34,21 +34,29 @@ public class Overleaf
 	/// <summary>
 	/// When encountered in the first 10 lines of an overleaf document, scrapes that file for spells
 	/// </summary>
-	const string ANCHOR = "%% GRIMOIRE include";
+	const string SPELL_ANCHOR = "%% GRIMOIRE include";
 
 	/// <summary>
-	/// Finds all documents that include the ANCHOR to mark them as spell files
+	/// When encountered in the first 10 lines of an overleaf document, scrapes that file for macros
 	/// </summary>
-	private async Task<IEnumerable<Document>> spellFiles()
-	{
-		if(!await overleaf.Available)
-			throw new Exception($"Overleaf instance at {overleaf.Host} isn't ready");
+	const string MACRO_ANCHOR = "%% GRIMOIRE macros";
 
-		return (await Util.Cached("cache/overleaf_documents", project.GetDocuments))
-			.Where(d => d.Lines.Take(10).Any(s => s == ANCHOR));
-	}
+	internal static IEnumerable<string> WithAnchor(IEnumerable<Document> docs, string anchor)
+		=> docs.Select(d => d.Lines).Where(l => l.Take(10).Any(l => l == anchor)).Select(Latex.JoinLines);
 
 	public async Task<IEnumerable<Spell>> Spells(string source)
-		=> (await spellFiles()).SelectMany(f => latex.ExtractSpells(f.Lines, source));
+	{
+		var docs = await Util.Cached("cache/overleaf_documents", async() => {
+			if(!await overleaf.Available)
+				throw new Exception($"Overleaf instance at {overleaf.Host} isn't ready");
+
+			return await project.GetDocuments();
+		});
+
+		foreach(var f in WithAnchor(docs, MACRO_ANCHOR))
+			latex.LearnMacros(f);
+
+		return WithAnchor(docs, SPELL_ANCHOR).SelectMany(f => latex.ExtractSpells(f, source));
+	}
 
 }
