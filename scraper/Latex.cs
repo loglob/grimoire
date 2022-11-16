@@ -27,49 +27,82 @@ public class Latex
 			.Select(x => string.Join(' ', x))
 			.ToList();
 
+    internal record Command(string name, (bool,string)[] arguments);
+
 	/// <summary>
-	/// Extracts the mandatory arguments of a latex command.
-	/// Discards []-arguments
+	/// Parses a latex command invocation.
 	/// </summary>
-	internal List<string> latexCmd(ref string line)
+	internal Command latexCmd(ref string line)
 	{
-		throw new Exception("not implemented");
-		var parens = new Stack<bool>();
-		var args = new List<string>();
+		var parens = new Stack<char>();
+		var args = new List<(bool, string)>();
 		var arg = new StringBuilder();
 
-		for (int i = 0; i < line.Length; i++)
+        Util.AssertEqual('\\', line[0], "Expected a latex command");
+        int off = line.Skip(1).TakeWhile(char.IsLetterOrDigit).Count();
+
+        if(off == 0)
+            throw new FormatException($"Expected name after '\\', got '{line.Substring(1,10)}'");
+
+        string name = line.Substring(1, off);
+
+		for (int i = 1+off; i <= line.Length; i++)
 		{
-			switch(line[i])
-			{
-				case '[':
-					parens.Push(false);
-				continue;
+            if(i == line.Length)
+            {
+                line = "";
+                break;
+            }
 
-				case '{':
-					parens.Push(true);
-				continue;
+            char c = line[i];
 
-				case ']':
-				{
-					if (!parens.TryPop(out bool nec) || nec)
-						throw new FormatException("Bad Parenthesis");
-				}
-				continue;
+            if(parens.Count == 0)
+            {
+                if(char.IsWhiteSpace(c))
+                    continue;
+                
+                line = line.Substring(i);
+                break;
+            }
 
-				case '}':
-					break;
-			}
+            if(c == ']' || c == '}')
+            {
+                Util.AssertEqual(parens.Pop(), c, "Bad parenthesis");
 
-//			if(parens.)
-//				arg.Append(line[i]);
+                if(parens.Count == 0)
+                {
+                    args.Add((c == '}', arg.ToString()));
+                    arg.Clear();
+                    continue;
+                }
+            }
+            
+            if(parens.Count > 0)
+                arg.Append(c);
+            
+            if(c == '[')
+                parens.Push(']');
+            else if(c == '{')
+                parens.Push('}');
 		}
+
+        Util.AssertEqual(0, parens.Count, "Unmatched parenthesis");
+        
+        return new Command(name, args.ToArray());
+
 	}
 
 	internal Spell ExtractSpell(List<string> lines)
 	{
+        string l0 = lines[0];
+        var spel = latexCmd(ref l0);
 
-		throw new Exception("not implemented");
+        if(string.IsNullOrWhiteSpace(l0))
+            lines.RemoveAt(0);
+        else
+            lines[0] = l0;
+
+		throw new Exception($": {spel.name}: not implemented");
 	}
 
 	public IEnumerable<Spell> ExtractSpells(string[] lines, string source)
@@ -78,13 +111,14 @@ public class Latex
 			.Where(i => lines[i].TrimStart().StartsWith(config.spellAnchor))
 			.ToArray();
 
-		for (int i = 0; i < indices.Length - 1; i++)
+		for (int i = 0; i < indices.Length; i++)
 		{
 			Spell spell;
 
 			try
 			{
-				var ll = splLines(new ArraySegment<string>(lines, indices[i], indices[i + 1] - indices[i]));
+                int until = (i == indices.Length - 1) ? lines.Length : indices[i + 1];
+				var ll = splLines(new ArraySegment<string>(lines, indices[i], until - indices[i]));
 				ll[0].Substring(config.spellAnchor.Length);
 				spell = ExtractSpell(ll);
 			}
