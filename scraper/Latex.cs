@@ -381,13 +381,15 @@ public class Latex
 			range,
 			comp, mat,
 			cd.concentration, cd.duration,
-			Expand(spl[0]), spl.Length > 1 ? Expand(spl[1]) : null,
+			Expand(spl[0]).ReplaceLineEndings("\n<br/>\n"),
+			spl.Length > 1 ? Expand(spl[1]).ReplaceLineEndings("\n<br/>\n") : null,
 			classes, null
 		);
 	}
 
 	public IEnumerable<Spell> ExtractSpells(string doc, string source)
 	{
+		Console.WriteLine("Extracting LATEX spells....");
 		var code = doc.Split(@"\begin{document}", 2)[1].Split(@"\end{document}",2)[0];
 
 		foreach(var snip in code.Spans(config.spellAnchor))

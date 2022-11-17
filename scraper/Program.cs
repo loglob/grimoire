@@ -24,14 +24,14 @@ public static class Program
 		SourceBook[] sources = GetSources();
 		var db = sources.ToDictionary(x => x.shorthand, x => new List<Spell>());
 		Console.WriteLine($"Found {sources.Length} sources");
-/*
+
 		var n = await wiki.SpellNames();
 		Console.WriteLine($"Processing {n.Length} spells from DnDWiki...");
 
 		await foreach(var x in wiki.Spells(n, sources))
 		{
 			db[x.source].Add(x);
-		}*/
+		}
 
 		var ol = new Overleaf(Util.LoadJson<Overleaf.Config>("overleaf.json"));
 		var hb = db["HB"];
@@ -39,9 +39,13 @@ public static class Program
 		foreach(var s in await ol.Spells("HB"))
 			hb.Add(s);
 
+		int total = 0;
+
 		Directory.CreateDirectory("./dbs");
 		foreach (var kvp in db)
 		{
+			total += kvp.Value.Count;
+
 			if(kvp.Value.Any())
 				kvp.Value.StoreJson($"./dbs/{kvp.Key}.json");
 			else
@@ -49,5 +53,6 @@ public static class Program
 		}
 
 		sources.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("./dbs/index.json");
+		Console.WriteLine($"Done. Found {total} spells.");
 	}
 }
