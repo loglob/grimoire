@@ -24,3 +24,13 @@
 {
 	width: 100%;
 }
+
+#spells tr td:not(:first-child)
+{
+	text-align: center;
+}
+
+#spells-header th:first-child
+{
+	text-align: left;
+}
