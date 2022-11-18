@@ -23,6 +23,12 @@
 #spells
 {
 	width: 100%;
+	border-collapse: collapse;
+}
+
+#spells>:nth-child(2n)
+{
+	background-color: #ddd;
 }
 
 #spells tr td:not(:first-child)
@@ -33,4 +39,9 @@
 #spells-header th:first-child
 {
 	text-align: left;
+}
+
+#spells-header th
+{
+	cursor: pointer;
 }

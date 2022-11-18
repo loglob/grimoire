@@ -12,7 +12,6 @@ function setHidden(element : HTMLElement, hide : boolean)
 	element.style.display = hide ? "none" : "initial";
 }
 
-let spellsBySource : { [index: string] : Spell[] } = {};
 let sources : { [id: string] : string } = {}
 
 async function loadSources()
@@ -21,9 +20,8 @@ async function loadSources()
 	sources = await getSources();
 	document.getElementById("source-selector-placeholder")?.remove();
 
-	for (const id in sources) {
-		spellsBySource[id] = [];
-
+	for (const id in sources)
+	{
 		let container = document.createElement("div");
 		container.innerText = sources[id];
 
@@ -37,15 +35,13 @@ async function loadSources()
 
 		select.onchange = async _ => {
 			if(!select.checked)
-				spellsBySource[id] = [];
+				filterTable(s => s.source === id)
 			else
 			{
 				setHidden(l, false);
-				spellsBySource[id] = await getSpells(id);
+				insertTable(await getSpells(id));
 				setHidden(l, true);
 			}
-
-			buildTable()
 		}
 
 		container.appendChild(select);
@@ -54,31 +50,138 @@ async function loadSources()
 	}
 }
 
-function buildTable()
+/** The headers of the spell table, in order */
+const headers : (keyof Spell)[] = [ "name", "level", "school", "castingTime", "ritual", "concentration", "source" ];
+
+function initUI()
 {
-	var t = document.getElementById("spells");
+	loadSources();
 
-	while(t.childElementCount > 1)
-		t.removeChild(t.lastChild);
-
-	for(const src in spellsBySource)
+	for (const h of headers)
 	{
-		for(const spell of spellsBySource[src])
-		{
-			var row = document.createElement("tr");
-			let td = (x : string) => { let c = document.createElement("td"); c.innerText = x; row.appendChild(c) }
+		var x = document.getElementById(`${h}-header`);
 
-			td(spell.name);
-			td(spell.level.toString());
-			td(spell.school);
-			td(spell.castingTime);
-			td(spell.ritual ? "yes" : "no");
-			td(spell.concentration ? "yes" : "no");
-			td(sources[spell.source]);
+        if(x === undefined || x === null)
+            throw `No header for ${h}`
 
-			t.appendChild(row);
+		let m = document.createElement("b");
+		m.id = `${h}-marker`;
+        x.appendChild(m);
+
+		if(h === tableState.sortOn)
+			m.innerText = tableState.reverse ? "\u2191" : "\u2193";
+
+		x.onclick = _ => {
+			if(tableState.sortOn === h)
+				tableState.reverse = !tableState.reverse;
+			else
+			{
+				document.getElementById(`${tableState.sortOn}-marker`).innerText = "";
+				tableState.sortOn = h;
+				tableState.reverse = false;
+			}
+
+			m.innerText = tableState.reverse ? "\u2191" : "\u2193";
+			setTable(tableState.entries);
+            return false;
 		}
 	}
 }
 
-document.addEventListener("load", _ => loadSources());
+/** The state of the table */
+let tableState : { sortOn: keyof Spell, reverse: boolean, entries : Spell[] } = { sortOn: "level", reverse: true, entries: [] }
+
+/** Removes all spells that match the predicate from the table and tableState
+ * @param pred The predicate to match for deletion
+ */
+function filterTable(pred : (spell: Spell, index: number) => boolean)
+{
+	var t = document.getElementById("spells");
+
+	for (let i = tableState.entries.length; i--;)
+	{
+		if(pred(tableState.entries[i], i))
+		{
+			tableState.entries.splice(i, 1);
+			t.removeChild(t.children[i + 1]);
+		}
+	}
+}
+
+function compareSpell(l : Spell, r : Spell) : number
+{
+	let so = tableState.sortOn;
+	let cmp = l[so] > r[so] ? -1 : l[so] < r[so] ? +1 : 0;
+
+	return (tableState.reverse ? -cmp : +cmp);
+}
+
+function toRow(spell : Spell) : HTMLTableRowElement
+{
+	var row = document.createElement("tr");
+	let td = (x : string) => {
+		let c = document.createElement("td");
+		c.innerText = x;
+		row.appendChild(c);
+	}
+
+	td(spell.name);
+	td(spell.level.toString());
+	td(spell.school);
+	td(spell.castingTime);
+	td(spell.ritual ? "yes" : "no");
+	td(spell.concentration ? "yes" : "no");
+	td(spell.source);
+
+	return row;
+}
+
+/** Inserts into the table, preserving sortedness */
+function insertTable(spells : Spell[]) : void
+{
+	if(tableState.entries.length == 0)
+		return setTable(spells);
+
+	const t = document.getElementById("spells");
+	let off = 0;
+
+	spells.sort(compareSpell)
+
+	for(const spell of spells)
+	{
+		while(off < tableState.entries.length && compareSpell(spell, tableState.entries[off]) > 0)
+			off++;
+		
+		let row = toRow(spell);
+
+		if(off < tableState.entries.length)
+		{
+			tableState.entries.splice(off, 0, spell);
+			t.insertBefore(row, t.children[1 + off]);
+		}
+		else
+		{
+			tableState.entries.push(spell);
+			t.appendChild(row);
+		}
+
+		off++;
+	}
+}
+
+/** Rebuilds the spell table from scratch */
+function setTable(spells : Spell[]) : void
+{
+	if(tableState.sortOn !== null)
+		spells.sort(compareSpell);
+
+	tableState.entries = spells;
+	const t = document.getElementById("spells");
+
+	while(t.childElementCount > 1)
+		t.removeChild(t.lastChild);
+
+	for (const s of tableState.entries)
+		t.appendChild(toRow(s));
+}
+

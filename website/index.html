@@ -3,7 +3,7 @@
 	<head>
 		<script src="js/site.js"></script>
 		<script>
-			window.onload = _ => loadSources();
+			window.onload = _ => initUI();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 	</head>
@@ -16,13 +16,13 @@
 		</div>
 		<table id="spells">
 			<tr id="spells-header">
-				<th> Spell </th>
-				<th> Level </th>
-				<th> School </th>
-				<th> Casting time </th>
-				<th> Ritual </th>
-				<th> Concentration </th>
-				<th> Source </th>
+				<th id="name-header"> Spell </th>
+				<th id="level-header"> Level </th>
+				<th id="school-header"> School </th>
+				<th id="castingTime-header"> Casting time </th>
+				<th id="ritual-header"> Ritual </th>
+				<th id="concentration-header"> Concentration </th>
+				<th id="source-header"> Source </th>
 			</tr>
 		</table>
 	</body>
