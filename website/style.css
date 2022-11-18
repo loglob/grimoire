@@ -45,3 +45,13 @@
 {
 	cursor: pointer;
 }
+
+h1
+{
+    margin-bottom: 0;
+}
+
+p
+{
+    margin-top: 0;
+}

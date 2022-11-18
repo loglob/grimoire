@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="js/site.js"></script>
+		<script>
+			let p = new URLSearchParams(window.location.search);
+			window.onload = _ => spellDetails(p.get("from"), p.get("spell"));
+		</script>
+		<link rel="stylesheet" type="text/css" href="style.css" />
+	</head>
+	<body>
+		<h1 id="spell-name"> Fireball </h1>
+		<i id="level+class">3rd-level Evocation</i>
+		
+
+		<table>
+			<tr>
+				<th>Casting Time</th>
+				<td id="casting-time"> 1 action </td>
+			</tr>
+			<tr>
+				<th>Range</th>
+				<td id="range"> 120 feet </td>
+			</tr>
+			<tr>
+				<th>Components</th>
+				<td id="components"> V,S,M (guano and sulphur) </td>
+			</tr>
+			<tr>
+				<th>Duration</th>
+				<td id="duration"> Instantaneous </td>
+			</tr>
+			<tr>
+				<th>Classes</th>
+				<td id="classes"> Sorcerer, Wizard </td>
+			</tr>
+		</table>
+		<hr>
+		<div id="description"></div>
+		<hr>
+		<div id="upcast"></div>
+	</body>
+</html>
