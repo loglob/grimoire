@@ -1,0 +1,26 @@
+#source-selector
+{
+	flex-wrap: wrap;
+	display: flex;
+	width: 100%;
+}
+
+#source-selector-placeholder
+{
+	background-color: #999;
+	padding: .3%;
+	border-radius: 1%;
+}
+
+#source-selector div
+{
+	background-color: #bbb;
+	margin: .25%;
+	padding: .25%;
+	border-radius: 1%;
+}
+
+#spells
+{
+	width: 100%;
+}

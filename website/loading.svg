@@ -1,0 +1,27 @@
+<svg version="1.1" x="0px" y="0px" xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 35 10" enable-background="new 0 0 0 0" xml:space="preserve">
+  <circle fill="#000" stroke="none" cx="5" cy="5" r="5">
+    <animate
+      attributeName="opacity"
+      dur="1s"
+      values="0;1;0"
+      repeatCount="indefinite"
+      begin="0.1"/>
+  </circle>
+  <circle fill="#000" stroke="none" cx="17.5" cy="5" r="5">
+    <animate
+      attributeName="opacity"
+      dur="1s"
+      values="0;1;0"
+      repeatCount="indefinite"
+      begin="0.2"/>
+  </circle>
+  <circle fill="#000" stroke="none" cx="30" cy="5" r="5">
+    <animate
+      attributeName="opacity"
+      dur="1s"
+      values="0;1;0"
+      repeatCount="indefinite"
+      begin="0.3"/>
+  </circle>
+</svg>

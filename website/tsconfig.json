@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"noImplicitAny": true,
+		"removeComments": true,
+		"preserveConstEnums": true,
+		"sourceMap": true,
+		"outFile": "js/site.js",
+		"lib": [ "DOM", "ES2022" ]
+	},
+	"files": [
+		"site.ts",
+		"spells.ts",
+	]
+}
