@@ -1,5 +1,20 @@
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 using static System.StringSplitOptions;
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum School
+{
+	Abjuration,
+	Conjuration,
+	Divination,
+	Enchantment,
+	Evocation,
+	Illusion,
+	Necromancy,
+	Transmutation
+}
 
 public readonly record struct SourceBook(string fullName, string shorthand, string[]? alts)
 {
