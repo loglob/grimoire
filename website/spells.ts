@@ -26,7 +26,7 @@ type Spell =
 {
 	name : string, source : string,
 	school : string, level : number,
-	castingTime : string, ritual : boolean,
+	castingTime : string, reaction : string, ritual : boolean,
 	range : string,
 	components : string, materials : string|null,
 	concentration : boolean, duration : string,

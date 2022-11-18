@@ -45,7 +45,7 @@ public readonly record struct SourceBook(string fullName, string shorthand, stri
 public readonly record struct Spell(
 	string name, string source,
 	School school, int level,
-	string castingTime, bool ritual,
+	string castingTime, string? reaction, bool ritual,
 	string range,
 	string components, string? materials,
 	bool concentration, string duration,
@@ -122,5 +122,15 @@ public static class Common
 		else
 			return (conc, str);
 
+	}
+
+	public static (string left, string? right) maybeSplitOn(string str, string sep)
+	{
+		var spl = str.Split(sep, 2, TrimEntries);
+
+		if(spl.Length > 1)
+			return (spl[0], spl[1]);
+		else
+			return (spl[0], null);
 	}
 }

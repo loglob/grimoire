@@ -365,7 +365,7 @@ public class Latex
 
 		var name = props[0];
 		var lsr = Common.parseLevel(props[1]);
-		var time = props[2];
+		var tr = Common.maybeSplitOn(props[2], ",");
 		var range = props[3];
 
 		string comp; string? mat;
@@ -377,7 +377,7 @@ public class Latex
 		return new Spell(
 			name, source,
 			lsr.school, lsr.level,
-			time, lsr.ritual,
+			tr.left, tr.right, lsr.ritual,
 			range,
 			comp, mat,
 			cd.concentration, cd.duration,
