@@ -125,7 +125,15 @@ function toRow(spell : Spell) : HTMLTableRowElement
 		row.appendChild(c);
 	}
 
-	td(spell.name);
+    {
+        let cell = document.createElement("td");
+        let link = document.createElement("a");
+        link.href=`details.html?from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`;
+        link.innerText = spell.name;
+        cell.appendChild(link);
+        row.appendChild(cell);
+    }
+
 	td(spell.level.toString());
 	td(spell.school);
 	td(spell.castingTime);

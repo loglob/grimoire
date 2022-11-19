@@ -46,6 +46,12 @@
 	cursor: pointer;
 }
 
+#spells a
+{
+    text-decoration: none;
+    color: inherit;
+}
+
 h1
 {
     margin-bottom: 0;
