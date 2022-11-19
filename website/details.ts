@@ -11,7 +11,7 @@ function ordinal(i : number) : string
 
 async function spellDetails(from : string, spell : string)
 {
-    let sp = (await getSpells(from)).find(s => s.name === spell);
+    let sp = (await getSpells(from)).find(s => s.name.toLowerCase() === spell.toLowerCase());
 
     document.getElementById("spell-name").innerText = sp.name;
     document.getElementById("level+class").innerText = sp.level
