@@ -109,8 +109,8 @@ public class DndWiki
 		string? upcast;
 		string desc = string.Join('\n', rest.Select(x => x.OuterHtml));
 		{
-			var d = rest.TakeWhile(x => !x.InnerText.TrimStart().ToLower().StartsWith("at higher levels"));
-			var u = rest.Skip(d.Count()).Select((x,i) => {
+			var d = rest.TakeWhile(x => !x.InnerText.TrimStart().ToLower().StartsWith("at higher levels")).ToList();
+			var u = rest.Skip(d.Count).Select((x,i) => {
 				if(i == 0)
 				{
 					x.Clean();
