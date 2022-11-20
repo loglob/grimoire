@@ -170,6 +170,12 @@ function toRow(spell : Spell) : HTMLTableRowElement
 	return row;
 }
 
+function updateCount()
+{
+	const sp = document.getElementById("spell-count") as HTMLSpanElement;
+	sp.innerText = `Found ${tableState.display.length} spells`
+}
+
 /** Removes all spells that match the predicate from the table and tableState
  * @param pred The predicate to match for deletion
  */
@@ -187,6 +193,7 @@ function filterTable(pred : (spell: Spell, index: number) => boolean)
 	}
 
 	tableState.spells = tableState.spells.filter((v,i) => !pred(v,i));
+	updateCount();
 }
 
 /** Inserts into the table, preserving sortedness and filtering
@@ -231,6 +238,7 @@ function insertTable(spells : Spell[]) : void
 	}
 
 	tableState.spells.push(...spells);
+	updateCount();
 }
 
 /** Re-sorts and re-filters the table and rebuilds the displayed table from scratch. */
@@ -247,4 +255,6 @@ function resetTable(resort : boolean = true) : void
 
 	for (const s of tableState.display)
 		t.appendChild(toRow(s));
+
+	updateCount();
 }
