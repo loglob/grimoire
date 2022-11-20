@@ -4,7 +4,7 @@
 		"removeComments": true,
 		"preserveConstEnums": true,
 		"sourceMap": true,
-		"outFile": "js/site.js",
+		"outFile": "www/js/site.js",
 		"lib": [ "DOM", "ES2022" ]
 	},
 	"files": [
