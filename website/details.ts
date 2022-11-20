@@ -23,7 +23,7 @@ async function spellDetails(from : string, spell : string)
     document.getElementById("duration").innerText = (sp.concentration ? "Concentration, up to " : "") + sp.duration;
     document.getElementById("classes").innerText = sp.classes.join(", ");
 
-    document.getElementById("description").innerHTML = sp.description;
+    document.getElementById("description").innerHTML = sp.description + (sp.statBlock ? sp.statBlock : "");
     if(sp.upcast)
         document.getElementById("upcast").innerHTML = "<strong>At higher levels: </strong>" + sp.upcast;
 }

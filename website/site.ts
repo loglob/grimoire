@@ -35,7 +35,7 @@ async function loadSources()
 
 		select.onchange = async _ => {
 			if(!select.checked)
-				filterTable(s => s.source === id)
+				filterTable(s => s.source === id);
 			else
 			{
 				setHidden(l, false);
@@ -48,6 +48,12 @@ async function loadSources()
 		container.appendChild(l);
 		elem?.appendChild(container);
 	}
+
+	const sf = document.getElementById("search-field") as HTMLInputElement;
+	sf.oninput = _ => {
+		tableState.filter = sf.value.split('|').map(x => x.split(',').map(y => y.toLowerCase()));
+		resetTable(false);
+	};
 }
 
 /** The headers of the spell table, in order */
@@ -61,12 +67,12 @@ function initUI()
 	{
 		var x = document.getElementById(`${h}-header`);
 
-        if(x === undefined || x === null)
-            throw `No header for ${h}`
+		if(x === undefined || x === null)
+			throw `No header for ${h}`
 
 		let m = document.createElement("b");
 		m.id = `${h}-marker`;
-        x.appendChild(m);
+		x.appendChild(m);
 
 		if(h === tableState.sortOn)
 			m.innerText = tableState.reverse ? "\u2191" : "\u2193";
@@ -82,30 +88,21 @@ function initUI()
 			}
 
 			m.innerText = tableState.reverse ? "\u2191" : "\u2193";
-			setTable(tableState.entries);
-            return false;
+			resetTable();
+			return false;
 		}
 	}
 }
 
 /** The state of the table */
-let tableState : { sortOn: keyof Spell, reverse: boolean, entries : Spell[] } = { sortOn: "level", reverse: true, entries: [] }
+let tableState : { sortOn: keyof Spell, reverse: boolean, filter: string[][], spells : Spell[], display : Spell[] }
+	= { sortOn: "level", reverse: true, filter: [], spells: [], display: [] };
 
-/** Removes all spells that match the predicate from the table and tableState
- * @param pred The predicate to match for deletion
- */
-function filterTable(pred : (spell: Spell, index: number) => boolean)
+function spellMatches(s : Spell) : boolean
 {
-	var t = document.getElementById("spells");
-
-	for (let i = tableState.entries.length; i--;)
-	{
-		if(pred(tableState.entries[i], i))
-		{
-			tableState.entries.splice(i, 1);
-			t.removeChild(t.children[i + 1]);
-		}
-	}
+	return (tableState.filter.length == 0) || tableState.filter
+		.some(xs => xs
+			.every(x => s.name.toLowerCase().includes(x) || s.classes.some(c => c.toLowerCase() === x)));
 }
 
 function compareSpell(l : Spell, r : Spell) : number
@@ -125,14 +122,14 @@ function toRow(spell : Spell) : HTMLTableRowElement
 		row.appendChild(c);
 	}
 
-    {
-        let cell = document.createElement("td");
-        let link = document.createElement("a");
-        link.href=`details.html?from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`;
-        link.innerText = spell.name;
-        cell.appendChild(link);
-        row.appendChild(cell);
-    }
+	{
+		let cell = document.createElement("td");
+		let link = document.createElement("a");
+		link.href=`details.html?from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`;
+		link.innerText = spell.name;
+		cell.appendChild(link);
+		row.appendChild(cell);
+	}
 
 	td(spell.level.toString());
 	td(spell.school);
@@ -144,52 +141,81 @@ function toRow(spell : Spell) : HTMLTableRowElement
 	return row;
 }
 
-/** Inserts into the table, preserving sortedness */
+/** Removes all spells that match the predicate from the table and tableState
+ * @param pred The predicate to match for deletion
+ */
+function filterTable(pred : (spell: Spell, index: number) => boolean)
+{
+	var t = document.getElementById("spells");
+
+	for (let i = tableState.display.length; i--;)
+	{
+		if(pred(tableState.display[i], i))
+		{
+			tableState.display.splice(i, 1);
+			t.removeChild(t.children[i + 1]);
+		}
+	}
+
+	tableState.spells = tableState.spells.filter((v,i) => !pred(v,i));
+}
+
+/** Inserts into the table, preserving sortedness and filtering
+ * @param spells A list of new spells
+*/
 function insertTable(spells : Spell[]) : void
 {
-	if(tableState.entries.length == 0)
-		return setTable(spells);
+	spells.sort(compareSpell);
+
+	if(tableState.spells.length == 0)
+	{
+		tableState.spells = spells;
+		tableState.display = Array(...spells);
+		return resetTable(false);
+	}
 
 	const t = document.getElementById("spells");
 	let off = 0;
 
-	spells.sort(compareSpell)
-
 	for(const spell of spells)
 	{
-		while(off < tableState.entries.length && compareSpell(spell, tableState.entries[off]) > 0)
+		if(!spellMatches(spell))
+			continue;
+
+		while(off < tableState.display.length && compareSpell(spell, tableState.display[off]) > 0)
 			off++;
-		
+
 		let row = toRow(spell);
 
-		if(off < tableState.entries.length)
+		if(off < tableState.display.length)
 		{
-			tableState.entries.splice(off, 0, spell);
+			tableState.display.splice(off, 0, spell);
 			t.insertBefore(row, t.children[1 + off]);
 		}
 		else
 		{
-			tableState.entries.push(spell);
+			tableState.display.push(spell);
 			t.appendChild(row);
 		}
 
 		off++;
 	}
+
+	tableState.spells.push(...spells);
 }
 
-/** Rebuilds the spell table from scratch */
-function setTable(spells : Spell[]) : void
+/** Re-sorts and re-filters the table and rebuilds the displayed table from scratch. */
+function resetTable(resort : boolean = true) : void
 {
-	if(tableState.sortOn !== null)
-		spells.sort(compareSpell);
+	if(resort)
+		tableState.spells.sort(compareSpell);
 
-	tableState.entries = spells;
 	const t = document.getElementById("spells");
+	tableState.display = tableState.spells.filter(spellMatches);
 
 	while(t.childElementCount > 1)
 		t.removeChild(t.lastChild);
 
-	for (const s of tableState.entries)
+	for (const s of tableState.display)
 		t.appendChild(toRow(s));
 }
-
