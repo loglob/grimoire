@@ -16,7 +16,7 @@ type Spell =
  */
 async function getSources() : Promise<{ [id: string] : string }>
 {
-	const r = await fetch("/db/index.json");
+	const r = await fetch("db/index.json");
 	return await r.json();
 }
 
@@ -26,7 +26,7 @@ async function getSources() : Promise<{ [id: string] : string }>
  */
 async function getSpells(source : string) : Promise<Spell[]>
 {
-	const r = await fetch(`/db/${source}.json`);
+	const r = await fetch(`db/${source}.json`);
 	return await r.json();
 }
 
