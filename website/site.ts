@@ -14,7 +14,7 @@ function setHidden(element : HTMLElement, hide : boolean)
 
 let sources : { [id: string] : string } = {}
 
-async function loadSources()
+async function loadSources(preload : string[])
 {
 	let elem = document.getElementById("source-selector");
 	sources = await getSources();
@@ -34,29 +34,26 @@ async function loadSources()
 		select.checked = false;
 
 		select.onchange = async _ => {
-			if(!select.checked)
-				filterTable(s => s.source === id);
-			else
+			if(select.checked)
 			{
 				setHidden(l, false);
 				insertTable(await getSpells(id));
 				setHidden(l, true);
 			}
+			else
+				filterTable(s => s.source === id);
 		}
 
 		container.appendChild(select);
 		container.appendChild(l);
 		elem?.appendChild(container);
-	}
 
-	const sf = document.getElementById("search-field") as HTMLInputElement;
-	sf.oninput = _ => {
-		tableState.filter = sf.value
-			.split(';').map(x => x
-				.split('|').map(y => y
-					.split(',').map(z => z.toLowerCase().split(/\s+/).filter(x => x.length).join(' '))));
-		resetTable(false);
-	};
+		if(preload.some(x => x.toUpperCase() === id))
+		{
+			select.checked = true;
+			select.onchange(null);
+		}
+	}
 }
 
 /** The headers of the spell table, in order */
@@ -64,7 +61,8 @@ const headers : (keyof Spell)[] = [ "name", "level", "school", "castingTime", "r
 
 function initUI()
 {
-	loadSources();
+	const p = new URLSearchParams(window.location.search);
+	loadSources(p.getAll("from"));
 
 	for (const h of headers)
 	{
@@ -94,6 +92,24 @@ function initUI()
 			resetTable();
 			return false;
 		}
+	}
+
+	const sf = document.getElementById("search-field") as HTMLInputElement;
+
+	sf.oninput = _ => {
+		tableState.filter = sf.value
+			.split(';').map(x => x
+				.split('|').map(y => y
+					.split(',').map(z => z.toLowerCase().split(/\s+/).filter(x => x.length).join(' '))));
+		resetTable(false);
+	};
+
+	const q = p.get("q");
+
+	if(q)
+	{
+		sf.value = q;
+		sf.oninput(null)
 	}
 }
 
