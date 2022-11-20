@@ -61,3 +61,21 @@ p
 {
     margin-top: 0;
 }
+
+#search-field
+{
+    width: 50%;
+}
+
+.code
+{
+	background-color: #ddd;
+	padding: .3%;
+    font-family: monospace serif;
+}
+
+ul
+{
+    margin-top: 4px;
+    margin-bottom: 4px;
+}

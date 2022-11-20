@@ -54,7 +54,7 @@ async function loadSources()
 		tableState.filter = sf.value
 			.split(';').map(x => x
 				.split('|').map(y => y
-					.split(',').map(z => z.toLowerCase())));
+					.split(',').map(z => z.toLowerCase().split(/\s+/).filter(x => x.length).join(' '))));
 		resetTable(false);
 	};
 }
@@ -103,11 +103,35 @@ let tableState : { sortOn: keyof Spell, reverse: boolean, filter: string[][][], 
 
 function spellMatches(s : Spell) : boolean
 {
+	function keyword(s : Spell, field : keyof Spell)
+	{
+		return (s[field] ? '' : '!') + field;
+	}
+
+	function numRange(s : string, v : number)
+	{
+		let vars = s.split('-').map(x => Number.parseInt(x));
+		if(vars.length < 1 || vars.length > 2 || vars.some(x => !isFinite(x)))
+			return false;
+		else if(vars.length > 1)
+			return vars[0] <= v && v <= vars[1];
+		else
+			return vars[0] == v;
+	}
+
 	return tableState.filter
 		.every(x => x
 			.some(y => y
-				.every(z => [ s.name, ...s.classes]
-					.some(w => w.toLowerCase().includes(z)))))
+				.every(z => s.name.toLocaleLowerCase().includes(z)
+					|| s.classes.some(c => c.toLowerCase() === z)
+					|| s.school.toLowerCase() === z
+					|| s.castingTime.toLowerCase() === z
+					|| s.duration.toLowerCase() === z
+					|| z === keyword(s, "ritual")
+					|| z === keyword(s, "concentration")
+					|| z === keyword(s, "upcast")
+					|| (z.length && z[0] === 'l' && numRange(z.substring(1), s.level))
+		)	)	)
 }
 
 function compareSpell(l : Spell, r : Spell) : number

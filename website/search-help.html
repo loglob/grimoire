@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="stylesheet" type="text/css" href="style.css" />
+	</head>
+	<body>
+		<h1> Search Options </h1>
+		A query consists of search terms linked with the operators <span class="code">;</span>, <span class="code">/</span> and <span class="code">,</span>.
+	<br/>
+		<span class="code">;</span> and <span span class="code">,</span> are conjunctions, <span class="code">/</span> is a disjunction.
+		<span class="code">;</span> binds the weakest and <span class="code">,</span> the strongest.
+	<br/>
+	<br/>
+		Search terms consist of the following:
+		<ul>
+			<li>
+				<span class="code">ritual</span> and <span class="code">!ritual</span>, which match if a spell is (not) a ritual
+			</li>
+			<li>
+				<span class="code">concentration</span> and <span class="code">!concentration</span>,
+				which match if a spell does (not) require concentration
+			</li>
+			<li>
+				<span class="code">upcast</span> and <span class="code">!upcast</span>,
+				which match if a spell does (not) have an upcast
+			</li>
+			<li>
+				<span class="code">L</span> which matches the spell's level against a value or range.
+				For example, <span class="code">L3</span> matches 3rd level spells, and <span class="code">L6-9</span> spells of 6th through 9th level.
+			</li>
+			<li>
+				A verbatim duration value, such as <span class="code">1 minute</span>.
+			</li>
+			<li>
+				A verbatim casting time value, such as <span class="code">1 bonus action</span>.
+			</li>
+			<li>
+				A spell school, such as <span class="code">enchantment</span>.
+			</li>
+			<li>
+				A caster class, such as <span class="code">wizard</span>.
+			</li>
+			<li>
+				Any part of a spell's name. Any spells which have that string contained in their name is matched.
+			</li>
+		</ul>
+		Even if one of these cases match, all others are tried anyways.
+		In particular, any term used is tested against the spells' names.
+	<br/>
+	<br/>
+		Any search term is case-insensitive and whitespace is trimmed and squeezed.
+	</body>
+</html>
