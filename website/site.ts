@@ -51,7 +51,10 @@ async function loadSources()
 
 	const sf = document.getElementById("search-field") as HTMLInputElement;
 	sf.oninput = _ => {
-		tableState.filter = sf.value.split('|').map(x => x.split(',').map(y => y.toLowerCase()));
+		tableState.filter = sf.value
+			.split(';').map(x => x
+				.split('|').map(y => y
+					.split(',').map(z => z.toLowerCase())));
 		resetTable(false);
 	};
 }
@@ -95,14 +98,16 @@ function initUI()
 }
 
 /** The state of the table */
-let tableState : { sortOn: keyof Spell, reverse: boolean, filter: string[][], spells : Spell[], display : Spell[] }
+let tableState : { sortOn: keyof Spell, reverse: boolean, filter: string[][][], spells : Spell[], display : Spell[] }
 	= { sortOn: "level", reverse: true, filter: [], spells: [], display: [] };
 
 function spellMatches(s : Spell) : boolean
 {
-	return (tableState.filter.length == 0) || tableState.filter
-		.some(xs => xs
-			.every(x => s.name.toLowerCase().includes(x) || s.classes.some(c => c.toLowerCase() === x)));
+	return tableState.filter
+		.every(x => x
+			.some(y => y
+				.every(z => [ s.name, ...s.classes]
+					.some(w => w.toLowerCase().includes(z)))))
 }
 
 function compareSpell(l : Spell, r : Spell) : number
