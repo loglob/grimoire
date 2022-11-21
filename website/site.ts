@@ -111,6 +111,17 @@ function initUI()
 		sf.value = q;
 		sf.oninput(null)
 	}
+
+	document.getElementById("static-link").onclick = _ => {
+		const fs = Object.keys(sources)
+			.filter(x => (document.getElementById(`source_${x}`) as HTMLInputElement)?.checked)
+			.map(x => `from=${encodeURIComponent(x)}`)
+			.join('&');
+		const url = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(sf.value)}${fs.length ? '&' : ''}${fs}`;
+		console.log(url);
+		navigator.clipboard.writeText(url)
+		return false;
+	}
 }
 
 /** The state of the table */
@@ -119,40 +130,31 @@ let tableState : { sortOn: keyof Spell, reverse: boolean, filter: string[][][], 
 
 function spellMatches(s : Spell) : boolean
 {
-	function keyword(s : Spell, field : keyof Spell)
-	{
-		return (s[field] ? '' : '!') + field;
-	}
-
-	function numRange(s : string, v : number)
-	{
-		let vars = s.split('-').map(x => Number.parseInt(x));
-		if(vars.length < 1 || vars.length > 2 || vars.some(x => !isFinite(x)))
-			return false;
-		else if(vars.length > 1)
-			return vars[0] <= v && v <= vars[1];
-		else
-			return vars[0] == v;
-	}
-
 	return tableState.filter
 		.every(x => x
 			.some(y => y
 				.every(z => {
 					const neg = z.length && z[0] == '!';
 					z = neg ? z.substring(1) : z;
-					const v = s.name.toLocaleLowerCase().includes(z)
-					|| s.classes.some(c => c.toLowerCase() === z)
-					|| s.school.toLowerCase() === z
-					|| s.castingTime.toLowerCase() === z
-					|| s.duration.toLowerCase() === z
-					|| (s.ritual && z === "ritual")
-					|| (s.concentration && z === "concentration")
-					|| (s.upcast && z === "upcast")
-					|| (z.length && z[0] === 'l' && numRange(z.substring(1), s.level));
+
+					const lim = (z.length && z[0] == 'l')
+						? z.substring(1).split('-').map(x => Number.parseInt(x))
+						: [];
+
+					const v = s.name.toLowerCase().includes(z)
+						|| s.classes.some(c => c.toLowerCase() === z)
+						|| s.school.toLowerCase() === z
+						|| s.castingTime.toLowerCase() === z
+						|| s.duration.toLowerCase() === z
+						|| (s.ritual && z === "ritual")
+						|| (s.concentration && z === "concentration")
+						|| (s.upcast && z === "upcast")
+						|| (lim.length == 1 && lim[0] == s.level)
+						|| (lim.length == 2 && lim[0] <= s.level && s.level <= lim[1]);
+
 					return neg ? !v : v;
 				}
-		)	)	)
+	)	)	)
 }
 
 function compareSpell(l : Spell, r : Spell) : number
