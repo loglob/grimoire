@@ -138,15 +138,20 @@ function spellMatches(s : Spell) : boolean
 	return tableState.filter
 		.every(x => x
 			.some(y => y
-				.every(z => s.name.toLocaleLowerCase().includes(z)
+				.every(z => {
+					const neg = z.length && z[0] == '!';
+					z = neg ? z.substring(1) : z;
+					const v = s.name.toLocaleLowerCase().includes(z)
 					|| s.classes.some(c => c.toLowerCase() === z)
 					|| s.school.toLowerCase() === z
 					|| s.castingTime.toLowerCase() === z
 					|| s.duration.toLowerCase() === z
-					|| z === keyword(s, "ritual")
-					|| z === keyword(s, "concentration")
-					|| z === keyword(s, "upcast")
-					|| (z.length && z[0] === 'l' && numRange(z.substring(1), s.level))
+					|| (s.ritual && z === "ritual")
+					|| (s.concentration && z === "concentration")
+					|| (s.upcast && z === "upcast")
+					|| (z.length && z[0] === 'l' && numRange(z.substring(1), s.level));
+					return neg ? !v : v;
+				}
 		)	)	)
 }
 

@@ -43,11 +43,15 @@
 			<li>
 				Any part of a spell's name. Any spells which have that string contained in their name is matched.
 			</li>
+            <li>
+                Any of the above, prefixed with <span class="code">!</span>.
+                Matches only spells which aren't matched by the following search term.
+            </li>
 		</ul>
 		Even if one of these cases match, all others are tried anyways.
 		In particular, any term used is tested against the spells' names.
+        The same applies to how <span class="code">!</span> search terms are matched. 
 	<br/>
-	<br/>
-		Any search term is case-insensitive and whitespace is trimmed and squeezed.
+		All search terms are case-insensitive and any whitespace is trimmed and squeezed.
 	</body>
 </html>
