@@ -134,10 +134,10 @@ function spellMatches(s : Spell) : boolean
 		.every(x => x
 			.some(y => y
 				.every(z => {
-					const neg = z.length && z[0] == '!';
+					const neg = z[0] === '!';
 					z = neg ? z.substring(1) : z;
 
-					const lim = (z.length && z[0] == 'l')
+					const lim = (z[0] === 'l')
 						? z.substring(1).split('-').map(x => Number.parseInt(x))
 						: [];
 
@@ -149,6 +149,7 @@ function spellMatches(s : Spell) : boolean
 						|| (s.ritual && z === "ritual")
 						|| (s.concentration && z === "concentration")
 						|| (s.upcast && z === "upcast")
+						|| (z[0] === '\\' && s.name.toLowerCase() === z.substring(1))
 						|| (lim.length == 1 && lim[0] == s.level)
 						|| (lim.length == 2 && lim[0] <= s.level && s.level <= lim[1]);
 
