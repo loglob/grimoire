@@ -139,6 +139,9 @@ public class Latex
 
 			lastWS = tk is WhiteSpace;
 		}
+
+		if(!lastWS)
+			yield return new WhiteSpace();
 	}
 
 	private static IEnumerable<Token> tokenize(IEnumerable<string> lines)
