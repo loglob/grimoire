@@ -523,6 +523,12 @@ public class Latex
 					{
 						sb.Append("<table>");
 						bool header = true;
+						IEnumerable<Token> tokens = env.inner;
+
+						if(tokens.SkipWhile(x => x is WhiteSpace).First() is Braced)
+							tokens = tokens.SkipWhile(x => x is WhiteSpace).Skip(1);
+						else
+							Console.Error.WriteLine("Expected a format argument after \\begin{tabular}");
 
 						foreach(var row in env.inner.SplitBy(tk => tk is Character c && c.chr == '\n'))
 						{
