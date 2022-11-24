@@ -1,7 +1,47 @@
 ﻿
-public static class Program
+public class Program
 {
-	public static SourceBook FindSource(this IEnumerable<SourceBook> books, string source)
+	private readonly SourceBook[] books;
+	private readonly Dictionary<string, List<Spell>> spellsByBook;
+	private readonly HashSet<string> warnedAbout = new HashSet<string>();
+
+	private Program(SourceBook[] books)
+	{
+		this.books = books;
+		this.spellsByBook = books.ToDictionary(b => b.shorthand, _ => new List<Spell>());
+		Console.WriteLine($"Found {books.Length} sources");
+	}
+
+	private Program() : this(Util.LoadJson<SourceBook[]>("sources.json"))
+	{}
+
+	private void addSpell(Spell sp)
+	{
+		if(spellsByBook.TryGetValue(sp.source, out var spells))
+			spells.Add(sp);
+		else if(warnedAbout.Add(sp.source))
+			Console.Error.WriteLine($"[WARN] Discarding unknown source '{sp.source}'");
+	}
+
+	private async Task dndWiki()
+	{
+		var wiki = new DndWiki(this);
+		var names = await wiki.SpellNames();
+		Console.WriteLine($"Processing {names.Length} spells from DnDWiki...");
+
+		await foreach(var s in wiki.Spells(names))
+			addSpell(s);
+	}
+
+	private async Task overleaf()
+	{
+		var ol = new Overleaf(Util.LoadJson<Overleaf.Config>("overleaf.json"));
+
+		foreach(var s in await ol.Spells())
+			addSpell(s);
+	}
+
+	public SourceBook FindSource(string source)
 	{
 		var b = books.Where(b => b.Matches(source)).ToArray();
 
@@ -13,36 +53,17 @@ public static class Program
 			return b[0];
 	}
 
-	// note: http://dnd5e.wikidot.com/wondrous-items contains a full list of these aliases
-	public static SourceBook[] GetSources()
-	    => Util.LoadJson<SourceBook[]>("sources.json");
 
 
-	public static async Task Main(string[] args)
+	private async Task main()
 	{
-		var wiki = new DndWiki();
-		SourceBook[] sources = GetSources();
-		var db = sources.ToDictionary(x => x.shorthand, x => new List<Spell>());
-		Console.WriteLine($"Found {sources.Length} sources");
-
-		var n = await wiki.SpellNames();
-		Console.WriteLine($"Processing {n.Length} spells from DnDWiki...");
-
-		await foreach(var x in wiki.Spells(n, sources))
-		{
-			db[x.source].Add(x);
-		}
-
-		var ol = new Overleaf(Util.LoadJson<Overleaf.Config>("overleaf.json"));
-		var hb = db["HB"];
-
-		foreach(var s in await ol.Spells("HB"))
-			hb.Add(s);
+//		await dndWiki();
+		await overleaf();
 
 		int total = 0;
 
 		Directory.CreateDirectory("./dbs");
-		foreach (var kvp in db)
+		foreach (var kvp in spellsByBook)
 		{
 			total += kvp.Value.Count;
 
@@ -52,7 +73,11 @@ public static class Program
 				Console.Error.WriteLine($"[Warn] No spells for source '{kvp.Key}'");
 		}
 
-		sources.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("./dbs/index.json");
+		books.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("./dbs/index.json");
 		Console.WriteLine($"Done. Found {total} spells.");
+
 	}
+
+	public static Task Main(string[] args)
+		=> new Program().main();
 }

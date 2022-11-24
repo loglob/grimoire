@@ -32,19 +32,63 @@ public class Overleaf
 	}
 
 	/// <summary>
-	/// When encountered in the first 10 lines of an overleaf document, scrapes that file for spells
+	/// When encountered in the first 10 lines of an overleaf document, scrapes that file for spells.
+	/// Optionally followed by a source name.
 	/// </summary>
-	const string SPELL_ANCHOR = "%% GRIMOIRE include";
+	const string ANCHOR = "%% grimoire include";
 
 	/// <summary>
-	/// When encountered in the first 10 lines of an overleaf document, scrapes that file for macros
+	/// Marks the following lines to be included.
+	/// Accepts a following source name.
+	/// When present in a file, only marked code is included
 	/// </summary>
-	const string MACRO_ANCHOR = "%% GRIMOIRE macros";
+	const string SECTION_START_ANCHOR = "%% grimoire begin";
 
-	internal static IEnumerable<string> WithAnchor(IEnumerable<Document> docs, string anchor)
-		=> docs.Select(d => d.Lines).Where(l => l.Take(10).Any(l => l == anchor)).Select(Latex.JoinLines);
+	/// <summary>
+	/// Terminates a section opened with SECTION_START_ANCHOR
+	/// </summary>
+	const string SECTION_END_ANCHOR = "%% grimoire end";
 
-	public async Task<IEnumerable<Spell>> Spells(string source)
+	const string DOC_START = @"\begin{document}";
+	const string DOC_END = @"\end{document}";
+
+	/// <summary>
+	/// If this is given as source, use that code snippet to learn macros instead of extracting spells
+	/// </summary>
+	const string MACROS_SOURCE_NAME = "macros";
+
+	internal static IEnumerable<(string source, IEnumerable<string> code)> GetCode(IEnumerable<Document> docs)
+	{
+		foreach(var d in docs)
+		{
+			var src = d.Lines.Take(10).FirstOrDefault(x => x.StartsWith(ANCHOR))?.Substring(ANCHOR.Length)?.Trim();
+
+			if(src is null)
+				continue;
+
+			var opens = d.Lines.Indexed()
+				.Where(xi => xi.value.StartsWith(SECTION_START_ANCHOR))
+				.Select(xi => xi.index);
+
+			if(opens.Any()) foreach(var o in opens)
+			{
+				var nSrc = d.Lines[o].Substring(SECTION_START_ANCHOR.Length).Trim();
+
+				if(string.IsNullOrWhiteSpace(nSrc))
+					nSrc = src;
+
+				yield return (nSrc, d.Lines
+					.Skip(o + 1)
+					.TakeWhile(x => !x.StartsWith(SECTION_END_ANCHOR)));
+			}
+			else
+				yield return (src, d.Lines
+					.StartedWith(DOC_START)
+					.EndedBy(DOC_END));
+		}
+	}
+
+	public async Task<IEnumerable<Spell>> Spells()
 	{
 		var docs = await Util.Cached("cache/overleaf_documents", async() => {
 			if(!await overleaf.Available)
@@ -53,10 +97,14 @@ public class Overleaf
 			return await project.GetDocuments();
 		});
 
-		foreach(var f in WithAnchor(docs, MACRO_ANCHOR))
-			latex.LearnMacros(f);
+		var snippets = GetCode(docs).ToList();
 
-		return WithAnchor(docs, SPELL_ANCHOR).SelectMany(f => latex.ExtractSpells(f, source));
+		foreach (var m in snippets.Where(s => s.source == MACROS_SOURCE_NAME))
+			latex.LearnMacros(m.code);
+
+		return snippets
+			.Where(s => s.source != MACROS_SOURCE_NAME)
+			.SelectMany(s => latex.ExtractSpells(s.code, s.source));
 	}
 
 }

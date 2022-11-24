@@ -68,7 +68,7 @@ public static class Common
 		var lvlLine = input.Split(null as char[], StringSplitOptions.RemoveEmptyEntries);
 
 		if(lvlLine.Length < 2 || lvlLine.Skip(2).Any(x => x[0] != '('))
-			throw new FormatException("Invalid school/level format");
+			throw new FormatException($"Invalid school/level format: got '{input.Trim()}'");
 
 		bool ritual = lvlLine.Length >= 3 && lvlLine[2].ToLower() == "(ritual)";
 		int level;
@@ -82,11 +82,9 @@ public static class Common
 		else
 		{
 			school = Enum.Parse<School>(lvlLine[1], true);
-			Util.AssertEqual(lvlLine[0].Substring(3), "-level", "Bad level format");
-			level = lvlLine[0][0] - '0';
-
-			if(level < 1 || level > 9)
-				throw new FormatException($"Bad spell level {lvlLine[0][0]}");
+			var spl = lvlLine[0].Split('-',2);
+			Util.AssertEqual("level", spl[1], "Bad level format");
+			level = int.Parse(spl[0].Substring(0, spl[0].Length - 2));
 		}
 
 		return (level, school, ritual);

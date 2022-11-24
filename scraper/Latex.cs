@@ -1,11 +1,570 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Net;
 
 /// <summary>
 /// Scraper for processing LaTeX documents
 /// </summary>
 public class Latex
 {
+#region TeX Lexer
+	public abstract record Token();
+
+	/// <summary>
+	/// A reference to a macro, of the form \<name>.
+	/// </summary>
+	/// <param name="macro">The name of the referenced macro, without backslash</param>
+	private sealed record MacroName(string macro) : Token
+	{ public override string ToString() => $"\\{macro}"; }
+
+	/// <summary>
+	/// Any regular character. \n indicates a paragraph break, not a (source) line break
+	/// </summary>
+	private sealed record Character(char chr) : Token
+	{ public override string ToString() => chr.ToString(); }
+
+	/// <summary>
+	/// TeX whitespace, which is discarded when searching for function arguments
+	/// </summary>
+	private sealed record WhiteSpace : Token
+	{ public override string ToString() => " "; }
+
+	/// <summary>
+	/// Tokens enclosed by { and }
+	/// </summary>
+	private sealed record Braced(Token[] inner) : Token
+	{ public override string ToString() => "{"+string.Join("", inner as object[])+"}"; }
+
+	/// <summary>
+	/// Reference to an argument, of the form #<number>
+	/// </summary>
+	private sealed record ArgumentRef(int number) : Token
+	{ public override string ToString() => $"#{number}"; }
+
+	/// <summary>
+	/// A chunk that should not be escaped when translating to HTML
+	/// </summary>
+	private sealed record HtmlChunk(string data) : Token
+	{ public override string ToString() => data; }
+
+	private sealed record Environment(string env, Token[] inner) : Token
+	{ public override string ToString() => $"\\begin{{{env}}} "+string.Join("", inner as object[])+$" \\end{{{env}}}"; }
+
+
+	/// <summary>
+	/// Tokenizes a single line
+	/// </summary>
+	/// <param name="input">A line without line breaks</param>
+	/// <param name="context">The context</param>
+	/// <returns></returns>
+	private static IEnumerable<Token> tokenize(string input, Stack<List<Token>> context)
+	{
+		bool lastWS = false;
+
+		for(int off = 0; off < input.Length; off++)
+		{
+			Token tk;
+
+			switch(input[off])
+			{
+				case '\\':
+				{
+					var len = input.Skip(off + 1).TakeWhile(char.IsLetterOrDigit).Count();
+
+					if(len == 0)
+						len = 1;
+
+					if(off + 1 >= input.Length)
+					{
+						Console.Error.WriteLine("[WARN] trailing, unmatched, unescaped '\\'");
+						tk = new Character('\\');
+					}
+					else
+						tk = new MacroName(input.Substring(off + 1, len == 0 ? 1 : len));
+
+					off += len;
+				}
+				break;
+
+				case '{':
+					context.Push(new List<Token>());
+				continue;
+
+				case '}':
+					if(context.TryPop(out var inner))
+						tk = new Braced(inner.ToArray());
+					else
+					{
+						Console.Error.WriteLine("[WARN] Discarding unmatched, unescaped '}'");
+						tk = new Character('}');
+					}
+				break;
+
+				case '%':
+					yield break;
+
+				case '#':
+				{
+					var len = input.Skip(off + 1).TakeWhile(char.IsDigit).Count();
+
+					if(len == 0)
+					{
+						Console.Error.WriteLine("[WARN] orphaned, unescaped '#'");
+						tk = new Character('#');
+					}
+					else
+						tk = new ArgumentRef(int.Parse(input.Substring(off + 1, len)));
+
+					off += len;
+				}
+				break;
+
+				default:
+					if(char.IsWhiteSpace(input[off]))
+					{
+						if(lastWS)
+							continue;
+						else
+							tk = new WhiteSpace();
+					}
+					else
+						tk = new Character(input[off]);
+				break;
+			}
+
+			if(context.TryPeek(out var head))
+				head.Add(tk);
+			else
+				yield return tk;
+
+			lastWS = tk is WhiteSpace;
+		}
+	}
+
+	private static IEnumerable<Token> tokenize(IEnumerable<string> lines)
+	{
+		var context = new Stack<List<Token>>();
+
+		foreach (var l in lines)
+		{
+			if(string.IsNullOrWhiteSpace(l))
+				yield return new Character('\n');
+			else foreach (var t in tokenize(l, context))
+				yield return t;
+		}
+
+		foreach(var l in context.Reverse())
+		{
+			Console.WriteLine("[WARN] unmatched and unescaped '{'");
+			yield return new Character('{');
+
+			foreach (var t in l)
+				yield return t;
+		}
+	}
+
+	private static string untokenize(IEnumerable<Token> tks)
+		=> string.Join("", tks).Trim();
+
+#endregion TeX Lexer
+
+#region TeX Compiler
+	/** A regular macro. */
+	private sealed record Macro(int argc, Token[] replacement);
+
+	private static Macro tagWrap(string tag)
+		=> new Macro(1, new Token[]{ new HtmlChunk($"<{tag}>"), new ArgumentRef(1), new HtmlChunk($"</{tag}>") });
+
+	private static Macro translate(char c)
+		=> new Macro(0, new Token[] { new Character(c) });
+
+	private static Macro constant(string html)
+		=> new Macro(0, new Token[]{ new HtmlChunk(html) });
+
+	/// <summary>
+	/// The known macros.
+	/// </summary>
+	private readonly Dictionary<string, Macro> macros = new Dictionary<string, Macro>
+	{
+		{ "\\", translate('\n') },
+		{ "{", translate('{') },
+		{ "}", translate('}') },
+		{ " ", translate(' ') },
+		{ ",", translate(' ') },
+		{ "%", translate('%') },
+		{ "#", translate('#') },
+		{ "textbf",			tagWrap("b") },
+		{ "textit",			tagWrap("i") },
+		{ "chapter",		tagWrap("h1") },
+		{ "section",		tagWrap("h2") },
+		{ "subsection",		tagWrap("h3") },
+		{ "subsubsection",	tagWrap("h4")},
+		{ "paragraph",		tagWrap("h5")},
+		{ "subparagraph",	tagWrap("h6")},
+		{ "[", constant("[")},
+		{ "]", constant("]")}
+	};
+
+	/// <summary>
+	/// Replaces every argument reference with its value in the given argument vector
+	/// </summary>
+	/// <param name="tks">A token list</param>
+	/// <param name="argv">An argument vector</param>
+	/// <returns></returns>
+	private IEnumerable<Token> replaceArgs(IEnumerable<Token> tks, IEnumerable<Token>[] argv)
+	{
+		foreach (var tk in tks)
+		{
+			if(tk is ArgumentRef a)
+			{
+				if(a.number < 1 || a.number > argv.Length)
+					Console.Error.WriteLine("[WARN] Discarding out-of-bound argument number");
+				else foreach(var x in argv[a.number - 1])
+					yield return x;
+			}
+			else if(tk is Braced b)
+				yield return new Braced(replaceArgs(b.inner, argv).ToArray());
+			else
+				yield return tk;
+		}
+	}
+
+	/// <summary>
+	/// Advances until a non-whitespace token is found.
+	/// Stream should be positioned on the first potential argument.
+	/// </summary>
+	/// <param name="tks">A token position</param>
+	/// <returns>
+	/// Whether a non-whitespace token was found before
+	/// </returns>
+	private bool skipWS(IEnumerator<Token> tks)
+	{
+		while(tks.Current is WhiteSpace)
+		{
+			if(!tks.MoveNext())
+				return false;
+		}
+
+		return true;
+	}
+
+	/// <summary>
+	/// Skips an optional argument. Stops on the first token after closing ]
+	/// </summary>
+	private bool skipOpt(IEnumerator<Token> tks)
+	{
+		if(!skipWS(tks))
+			return false;
+
+		if(tks.Current is Character c && c.chr == '[')
+		{
+			while(tks.MoveNext())
+			{
+				if(tks.Current is Character e && e.chr == ']')
+					return tks.MoveNext();
+			}
+
+			return false;
+		}
+		else
+			return true;
+	}
+
+	/// <summary>
+	/// Retrieves an amount of arguments and advances the token position to their last value
+	/// </summary>
+	/// <param name="tks">The token position, positioned on the first possible argument token</param>
+	/// <param name="argc">The amount of arguments to retrieve</param>
+	/// <returns>THe argument vectors. braced tokens are unpacked automatically</returns>
+	private Token[][] getArgs(IEnumerator<Token> tks, int argc)
+	{
+		var args = new Token[argc][];
+
+		for (int i = 0; i < argc; i++)
+		{
+			if((i > 0 && !tks.MoveNext()) || !skipWS(tks) || (tks.Current is Character c && c.chr == '\n'))
+			{
+				Console.Error.WriteLine($"[WARN] Incomplete call");
+
+				for (int j = i; j < argc; j++)
+					args[j] = new Token[0];
+
+				break;
+			}
+			else if(tks.Current is Braced b)
+				args[i] = b.inner.ToArray();
+			else
+				args[i] = new[]{ tks.Current };
+		}
+
+		return args;
+	}
+
+	/// <summary>
+	/// Learns every macro definition from a raw token stream
+	/// </summary>
+	/// <param name="tks">A token stream returned by tokenize()</param>
+	private void learnMacros(IEnumerator<Token> tks)
+	{
+		while(tks.MoveNext())
+		{
+			if(tks.Current is MacroName m && (m.macro == "newcommand" || m.macro == "renewcommand")) try
+			{
+				if(!tks.MoveNext())
+					throw new Exception("Empty definition");
+
+				var name = getArgs(tks, 1)[0].Where(t => !(t is WhiteSpace)).ToList();
+				Util.AssertEqual(1, name.Count, "Multiple names in command definition");
+
+				if(!(name[0] is MacroName mn))
+					throw new FormatException("Expected a macro name in command definition");
+
+				if(!tks.MoveNext() || !skipWS(tks))
+					throw new Exception("No definition after macro name");
+
+				int argc = 0;
+				var argcSpec = new List<Token>();
+
+				if(!skipOpt(tks, argcSpec))
+					throw new FormatException("Bad arity specification");
+				if(argcSpec.Count > 0)
+					argc = int.Parse(untokenize(argcSpec));
+
+				macros[mn.macro] = new Macro(argc, getArgs(tks, 1)[0]);
+			}
+			catch(Exception ex)
+			{
+				Console.Error.WriteLine($"Bad {m.macro}: {ex.Message}");
+			}
+		}
+	}
+
+	private void learnMacros(IEnumerable<Token> tks)
+		=> learnMacros(tks.GetEnumerator());
+
+	/// <summary>
+	/// Expands macros in a raw token stream recursively
+	/// </summary>
+	/// <param name="tks">A token stream returned by tokenize()</param>
+	/// <returns>An equivalent stream with every macro expanded</returns>
+	private IEnumerable<Token> expand(IEnumerator<Token> tks)
+	{
+		while(tks.MoveNext())
+		{
+			if(tks.Current is MacroName mn)
+			{
+				if(macros.TryGetValue(mn.macro, out var m))
+				{
+					Token[][] args;
+
+					if(!tks.MoveNext())
+					{
+						if(m.argc > 0)
+							Console.Error.WriteLine($"No arguments to \\{mn.macro}");
+
+						args = Enumerable.Repeat(new Token[0], m.argc).ToArray();
+					}
+					else
+						args = getArgs(tks, m.argc);
+					// Console.Error.WriteLine($"Expanding {mn.macro} -> {untokenize(m.replacement)}");
+
+					// TODO verify behavior for macros w/ empty bodies
+					tks = replaceArgs(m.replacement, args).FollowedBy(tks);
+				}
+				else
+					yield return tks.Current;
+			}
+			else if(tks.Current is Braced br)
+				yield return new Braced(expand((br.inner as IEnumerable<Token>).GetEnumerator()).ToArray());
+			else
+				yield return tks.Current;
+		}
+	}
+
+	private IEnumerable<Token> expand(IEnumerable<Token> tks)
+		=> expand(tks.GetEnumerator());
+
+	/// <summary>
+	/// Groups tokens together into [...] and environments, via the Bracketed and Environment tokens.
+	/// </summary>
+	/// <param name="tks">An expanded token stream returned by expand()</param>
+	/// <returns>An equivalent stream with every environment translated to HTML primitives</returns>
+	private IEnumerable<Token> collect(IEnumerator<Token> tks)
+	{
+		var state = new Stack<(string environ, List<Token> content)>();
+
+		while(tks.MoveNext())
+		{
+			var tk = tks.Current;
+
+			if(tk is MacroName mn && (mn.macro == "begin" || mn.macro == "end"))
+			{
+				if(!tks.MoveNext())
+				{
+					Console.Error.WriteLine($"Missing section name after {mn.macro}");
+					continue;
+				}
+
+				var env = untokenize(getArgs(tks, 1)[0]);
+
+				if(mn.macro == "begin")
+				{
+					state.Push((env, new List<Token>()));
+					continue;
+				}
+				else if(state.TryPeek(out var top) && top.environ == env)
+				{
+					state.Pop();
+					tk = new Environment(env, top.content.ToArray());
+				}
+				else
+				{
+					Console.Error.WriteLine($"Discarding unmatched \\end for {env}");
+					continue;
+				}
+
+			}
+
+			if(state.TryPeek(out var ec))
+				ec.content.Add(tk);
+			else
+				yield return tk;
+		}
+
+		foreach (var x in state.Reverse())
+		{
+			Console.Error.WriteLine($"[WARN] Omitting unmatched \\begin{{{x.environ}}}");
+
+			foreach (var y in x.content)
+				yield return y;
+		}
+	}
+
+	private IEnumerable<Token> collect(IEnumerable<Token> tks)
+		=> collect(tks.GetEnumerator());
+
+	/// <summary>
+	/// Skips an optional argument. Also skips leading whitespace
+	/// </summary>
+	/// <param name="tks">
+	///  Positioned at the first possible '[' token.
+	///  Advances until AFTER the closing ']'
+	/// </param>
+	/// <returns>
+	///  False if token stream is completely whitespace, or ended before ']', true otherwise
+	/// </returns>
+	private bool skipOpt(IEnumerator<Token> tks, List<Token>? content = null)
+	{
+		if(!skipWS(tks))
+			return false;
+		if(tks.Current is Character open && open.chr == '[')
+		{
+			for(;;)
+			{
+				if(!tks.MoveNext())
+					return false;
+				if(tks.Current is Character close && close.chr == ']')
+					return tks.MoveNext();
+				if(!(content is null))
+					content.Add(tks.Current);
+			}
+		}
+		else
+			return true;
+	}
+
+	/// <summary>
+	/// Processes a fully expanded and collected token stream into a HTML string
+	/// </summary>
+	private void latexToHtml(IEnumerator<Token> tks, StringBuilder sb)
+	{
+		while(tks.MoveNext())
+		{
+			if(tks.Current is MacroName mn)
+				Console.Error.WriteLine($"[WARN] Discarding unknown macro: \\{mn.macro}");
+			else if(tks.Current is Character cr)
+				sb.Append(cr.chr == '\n' ? "<br/>" : WebUtility.HtmlEncode(cr.chr.ToString()));
+			else if(tks.Current is WhiteSpace)
+				sb.Append(' ');
+			else if(tks.Current is Braced br)
+				latexToHtml((br.inner as IEnumerable<Token>).GetEnumerator(), sb);
+			else if(tks.Current is ArgumentRef)
+				Console.Error.WriteLine("[WARN] Discarding orphaned argument reference");
+			else if(tks.Current is HtmlChunk ch)
+				sb.Append(ch.data);
+			else if(tks.Current is Environment env)
+			{
+				if(!config.environments.TryGetValue(env.env, out string name))
+					name = env.env;
+
+				switch(name)
+				{
+					case "itemize":
+					{
+						sb.Append("<ul>");
+
+						foreach (var point in env.inner.SplitBy(tk => tk is MacroName m && m.macro == "item"))
+						{
+							sb.Append("<li>");
+							latexToHtml((point as IEnumerable<Token>).GetEnumerator(), sb);
+							sb.Append("</li>");
+						}
+
+						sb.Append("</ul>");
+					}
+					break;
+
+					case "tabular":
+					{
+						sb.Append("<table>");
+						bool header = true;
+
+						foreach(var row in env.inner.SplitBy(tk => tk is Character c && c.chr == '\n'))
+						{
+							sb.Append("<tr>");
+
+							foreach (var cell in row.SplitBy(tk => tk is Character c && c.chr == '&'))
+							{
+								sb.Append(header ? "<th>" : "<td>");
+								latexToHtml((cell as IEnumerable<Token>).GetEnumerator(), sb);
+								sb.Append(header ? "</th>" : "</td>");
+							}
+
+							sb.Append("</tr>");
+							header = false;
+						}
+
+						sb.Append("</table>");
+					}
+					break;
+
+					default:
+					{
+						Console.Error.WriteLine($"[WARN] Unknown environment {name}");
+						sb.Append($"<div class=\"{name}\">");
+						latexToHtml((env.inner as IEnumerable<Token>).GetEnumerator(), sb);
+						sb.Append("</div>");
+					}
+					break;
+				}
+			}
+			else
+				throw new FormatException("Unhandled token kind");
+		}
+	}
+
+	private string latexToHtml(IEnumerator<Token> tks)
+	{
+		var sb = new StringBuilder();
+		latexToHtml(tks, sb);
+		return sb.ToString();
+	}
+
+	private string latexToHtml(IEnumerable<Token> tks)
+		=> latexToHtml(tks.GetEnumerator());
+
+#endregion TeX Compiler
+
 	/// <summary>
 	///
 	/// </summary>
@@ -15,384 +574,65 @@ public class Latex
 	public readonly record struct Config(string spellAnchor, string upcastAnchor, Dictionary<string, string> environments);
 
 	private readonly Config config;
-	private readonly Dictionary<string, string> macros = new Dictionary<string, string>{
-		{ @"\\", "\n" },
-		{ @"\{", "{" },
-		{ @"\}", "}" },
-		{ @"\[", "[" },
-		{ @"\]", "]" },
-		{ @"\,", " " },
-		{ @"\ ", " " }
-	};
+
 
 	public Latex(Config config)
 	{
 		this.config = config;
 	}
 
-    internal record Command(string name, (bool mandatory, string value)[] arguments);
+	public void LearnMacros(IEnumerable<string> source)
+		=> learnMacros(collect(tokenize(source)));
 
-	/// <summary>
-	/// Joins lines, handles comments, ensures that newlines = paragraph breaks.
-	/// De-escapes \% and nothing else
-	/// </summary>
-	/// <param name="lines"></param>
-	/// <returns></returns>
-	public static string JoinLines(string[] lines)
+	internal Spell ExtractSpell(string[] lines, string source)
 	{
-		var sb = new StringBuilder();
-		bool wasEmpty = true;
+		var sect = lines.Split(config.upcastAnchor).ToArray();
 
-		foreach (var l in lines.Select(l => l.Trim()))
-		{
-			if(l.Length == 0)
-			{
-				if(!wasEmpty)
-					sb.Append('\n');
+		if(sect.Length > 2)
+			throw new FormatException($"Too many occurrences of {config.upcastAnchor}, got {sect.Length}");
 
-				wasEmpty = true;
-				continue;
-			}
-			else if(l[0] == '%') // comment-lines are completely ignored
-				continue;
-			else
-				wasEmpty = false;
+		var lPos = collect(expand(tokenize(sect[0]))).GetEnumerator();
 
-			int w = 0;
-			bool esc = false;
+		if(!lPos.MoveNext() || !skipOpt(lPos))
+			throw new FormatException("Empty spell");
 
-			for (int i = 0; i <= l.Length; i++)
-			{
-				if(i == l.Length)
-				{
-					sb.Append(l.Substring(w));
-					break;
-				}
-				if(l[i] == '%')
-				{
-					sb.Append(l, w, esc ? i - w - 1 : i - w);
-					w = i;
-
-					if(!esc)
-						break;
-				}
-				else if(l[i] == '\\')
-					esc = !esc;
-				else
-					esc = false;
-			}
-
-			sb.Append(' ');
-		}
-
-		return sb.ToString();
-	}
-
-	/// <summary>
-	/// Parses a latex command invocation.
-	/// </summary>
-	internal Command latexCmd(string line, out int read, int? arity = null)
-	{
-		var parens = new Stack<char>();
-		var args = new List<(bool, string)>();
-		var arg = new StringBuilder();
-
-        Util.AssertEqual('\\', line[0], "Expected a latex command");
-        int len = 1 + Math.Max(1, line.Skip(1).TakeWhile(char.IsLetterOrDigit).Count());
-        string name = line.Substring(0, len);
-		bool esc = false;
-
-		for (read = len; read < line.Length; read++)
-		{
-			if(line[read] == '\n')
-				break;
-
-			char c = line[read];
-
-            if(!esc && (c == ']' || c == '}'))
-            {
-            	if(parens.Count == 0)
-					break;
-
-				Util.AssertEqual(parens.Pop(), c, "Bad parenthesis");
-
-                if(parens.Count == 0)
-                {
-					args.Add((c == '}', arg.ToString()));
-                    arg.Clear();
-
-					if(arity is int a && args.Count(x => x.Item1) >= a)
-					{
-						read++;
-						break;
-					}
-
-					continue;
-                }
-            }
-
-            if(parens.Count > 0)
-                arg.Append(c);
-
-			if(!esc)
-			{
-				if(c == '[')
-					parens.Push(']');
-				else if(c == '{')
-					parens.Push('}');
-			}
-
-            if(parens.Count == 0)
-            {
-				if(c == '\n')
-					break;
-				else if(char.IsWhiteSpace(c))
-                    continue;
-				else
-	                break;
-            }
-
-			if(c == '\\')
-				esc = !esc;
-			else
-				esc = false;
-		}
-
-		line = line.Substring(read);
-        Util.AssertEqual(0, parens.Count, "Unmatched parenthesis");
-
-        return new Command(name, args.ToArray());
-
-	}
-
-	internal (string inner, Command closing) closeEnvironment(string code, out int skip)
-	{
-		var bs = new Queue<int>(code.Indices(@"\begin"));
-		var es = new Queue<int>(code.Indices(@"\end"));
-
-		while(es.Any())
-		{
-			if(!bs.Any() || es.Peek() < bs.Peek())
-			{
-				int ind = es.Dequeue();
-				var cmd = latexCmd(code.Substring(ind), out skip, 1);
-				skip += ind;
-
-				return (code.Substring(0, ind), cmd);
-			}
-			else
-			{
-				bs.Dequeue();
-				es.Dequeue();
-			}
-		}
-
-		throw new FormatException("Missing closing \\end");
-	}
-
-	/// <summary>
-	/// Extracts simple \newcommand definitions from the given latex source code
-	/// Skips commands with arguments
-	/// </summary>
-	/// <param name="lines"></param>
-	public void LearnMacros(string code)
-	{
-		var r = new Regex(@"\\(re)?newcommand");
-
-		foreach(var i in r.Matches(code).Select(m => m.Index))
-		{
-			var cmd = latexCmd(code.Substring(i), out var _, 2);
-
-			if(cmd.arguments.Count() < 2)
-				continue;
-			if(cmd.arguments.Any(a => !a.mandatory))
-				continue;
-
-			macros[cmd.arguments[0].value.Trim()] = cmd.arguments[1].value;
-		}
-	}
-
-	private void expand(StringBuilder str, string code)
-	{
-		int w = 0, l;
-		for (int i = 0; (i = code.IndexOf('\\', i)) >= 0; i += l)
-		{
-			var cmd = latexCmd(code.Substring(i), out l);
-			str.Append(code, w, i - w);
-			redo:
-
-			if(macros.TryGetValue(cmd.name, out string subst))
-			{
-				if(new Regex(@"^\\(.|\w+)$").IsMatch(subst) && subst != cmd.name)
-				{// special case to handle aliasing. NOT PROPER LATEX
-					cmd = cmd with {name = subst};
-					goto redo;
-				}
-				if(cmd.arguments.Length > 0)
-					Console.Error.WriteLine($"[Warn] discarding {cmd.arguments.Length} argument(s) to {cmd.name}");
-
-				expand(str, subst);
-			}
-			else switch(cmd.name)
-			{
-				case @"\end":
-					Console.Error.WriteLine($"Orphaned \\end{{{cmd.arguments.FirstOrDefault(a => a.mandatory).value}}}");
-				break;
-
-				case @"\begin":
-				{
-					var env = cmd.arguments.FirstOrDefault(a => a.mandatory).value;
-
-					if(config.environments.TryGetValue(env, out string tag))
-					{
-						var match = closeEnvironment(code.Substring(i + l), out int ll);
-						l += ll;
-
-						str.Append($"<{tag} class=\"{env}\">");
-
-						switch(tag)
-						{
-							case "table":
-							{
-								bool header = true;
-								foreach(var row in match.inner.Split('\n'))
-								{
-									str.Append("<tr>");
-
-									foreach (var cell in row.Split('&'))
-									{
-										str.Append(header ? "<th>" : "<td>");
-										expand(str, cell);
-										str.Append(header ? "</th>" : "</td>");
-									}
-
-									str.Append("</tr>");
-									header = false;
-								}
-							}
-							break;
-
-							case "ul":
-							case "il":
-							{
-								foreach(var il in match.inner.Split(@"\Item"))
-								{
-									str.Append("<il>");
-									expand(str, il);
-									str.Append("</il>");
-								}
-							}
-							break;
-
-							default:
-								expand(str, match.inner);
-							break;
-						}
-
-						str.Append($"</{tag}>");
-					}
-					else if(env is null)
-						Console.Error.WriteLine("[Warn] skipping malformed \\begin");
-					else
-						Console.Error.WriteLine($"[Warn] skipping unknown environment {env}");
-				}
-				break;
-
-				case @"\textit":
-				{
-					if(!cmd.arguments.Any(a => a.mandatory))
-					{
-						Console.Error.WriteLine($"[Warn] skipping malformed \\textit");
-						continue;
-					}
-					if(cmd.arguments.Count() > 1)
-						Console.Error.WriteLine($"[Warn] discarding superfluous arguments to \\textit");
-
-					str.Append("<i>");
-					expand(str, cmd.arguments.First(a => a.mandatory).value);
-					str.Append("</i>");
-				}
-				break;
-
-				case @"\textbf":
-				{
-					if(!cmd.arguments.Any(a => a.mandatory))
-					{
-						Console.Error.WriteLine($"[Warn] skipping malformed \\textit");
-						continue;
-					}
-					if(cmd.arguments.Count() > 1)
-						Console.Error.WriteLine($"[Warn] discarding superfluous arguments to \\textit");
-
-					str.Append("<b>");
-					expand(str, cmd.arguments.First(a => a.mandatory).value);
-					str.Append("</b>");
-				}
-				break;
-
-				default:
-					Console.Error.WriteLine($"[Warn] Discarding unknown macro: {cmd.name}");
-				// don't increment w, leading to larger writeback
-				break;
-			}
-
-			w = i + l;
-		}
-
-		str.Append(code.Substring(w));
-	}
-
-	/// <summary>
-	/// Fully expands a code snippet
-	/// Applies learned macros recursively
-	/// </summary>
-	/// <param name="code">The latex source code to expand</param>
-	/// <returns></returns>
-	public string Expand(string code)
-	{
-		var str = new StringBuilder();
-		expand(str, code);
-		return str.ToString();
-	}
-
-	internal Spell ExtractSpell(string code, string source)
-	{
-        var spel = latexCmd(code, out int len, 7);
-		var spl = code.Substring(len).Split(config.upcastAnchor, 2, StringSplitOptions.TrimEntries);
-
-		var props = spel.arguments.Where(a => a.mandatory).Select(p => Expand(p.value)).ToArray();
-		Util.AssertEqual(7, props.Length, "Bad arity of spell-defining function");
+		var props = getArgs(lPos, 7).Select(untokenize).ToArray();
 
 		var name = props[0];
 		var lsr = Common.parseLevel(props[1]);
 		var tr = Common.maybeSplitOn(props[2], ",");
 		var range = props[3];
-
-		string comp; string? mat;
-		(comp, mat) = Common.parseParen(props[4]);
-
+		var cm = Common.parseParen(props[4]);
 		var cd = Common.parseDuration(props[5]);
 		var classes = props[6].Split(new[]{' ', '\t', ','}, StringSplitOptions.RemoveEmptyEntries).ToArray();
+
+		string desc = latexToHtml(lPos);
+		string? upcast = (sect.Length > 1)
+			? latexToHtml(collect(expand(tokenize(sect[1]))))
+			: null;
 
 		return new Spell(
 			name, source,
 			lsr.school, lsr.level,
 			tr.left, tr.right, lsr.ritual,
 			range,
-			comp, mat,
+			cm.Item1, cm.Item2,
 			cd.concentration, cd.duration,
-			Expand(spl[0]).ReplaceLineEndings("\n<br/>\n"),
-			spl.Length > 1 ? Expand(spl[1]).ReplaceLineEndings("\n<br/>\n") : null,
+			desc,
+			upcast,
 			classes, null
 		);
 	}
 
-	public IEnumerable<Spell> ExtractSpells(string doc, string source)
+	public IEnumerable<Spell> ExtractSpells(IEnumerable<string> lines, string source)
 	{
-		Console.WriteLine("Extracting LATEX spells....");
-		var code = doc.Split(@"\begin{document}", 2)[1].Split(@"\end{document}",2)[0];
+		Console.WriteLine($"Extracting LATEX spells for {source}....");
+		const string DOC_BEGIN = @"\begin{document}", DOC_END = @"\end{document}";
 
-		foreach(var snip in code.Spans(config.spellAnchor))
+		if(lines.Any(l => l == DOC_BEGIN))
+			lines = lines.SkipWhile(l => l != DOC_BEGIN).Skip(1).TakeWhile(l => l != DOC_END);
+
+		foreach(var snip in lines.Spans(config.spellAnchor))
 		{
 			Spell spell;
 
@@ -402,7 +642,7 @@ public class Latex
 			}
 			catch (System.Exception ex)
 			{
-				Console.WriteLine($"At '{snip.Substring(0,25)}{(snip.Length > 25 ? "..." : "")}': {ex.Message}");
+				Console.WriteLine($"At '{snip[0].Substring(0,Math.Min(snip[0].Length, 25))}...': {ex.Message}\n{ex.StackTrace}");
 				continue;
 			}
 

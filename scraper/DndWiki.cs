@@ -5,7 +5,10 @@ using static System.StringSplitOptions;
 public class DndWiki
 {
 	private HttpClient client = new HttpClient() { BaseAddress = new Uri("http://dnd5e.wikidot.com") };
+	private Program program;
 
+	public DndWiki(Program prog)
+		=> this.program = prog;
 
 	/// <summary>
 	/// The minimum time between HTTP requests
@@ -26,8 +29,7 @@ public class DndWiki
 				.ToArray();
 		});
 
-
-	private async Task<Spell> details(string name, IEnumerable<SourceBook> sources)
+	private async Task<Spell> details(string name)
 	{
 		string cName = new string(string.Join('-', name.Split(new[]{ ' ', '/', ':' }))
 			.Where(c => c < 0x7F && c != '\'')
@@ -47,7 +49,7 @@ public class DndWiki
 		{
 			var ctl = content.ChildNodes[1].InnerText.Split(':', 2, TrimEntries);
 			Util.AssertEqual("Source", ctl[0], "Bad source format");
-			source = sources.FindSource(ctl[1].Split('/')[0]).shorthand;
+			source = program.FindSource(ctl[1].Split('/')[0]).shorthand;
 		}
 
 
@@ -133,11 +135,11 @@ public class DndWiki
 			desc, upcast, classes, statBlock);
 	}
 
-	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names, IEnumerable<SourceBook> sources)
+	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
 		=> Util.PartiallyCached("cache/wikidot_spells", names, async (string n) =>
 		{
 			var timer = Task.Delay(RateLimit);
-			var x = await details(n, sources);
+			var x = await details(n);
 			await timer;
 			return x;
 		}, x => x);

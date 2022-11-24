@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections;
 using System.Text;
 using Newtonsoft.Json;
 using HtmlAgilityPack;
@@ -182,25 +183,159 @@ internal static class Util
 			dict.StoreJson(cache);
 	}
 
-	public static IEnumerable<int> Indices(this string text, string s)
-	{
-		for (int i = 0; (i = text.IndexOf(s,i)) >= 0; i++)
-			yield return i;
-	}
-
 	/// <summary>
-	/// All substring that are started by s and ended by the start of the next substring, or end of file
+	/// Extracts every span of lines that is started by s and ended by another occurrence of s or end of file.
+	/// s may also appear within a line
 	/// </summary>
 	/// <param name="text"></param>
 	/// <param name="s"></param>
 	/// <returns></returns>
-	public static IEnumerable<string> Spans(this string text, string s)
+	public static IEnumerable<string[]> Spans(this IEnumerable<string> lines, string s)
 	{
-		var ind = text.Indices(s).ToArray();
+		List<string>? cur = null;
 
-		for (int i = 1; i < ind.Length; i++)
-			yield return text.Substring(ind[i - 1], ind[i] - ind[i - 1]);
+		foreach (var l in lines)
+		{
+			int i = l.IndexOf(s);
 
-		yield return text.Substring(ind[ind.Length - 1]);
+			if(i >= 0)
+			{
+				if(cur == null)
+					cur = new List<string>();
+				else
+				{
+					yield return cur.ToArray();
+					cur.Clear();
+				}
+
+				cur.Add(l.Substring(i + s.Length));
+			}
+			else if(cur != null)
+				cur.Add(l);
+		}
+
+		if(cur != null)
+			yield return cur.ToArray();
+	}
+
+	public static IEnumerable<(T value, int index)> Indexed<T>(this IEnumerable<T> values)
+		=> values.Select((x,i) => (x,i));
+
+	private class ConcatEnumerator<T> : IEnumerator<T>
+	{
+		private readonly IEnumerator<T> first, second;
+		bool inSecond = false;
+
+		public ConcatEnumerator(IEnumerator<T> f, IEnumerator<T> s)
+		{
+			this.first = f;
+			this.second = s;
+		}
+
+		public T Current
+			=> inSecond ? second.Current : first.Current;
+
+		object IEnumerator.Current
+			=> this.Current;
+
+		public bool MoveNext()
+		{
+			if(!inSecond && first.MoveNext())
+				return true;
+			else
+			{
+				inSecond = true;
+				return second.MoveNext();
+			}
+		}
+
+		public void Reset()
+		{
+			inSecond = false;
+			first.Reset();
+			second.Reset();
+		}
+
+		void IDisposable.Dispose()
+		{
+			first.Dispose();
+			second.Dispose();
+		}
+	}
+
+	public static IEnumerator<T> FollowedBy<T>(this IEnumerable<T> ls, IEnumerator<T> after)
+		=> new ConcatEnumerator<T>(ls.GetEnumerator(), after);
+
+	public static IEnumerable<string> StartedWith(this IEnumerable<string> xs, string delim)
+	{
+		bool got = false;
+
+		foreach (var x in xs)
+		{
+			if(got)
+				yield return x;
+			else
+			{
+				int p = x.IndexOf(delim);
+
+				if(p < 0)
+					continue;
+
+				got = true;
+				var s = x.Substring(p + delim.Length);
+
+				if(!string.IsNullOrWhiteSpace(s))
+					yield return s;
+			}
+		}
+
+		if(!got) foreach (var x in xs)
+			yield return x;
+	}
+
+	public static IEnumerable<string> EndedBy(this IEnumerable<string> xs, string delim)
+	{
+		foreach (var x in xs)
+		{
+			int p = x.IndexOf(delim);
+
+			if(p < 0)
+				yield return x;
+			else
+			{
+				var s = x.Substring(0, p);
+
+				if(!string.IsNullOrWhiteSpace(s))
+					yield return s;
+
+				yield break;
+			}
+		}
+	}
+
+	public static IEnumerable<string[]> Split(this IEnumerable<string> xs, string delim)
+	{
+		var cur = new List<string>();
+
+		foreach (var x in xs)
+		{
+			var spl = x.Split(delim, 2, StringSplitOptions.TrimEntries);
+
+			if(spl.Length < 2)
+				cur.Add(x);
+			else
+			{
+				if (spl[0].Length > 0)
+					cur.Add(spl[0]);
+
+				yield return cur.ToArray();
+				cur.Clear();
+
+				if (spl[1].Length > 0)
+					cur.Add(spl[1]);
+			}
+		}
+
+		yield return cur.ToArray();
 	}
 }
