@@ -595,7 +595,7 @@ public class Latex
 	public void LearnMacros(IEnumerable<string> source)
 		=> learnMacros(collect(tokenize(source)));
 
-	internal Spell ExtractSpell(string[] lines, string source)
+	internal Spell ExtractSpell(IEnumerable<string> lines, string source)
 	{
 		var sect = lines.Split(config.upcastAnchor).ToArray();
 
@@ -649,7 +649,7 @@ public class Latex
 
 			try
 			{
-				spell = ExtractSpell(snip, source);
+				spell = ExtractSpell(snip.Trim(string.IsNullOrWhiteSpace), source);
 			}
 			catch (System.Exception ex)
 			{

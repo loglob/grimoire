@@ -338,4 +338,21 @@ internal static class Util
 
 		yield return cur.ToArray();
 	}
+
+	public static ArraySegment<T> Trim<T>(this T[] arr, Func<T,bool> pred)
+	{
+		int l;
+
+		for (l = 0; l < arr.Length && pred(arr[l]); l++);
+
+		if(l >= arr.Length)
+			return new ArraySegment<T>();
+
+		// assert !pred(arr[l])
+		int r;
+
+		for (r = arr.Length - 1; r > l && pred(arr[r]); r--);
+
+		return new ArraySegment<T>(arr, l, r - l + 1);
+	}
 }
