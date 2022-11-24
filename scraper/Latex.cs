@@ -273,7 +273,10 @@ public class Latex
 	/// <summary>
 	/// Retrieves an amount of arguments and advances the token position to their last value
 	/// </summary>
-	/// <param name="tks">The token position, positioned on the first possible argument token</param>
+	/// <param name="tks">
+	///  The token position, positioned on the first possible argument token.
+	///  Advances until the last argument token.
+	/// </param>
 	/// <param name="argc">The amount of arguments to retrieve</param>
 	/// <returns>THe argument vectors. braced tokens are unpacked automatically</returns>
 	private Token[][] getArgs(IEnumerator<Token> tks, int argc)
@@ -357,7 +360,9 @@ public class Latex
 				{
 					Token[][] args;
 
-					if(!tks.MoveNext())
+					if(m.argc == 0)
+						args = new Token[0][];
+					else if(!tks.MoveNext())
 					{
 						if(m.argc > 0)
 							Console.Error.WriteLine($"No arguments to \\{mn.macro}");
@@ -366,9 +371,9 @@ public class Latex
 					}
 					else
 						args = getArgs(tks, m.argc);
-					// Console.Error.WriteLine($"Expanding {mn.macro} -> {untokenize(m.replacement)}");
+					//Console.Error.WriteLine($"Expanding {mn.macro} -> {untokenize(m.replacement)}");
+					//Console.Error.WriteLine($"With argv: {string.Join(' ', args.Select(a => '{' + untokenize(a) + '}'))}");
 
-					// TODO verify behavior for macros w/ empty bodies
 					tks = replaceArgs(m.replacement, args).FollowedBy(tks);
 				}
 				else
