@@ -84,7 +84,8 @@ public class Overleaf
 			else
 				yield return (src, d.Lines
 					.StartedWith(DOC_START)
-					.EndedBy(DOC_END));
+					.EndedBy(DOC_END)
+					.EndedBy(SECTION_END_ANCHOR));
 		}
 	}
 
