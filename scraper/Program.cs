@@ -1,64 +1,113 @@
-﻿
+﻿using System;
+using System.Linq;
+using static Util;
+
 public class Program
 {
-	private readonly SourceBook[] books;
-	private readonly Dictionary<string, List<Spell>> spellsByBook;
-	private readonly HashSet<string> warnedAbout = new HashSet<string>();
+	public const string USAGE =
+@"USAGE: {0} [<sources.json>] [sources...]
+Where a source is one of:
+	latex [<latex.json>] [[source name] [input.tex] ...]
+	overleaf [<overleaf.json>]
+	dnd-wiki
+If a json config file is not specified as an argument, the working directory is searched for the listed filename.
+Each of the listed sources is searched for DnD spells and the compiled databases are outputted in ./dbs/
+";
 
-	private Program(SourceBook[] books)
+	public static async Task<int> Main(string[] args)
 	{
-		this.books = books;
-		this.spellsByBook = books.ToDictionary(b => b.shorthand, _ => new List<Spell>());
-		Console.WriteLine($"Found {books.Length} sources");
-	}
+		var keywords = new HashSet<string>{ "latex", "overleaf", "dnd-wiki" };
+		var offs = Enumerable.Range(0, args.Length)
+			.Where(i => keywords.Contains(args[i]))
+			.ToArray();
 
-	private Program() : this(Util.LoadJson<SourceBook[]>("sources.json"))
-	{}
+		if(offs.Length == 0 || offs[0] > 1)
+			goto usage;
 
-	private void addSpell(Spell sp)
-	{
-		if(spellsByBook.TryGetValue(sp.source, out var spells))
-			spells.Add(sp);
-		else if(warnedAbout.Add(sp.source))
-			Console.Error.WriteLine($"[WARN] Discarding unknown source '{sp.source}'");
-	}
+		SourceBook[] books = LoadJson<SourceBook[]>(offs[0] == 1 ? args[0] : "sources.json");
+		var bookNames = books.Select(b => b.shorthand).ToHashSet();
+		var sources = new List<ISource>();
 
-	private async Task dndWiki()
-	{
-		var wiki = new DndWiki(this);
-		var names = await wiki.SpellNames();
-		Console.WriteLine($"Processing {names.Length} spells from DnDWiki...");
+		// load sources from arguments
+		for (int io = 0; io < offs.Length; io++)
+		{
+			var v = new ArraySegment<string>(args, offs[io],
+				((io + 1 >= offs.Length) ? offs.Length : offs[io + 1]) - offs[io]);
 
-		await foreach(var s in wiki.Spells(names))
-			addSpell(s);
-	}
+			switch(v[0])
+			{
+				case "latex":
+				{
+					if(v.Count < 2)
+						goto usage;
 
-	private async Task overleaf()
-	{
-		var ol = new Overleaf(Util.LoadJson<Overleaf.Config>("overleaf.json"));
+					var cfgFile = "latex.json";
 
-		foreach(var s in await ol.Spells())
-			addSpell(s);
-	}
+					if(!bookNames.Contains(v[1]))
+					{
+						cfgFile = v[1];
+						v = v.Slice(2);
+					}
+					else
+						v = v.Slice(1);
 
-	public SourceBook FindSource(string source)
-	{
-		var b = books.Where(b => b.Matches(source)).ToArray();
+					if(v.Count == 0 || v.Count % 2 == 1)
+						goto usage;
 
-		if(b.Length == 0)
-			throw new Exception($"Unknown source: '{source}'");
-		else if(b.Length > 1)
-			throw new Exception($"Unknown source: '{source}': Ambigous between {string.Join(", ", b)}");
-		else
-			return b[0];
-	}
+					var files = new List<(string src, string file)>();
 
+					while(v.Count >= 2)
+					{
+						if(!bookNames.Contains(v[0]))
+							goto usage;
 
+						files.Add((v[0], v[1]));
+						v = v.Slice(2);
+					}
 
-	private async Task main()
-	{
-//		await dndWiki();
-		await overleaf();
+					sources.Add(new LatexFiles( LoadJson<Latex.Config>(cfgFile), files));
+				}
+				continue;
+
+				case "overleaf": switch(v.Count)
+				{
+					case 1:
+						sources.Add(new Overleaf(LoadJson<Overleaf.Config>("overleaf.json")));
+					continue;
+
+					case 2:
+						sources.Add(new Overleaf(LoadJson<Overleaf.Config>(v[1])));
+					continue;
+
+					default: goto usage;
+				}
+
+				case "dnd-wiki": switch(v.Count)
+				{
+					case 1:
+						sources.Add(new DndWiki(books));
+					continue;
+
+					default: goto usage;
+				}
+
+				default: break; // <- impossible
+			}
+		}
+
+		Console.WriteLine($"Processing {sources.Count} sources...");
+
+		var spellsByBook = bookNames.ToDictionary(x => x, x => new List<Spell>());
+		var warnedAbout = new HashSet<string>();
+
+		foreach (var sp in (await Task.WhenAll(sources.Select(s => s.Spells().ToListAsync().AsTask())))
+										.SelectMany(x => x))
+		{
+			if(spellsByBook.TryGetValue(sp.source, out var spells))
+				spells.Add(sp);
+			else if(warnedAbout.Add(sp.source))
+				Console.Error.WriteLine($"[WARN] Discarding unknown source '{sp.source}'");
+		}
 
 		int total = 0;
 
@@ -76,8 +125,10 @@ public class Program
 		books.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("./dbs/index.json");
 		Console.WriteLine($"Done. Found {total} spells.");
 
-	}
+		return 0;
 
-	public static Task Main(string[] args)
-		=> new Program().main();
+		usage:
+		Console.WriteLine(USAGE, Environment.GetCommandLineArgs()[0]);
+		return 1;
+	}
 }

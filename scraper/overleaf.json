@@ -5,8 +5,7 @@
 		"spellAnchor": "\\spell",
 		"upcastAnchor": "At higher levels",
 		"environments": {
-			"DndTable": "table",
-			"itemize": "ul"
+			"DndTable": "tabular"
 		}
 	}
 }

@@ -1,6 +1,6 @@
 using Olspy;
 
-public class Overleaf
+public class Overleaf : ISource
 {
 	/// <summary>
 	/// The configuration for the overleaf scraper
@@ -37,59 +37,19 @@ public class Overleaf
 	/// </summary>
 	const string ANCHOR = "%% grimoire include";
 
-	/// <summary>
-	/// Marks the following lines to be included.
-	/// Accepts a following source name.
-	/// When present in a file, only marked code is included
-	/// </summary>
-	const string SECTION_START_ANCHOR = "%% grimoire begin";
-
-	/// <summary>
-	/// Terminates a section opened with SECTION_START_ANCHOR
-	/// </summary>
-	const string SECTION_END_ANCHOR = "%% grimoire end";
-
-	const string DOC_START = @"\begin{document}";
-	const string DOC_END = @"\end{document}";
-
-	/// <summary>
-	/// If this is given as source, use that code snippet to learn macros instead of extracting spells
-	/// </summary>
-	const string MACROS_SOURCE_NAME = "macros";
 
 	internal static IEnumerable<(string source, IEnumerable<string> code)> GetCode(IEnumerable<Document> docs)
-	{
-		foreach(var d in docs)
-		{
-			var src = d.Lines.Take(10).FirstOrDefault(x => x.StartsWith(ANCHOR))?.Substring(ANCHOR.Length)?.Trim();
+		=> docs.SelectWith(d => d.Lines
+				.Take(10)
+				.FirstOrDefault(x => x.StartsWith(ANCHOR))
+				?.Substring(ANCHOR.Length)
+				?.Trim())
+			.Where(x => !(x.Item2 is null))
+			.SelectMany(x => (x.Item2 is string src)
+				? Latex.CodeSegments(x.Item1.Lines, src)
+				: Enumerable.Empty<(string,IEnumerable<string>)>());
 
-			if(src is null)
-				continue;
-
-			var opens = d.Lines.Indexed()
-				.Where(xi => xi.value.StartsWith(SECTION_START_ANCHOR))
-				.Select(xi => xi.index);
-
-			if(opens.Any()) foreach(var o in opens)
-			{
-				var nSrc = d.Lines[o].Substring(SECTION_START_ANCHOR.Length).Trim();
-
-				if(string.IsNullOrWhiteSpace(nSrc))
-					nSrc = src;
-
-				yield return (nSrc, d.Lines
-					.Skip(o + 1)
-					.TakeWhile(x => !x.StartsWith(SECTION_END_ANCHOR)));
-			}
-			else
-				yield return (src, d.Lines
-					.StartedWith(DOC_START)
-					.EndedBy(DOC_END)
-					.EndedBy(SECTION_END_ANCHOR));
-		}
-	}
-
-	public async Task<IEnumerable<Spell>> Spells()
+	public async IAsyncEnumerable<Spell> Spells()
 	{
 		var docs = await Util.Cached("cache/overleaf_documents", async() => {
 			if(!await overleaf.Available)
@@ -100,12 +60,14 @@ public class Overleaf
 
 		var snippets = GetCode(docs).ToList();
 
-		foreach (var m in snippets.Where(s => s.source == MACROS_SOURCE_NAME))
+		foreach (var m in snippets.Where(s => s.source == Latex.MACROS_SOURCE_NAME))
 			latex.LearnMacros(m.code);
 
-		return snippets
-			.Where(s => s.source != MACROS_SOURCE_NAME)
-			.SelectMany(s => latex.ExtractSpells(s.code, s.source));
+		foreach(var s in snippets
+			.Where(s => s.source != Latex.MACROS_SOURCE_NAME)
+			.SelectMany(s => latex.ExtractSpells(s.code, s.source)))
+			yield return s;
+
 	}
 
 }

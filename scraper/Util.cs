@@ -355,4 +355,20 @@ internal static class Util
 
 		return new ArraySegment<T>(arr, l, r - l + 1);
 	}
+
+	public static SourceBook FindSource(this SourceBook[] books, string source)
+	{
+		var b = books.Where(b => b.Matches(source)).ToArray();
+
+		if(b.Length == 0)
+			throw new Exception($"Unknown source: '{source}'");
+		else if(b.Length > 1)
+			throw new Exception($"Unknown source: '{source}': Ambigous between {string.Join(", ", b)}");
+		else
+			return b[0];
+	}
+
+	public static IEnumerable<(A,B)> SelectWith<A,B>(this IEnumerable<A> ls, Func<A,B> f)
+		=> ls.Select(x => (x, f(x)));
+
 }

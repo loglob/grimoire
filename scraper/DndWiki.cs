@@ -2,13 +2,13 @@ using System.Text;
 using HtmlAgilityPack;
 using static System.StringSplitOptions;
 
-public class DndWiki
+public class DndWiki : ISource
 {
 	private HttpClient client = new HttpClient() { BaseAddress = new Uri("http://dnd5e.wikidot.com") };
-	private Program program;
+	private SourceBook[] books;
 
-	public DndWiki(Program prog)
-		=> this.program = prog;
+	public DndWiki(SourceBook[] books)
+		=> this.books = books;
 
 	/// <summary>
 	/// The minimum time between HTTP requests
@@ -49,7 +49,7 @@ public class DndWiki
 		{
 			var ctl = content.ChildNodes[1].InnerText.Split(':', 2, TrimEntries);
 			Util.AssertEqual("Source", ctl[0], "Bad source format");
-			source = program.FindSource(ctl[1].Split('/')[0]).shorthand;
+			source = books.FindSource(ctl[1].Split('/')[0]).shorthand;
 		}
 
 
@@ -143,4 +143,13 @@ public class DndWiki
 			await timer;
 			return x;
 		}, x => x);
+
+	public async IAsyncEnumerable<Spell> Spells()
+	{
+		var names = await this.SpellNames();
+		Console.WriteLine($"Processing {names.Length} spells from DnDWiki...");
+
+		await foreach(var s in Spells(names))
+			yield return s;
+	}
 }

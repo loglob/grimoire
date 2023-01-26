@@ -1,9 +1,8 @@
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Net;
 
 /// <summary>
-/// Scraper for processing LaTeX documents
+/// Scraper for processing LaTeX snippets
 /// </summary>
 public class Latex
 {
@@ -502,8 +501,7 @@ public class Latex
 				sb.Append(ch.data);
 			else if(tks.Current is Environment env)
 			{
-				if(!config.environments.TryGetValue(env.env, out string name))
-					name = env.env;
+				string name = config.environments.GetValueOrDefault(env.env, env.env);
 
 				switch(name)
 				{
@@ -585,7 +583,7 @@ public class Latex
 	/// <param name="spellAnchor"> A latex command that initializes a spell description </param>
 	/// <param name="upcastAnchor"> A latex command that initiates an upcast section </param>
 	/// <param name="environments"> Maps latex environments onto equivalent HTML tags</param>
-	public readonly record struct Config(string spellAnchor, string upcastAnchor, Dictionary<string, string> environments);
+	public record class Config(string spellAnchor, string upcastAnchor, Dictionary<string, string> environments);
 
 	private readonly Config config;
 
@@ -595,8 +593,57 @@ public class Latex
 		this.config = config;
 	}
 
+	/// <summary>
+	/// Marks the following lines to be included.
+	/// Accepts a following source name.
+	/// When present in a file, only marked code is included
+	/// </summary>
+	const string SECTION_START_ANCHOR = "%% grimoire begin";
+
+	/// <summary>
+	/// Terminates a section opened with SECTION_START_ANCHOR
+	/// </summary>
+	const string SECTION_END_ANCHOR = "%% grimoire end";
+
+	const string DOC_START = @"\begin{document}";
+	const string DOC_END = @"\end{document}";
+
+	/// <summary>
+	/// If this is given as source, use that code snippet to learn macros instead of extracting spells
+	/// </summary>
+	public const string MACROS_SOURCE_NAME = "macros";
+
 	public void LearnMacros(IEnumerable<string> source)
 		=> learnMacros(collect(tokenize(source)));
+
+	/// <summary>
+	/// Extracts all code segments in a file.
+	/// Code segments are either enclosed by SECTION_START_ANCHOR and SECTION_END_ANCHOR, or DOC_START and DOC_END.
+	/// When the anchors are used, multiple segments may be returned
+	/// </summary>
+	public static IEnumerable<(string source, IEnumerable<string> code)> CodeSegments(string[] lines, string src)
+	{
+		var opens = lines.Indexed()
+			.Where(xi => xi.value.StartsWith(SECTION_START_ANCHOR))
+			.Select(xi => xi.index);
+
+		if(opens.Any()) foreach(var o in opens)
+		{
+			var nSrc = lines[o].Substring(SECTION_START_ANCHOR.Length).Trim();
+
+			if(string.IsNullOrWhiteSpace(nSrc))
+				nSrc = src;
+
+			yield return (nSrc, lines
+				.Skip(o + 1)
+				.TakeWhile(x => !x.StartsWith(SECTION_END_ANCHOR)));
+		}
+		else
+			yield return (src, lines
+				.StartedWith(DOC_START)
+				.EndedBy(DOC_END)
+				.EndedBy(SECTION_END_ANCHOR));
+	}
 
 	internal Spell ExtractSpell(IEnumerable<string> lines, string source)
 	{
