@@ -7,7 +7,7 @@ public class Program
 	public const string USAGE =
 @"USAGE: {0} [<books.json>] [sources...]
 Where a source is one of:
-	latex [<latex.json>] [[source name] [input.tex] ...]
+	latex [<latex.json>] [[book id] [input.tex ...] ...]
 	overleaf [<overleaf.json>]
 	dnd-wiki
 If a json config file is not specified as an argument, the working directory is searched for the listed filename.
@@ -51,18 +51,20 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 					else
 						v = v.Slice(1);
 
-					if(v.Count == 0 || v.Count % 2 == 1)
+					if(v.Count == 0 || !bookNames.Contains(v[0]))
 						goto usage;
 
+					var book = v[0];
 					var files = new List<(string src, string file)>();
 
-					while(v.Count >= 2)
-					{
-						if(!bookNames.Contains(v[0]))
-							goto usage;
+					v = v.Slice(1);
 
-						files.Add((v[0], v[1]));
-						v = v.Slice(2);
+					foreach (var a in v)
+					{
+						if(bookNames.Contains(a))
+							book = a;
+						else
+							files.Add((book, a));
 					}
 
 					sources.Add(new LatexFiles( LoadJson<Latex.Config>(cfgFile), files));
