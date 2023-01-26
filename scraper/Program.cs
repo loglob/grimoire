@@ -5,7 +5,7 @@ using static Util;
 public class Program
 {
 	public const string USAGE =
-@"USAGE: {0} [<sources.json>] [sources...]
+@"USAGE: {0} [<books.json>] [sources...]
 Where a source is one of:
 	latex [<latex.json>] [[source name] [input.tex] ...]
 	overleaf [<overleaf.json>]
@@ -24,7 +24,7 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 		if(offs.Length == 0 || offs[0] > 1)
 			goto usage;
 
-		SourceBook[] books = LoadJson<SourceBook[]>(offs[0] == 1 ? args[0] : "sources.json");
+		SourceBook[] books = LoadJson<SourceBook[]>(offs[0] == 1 ? args[0] : "books.json");
 		var bookNames = books.Select(b => b.shorthand).ToHashSet();
 		var sources = new List<ISource>();
 
