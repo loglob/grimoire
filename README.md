@@ -6,7 +6,7 @@ Contains two components, a **scraper** that compiles a spell database and a **we
 Compiles spells from various sources.
 
 The supported sources are:
-- The (dnd-wiki)[http://http://dnd5e.wikidot.com/]
+- The [dnd-wiki](http://http://dnd5e.wikidot.com/)
 - A local latex project
 - An overleaf instance
 
@@ -35,7 +35,7 @@ Processes files from an overleaf server.
 Within the project, every file marked with `%% grimoire include`, followed by a book ID, within the first 10 lines, is included and parsed as above.
 
 ## `dnd-wiki`
-Processes all spells found on the (dnd wiki)[http://dnd5e.wikidot.com].
+Processes all spells found on the [dnd-wiki](http://http://dnd5e.wikidot.com/).
 
 ## Configuration
 Configuration is given by multiple json files in these formats:
