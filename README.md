@@ -11,13 +11,13 @@ The supported sources are:
 - An overleaf instance
 
 ## Usage
-Running `dotnet run [<books.json>] [sources...]` from the scraper directory processes all listed sources and outputs a spell database in the `./dbs/` directory.
+Running `dotnet run [<books.json>] [sources...]` from the scraper directory processes all listed sources and outputs a spell database in the `./db/` directory.
 
 When a `.json` argument is listed, a path to a json file containing a configuration as described below is expected.
 If omitted, the listed filename is searched in the working directory.
 
 Possible sources are:
-### `latex [<latex.json>] [[book id] [input.tex ...] ...]`
+### latex `[<latex.json>] [[book id] [input.tex ...] ...]`
 Processes local LaTeX files using the given configuration.
 
 The given book ID sets which source spells found in the following files are listed under, and must be a shorthand from the books.json file, or the special `macros` ID.
@@ -30,11 +30,11 @@ A file may contain multiple such segments.
 
 Otherwise, the file contents between `\begin{document}` and `\end{document}` are searched for spells.
 
-## `overleaf [<overleaf.json>]`
+### overleaf `[<overleaf.json>]`
 Processes files from an overleaf server.
 Within the project, every file marked with `%% grimoire include`, followed by a book ID, within the first 10 lines, is included and parsed as above.
 
-## `dnd-wiki`
+### dnd-wiki
 Processes all spells found on the [dnd-wiki](http://http://dnd5e.wikidot.com/).
 
 ## Configuration
@@ -62,5 +62,5 @@ An object with the fields
 
 # Website
 To compile the frontend, run `tsc` in the `website` directory.
-Then copy the `dbs` directory into `website/www/`.
+Then copy the `db` directory into `website/www/`.
 Then, start any webserver on the `website/www/` directory.

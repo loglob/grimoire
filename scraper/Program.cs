@@ -11,7 +11,7 @@ Where a source is one of:
 	overleaf [<overleaf.json>]
 	dnd-wiki
 If a json config file is not specified as an argument, the working directory is searched for the listed filename.
-Each of the listed sources is searched for DnD spells and the compiled databases are outputted in ./dbs/
+Each of the listed sources is searched for DnD spells and the compiled databases are outputted in ./db/
 ";
 
 	public static async Task<int> Main(string[] args)
@@ -113,18 +113,18 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 
 		int total = 0;
 
-		Directory.CreateDirectory("./dbs");
+		Directory.CreateDirectory("db");
 		foreach (var kvp in spellsByBook)
 		{
 			total += kvp.Value.Count;
 
 			if(kvp.Value.Any())
-				kvp.Value.StoreJson($"./dbs/{kvp.Key}.json");
+				kvp.Value.StoreJson($"db/{kvp.Key}.json");
 			else
 				Console.Error.WriteLine($"[Warn] No spells for source '{kvp.Key}'");
 		}
 
-		books.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("./dbs/index.json");
+		books.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("db/index.json");
 		Console.WriteLine($"Done. Found {total} spells.");
 
 		return 0;
