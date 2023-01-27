@@ -53,5 +53,10 @@
 		"fullName": "Guildmaster's Guide to Ravnica",
 		"shorthand": "GGR",
 		"alts": [ "Ravnica" ]
+	},
+	{
+		"fullName": "Spelljammer: Adventures in Space",
+		"shorthand": "SAS",
+		"alts": [ "Spelljammer: Adventures in Space - Astral Adventurer's Guide" ]
 	}
 ]
