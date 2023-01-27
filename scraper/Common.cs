@@ -83,7 +83,7 @@ public static class Common
 		{
 			school = Enum.Parse<School>(lvlLine[1], true);
 			var spl = lvlLine[0].Split('-',2);
-			Util.AssertEqual("level", spl[1], "Bad level format");
+			Util.AssertEqual("level", spl[1].ToLower(), "Bad level format");
 			level = int.Parse(spl[0].Substring(0, spl[0].Length - 2));
 		}
 

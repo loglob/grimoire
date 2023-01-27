@@ -117,7 +117,7 @@ public class DndWiki : ISource
 				{
 					x.Clean();
 					string ahl = x.ChildNodes[0].InnerText.Trim().ToLower();
-					Util.AssertEqual("at higher levels", ahl.Length > 17 ? ahl : ahl.Substring(0, 16), "Bad upcast format");
+					Util.AssertEqual("at higher levels", ahl.Length < 16 ? ahl : ahl.Substring(0, 16), "Bad upcast format");
 					x.ChildNodes.RemoveAt(0);
 				}
 				return x;
