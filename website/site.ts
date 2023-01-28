@@ -103,7 +103,7 @@ function initUI()
 
 	document.getElementById("create-list").onclick = _ => {
 		const sl : Spells.SpellList = {
-			filter : Table.getFilter(),
+			filter : Spells.toFilter(Table.searchField.value),
 			sources : selectedSources(),
 			prepared : []
 		}
@@ -196,15 +196,21 @@ async function initListUI()
 		return [td];
 	};
 
-	for (const src of list.sources)
-	{
-		var spells = await Spells.getFrom(src)
+	const spells = (await Promise.all(list.sources.map(Spells.getFrom))).flat();
+	const inclSpell = function(s : Spell) { return Spells.match(list.filter, s) || preparedSet.has(s.name) }
 
-		if(!spells)
-			console.error(`No such source: ${src}`)
-		else
-			Table.insert(spells.filter(s => Spells.match(list.filter, s)));
-	}
+	Table.insert(spells.filter(inclSpell));
 
 	Table.init();
+
+	{
+		const gs = document.getElementById("global-search") as HTMLInputElement
+
+		gs.onchange = _ => {
+			if(gs.checked)
+				Table.insert(spells.filter(s => !inclSpell(s)));
+			else
+				Table.filter(s => !inclSpell(s))
+		}
+	}
 }

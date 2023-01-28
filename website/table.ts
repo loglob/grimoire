@@ -52,10 +52,7 @@ namespace Table
 		searchField = document.getElementById("search-field") as HTMLInputElement;
 
 		searchField.oninput = _ => {
-			state.filter = searchField.value
-				.split(';').map(x => x
-					.split('|').map(y => y
-						.split(',').map(z => z.toLowerCase().split(/\s+/).filter(x => x.length).join(' '))));
+			state.filter = Spells.toFilter(searchField.value)
 			reset(false);
 		};
 
@@ -197,11 +194,5 @@ namespace Table
 			t.appendChild(toRow(s));
 
 		updateCount();
-	}
-
-	/** Returns the parsed filter */
-	export function getFilter() : string[][][]
-	{
-		return state.filter
 	}
 }

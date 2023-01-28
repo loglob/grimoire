@@ -53,6 +53,15 @@ namespace Spells
 			)	)	);
 	}
 
+	/** Normalizes a query to a filter. Resolved operators, squeezes whitespace and converts to lowercase. */
+	export function toFilter(query : string) : string[][][]
+	{
+		return query
+			.split(';').map(x => x
+				.split('|').map(y => y
+					.split(',').map(z => z.toLowerCase().split(/\s+/).filter(x => x.length).join(' '))));
+	}
+
 	/**
 	 * @param source A source id returned by getSources()
 	 * @returns The spells of that source
