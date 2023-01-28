@@ -158,7 +158,8 @@ async function initListUI()
 {
 	const list = loadSpellList();
 	var preparedSet = new Set(list.prepared);
-	console.log(list)
+
+	document.title += `: ${list.name}`;
 
 	{
 		const nameField = document.getElementById("list-name") as HTMLInputElement;
