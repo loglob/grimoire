@@ -23,6 +23,9 @@
 				<span class="code">upcast</span>, which match if a spell has an upcast
 			</li>
 			<li>
+				<span class="code">selected</span>, which match if a spell is selected (only on spell list page)
+			</li>
+			<li>
 				<span class="code">L</span> which matches the spell's level against a value or range.
 				For example, <span class="code">L3</span> matches 3rd level spells, and <span class="code">L6-9</span> spells of 6th through 9th level.
 			</li>
@@ -52,7 +55,7 @@
 		</ul>
 		Even if one of these cases match, all others are tried anyways.
 		In particular, any term used is tested against the spells' names.
-        The same applies to how <span class="code">!</span> search terms are matched. 
+        The same applies to how <span class="code">!</span> search terms are matched.
 	<br/>
 		All search terms are case-insensitive and any whitespace is trimmed and squeezed.
 	</body>

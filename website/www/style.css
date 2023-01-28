@@ -31,12 +31,12 @@
 	background-color: #ddd;
 }
 
-#spells tr td:not(:first-child)
+#spells tr td:not(.left)
 {
 	text-align: center;
 }
 
-#spells-header th:first-child
+.left
 {
 	text-align: left;
 }
@@ -86,9 +86,13 @@ ul
     margin-bottom: 4px;
 }
 
-#static-link
+#spell-count
 {
-	margin-left: 25%;
+	margin-right: 25%;
+}
+
+button
+{
 	padding-left: .5%;
 	padding-right: .5%;
 	cursor: pointer;

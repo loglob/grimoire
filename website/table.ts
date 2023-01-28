@@ -11,6 +11,8 @@ namespace Table
 	/** The headers of the spell table, in order */
 	const headers : (keyof Spell)[] = [ "name", "level", "school", "castingTime", "ritual", "concentration", "source" ];
 
+	export var customRowElements : (s : Spell) => HTMLTableCellElement[] = null
+
 	/** Initializes the table with the known headers, and sets up the search-field text input to filter the table */
 	export function init(q : string|null = null)
 	{
@@ -75,10 +77,11 @@ namespace Table
 	function toRow(spell : Spell) : HTMLTableRowElement
 	{
 		var row = document.createElement("tr");
-		let td = (x : string) => {
-			let c = document.createElement("td");
-			c.innerText = x;
-			row.appendChild(c);
+
+		if(customRowElements)
+		{
+			for (const cell of customRowElements(spell))
+				row.appendChild(cell);
 		}
 
 		{
@@ -87,7 +90,14 @@ namespace Table
 			link.href=`details.html?from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`;
 			link.innerText = spell.name;
 			cell.appendChild(link);
+			cell.classList.add("left");
 			row.appendChild(cell);
+		}
+
+		let td = (x : string) => {
+			let c = document.createElement("td");
+			c.innerText = x;
+			row.appendChild(c);
 		}
 
 		td(spell.level.toString());
@@ -187,5 +197,11 @@ namespace Table
 			t.appendChild(toRow(s));
 
 		updateCount();
+	}
+
+	/** Returns the parsed filter */
+	export function getFilter() : string[][][]
+	{
+		return state.filter
 	}
 }

@@ -3,24 +3,21 @@
 	<head>
 		<script src="js/site.js"></script>
 		<script>
-			window.onload = _ => initUI();
+			window.onload = _ => initListUI();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 	</head>
 	<body>
-		<div id="source-selector">
-			<div id="source-selector-placeholder">
-				Loading
-				<embed height="5" src="loading.svg"></embed>
-			</div>
-		</div>
+		<input type="text" autocomplete="off" id="list-name">
+	<br/>
         <input type="text" value="" autocomplete="off" placeholder="Search..." id="search-field">
         <a href="search-help.html" target="_blank">&#128712;</a>
         <span class="subtle" id="spell-count">Found 0 spells</span>
-		<button id="static-link" title="Copy static link to selection">&#128279;</button>
-		<button id="create-list" title="Create new spell list">&#128213;</button>
+		<!--<label for="global-search">Search globally?</label>
+		<input type="checkbox" autocomplete="off" id="global-search" name="global-search">-->
 		<table id="spells">
 			<tr id="spells-header">
+				<th> <!--<input type="checkbox" id="prepare-all">--> </th>
 				<th class="left" id="name-header"> Spell </th>
 				<th id="level-header"> Level </th>
 				<th id="school-header"> School </th>

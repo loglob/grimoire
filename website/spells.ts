@@ -13,6 +13,8 @@ namespace Spells
 		statBlock : string|null
 	}
 
+	export var isPrepared : (s : Spell) => boolean = null
+
 	function spellMatchesTerm(term : string, s : Spell) : boolean
 	{
 		const lim = (term[0] === 'l')
@@ -27,6 +29,7 @@ namespace Spells
 			|| (s.ritual && term === "ritual")
 			|| (s.concentration && term === "concentration")
 			|| (s.upcast && term === "upcast")
+			|| (isPrepared && term === "prepared" && isPrepared(s))
 			|| (term[0] === '\\' && s.name.toLowerCase() === term.substring(1))
 			|| (lim.length == 1 && lim[0] == s.level)
 			|| (lim.length == 2 && lim[0] <= s.level && s.level <= lim[1]);
@@ -40,7 +43,6 @@ namespace Spells
 	 */
 	export function match(filter : string[][][], s : Spell) : boolean
 	{
-
 		return filter
 			.every(x => x
 				.some(y => y
@@ -50,7 +52,6 @@ namespace Spells
 							: spellMatchesTerm(z, s)
 			)	)	);
 	}
-
 
 	/**
 	 * @param source A source id returned by getSources()

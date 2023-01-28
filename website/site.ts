@@ -21,6 +21,15 @@ function setHidden(element : HTMLElement, hide : boolean)
 	element.style.display = hide ? "none" : "initial";
 }
 
+/** Switches location pathname, and also clears hash and parameters
+ * @param newPath The new path. Not escaped in any way.
+*/
+function switchPath(newPath : string)
+{
+	window.location.href = `${window.location.protocol}//${window.location.host}${newPath[0] == '/' ? "" : "/"}${newPath}`;
+}
+
+/** Maps book IDs onto canonical titles */
 let sources : { [id: string] : string } = {}
 
 /** Looks up existing sources and inserts them into the source selector
@@ -68,6 +77,12 @@ async function loadSources(preload : string[])
 	}
 }
 
+function selectedSources() : string[]
+{
+	return Object.keys(sources)
+		.filter(id => (document.getElementById(`source_${id}`) as HTMLInputElement).checked);
+}
+
 function initUI()
 {
 	const p = new URLSearchParams(window.location.search);
@@ -85,4 +100,111 @@ function initUI()
 		navigator.clipboard.writeText(url)
 		return false;
 	}
+
+	document.getElementById("create-list").onclick = _ => {
+		const sl : Spells.SpellList = {
+			filter : Table.getFilter(),
+			sources : selectedSources(),
+			prepared : []
+		}
+		const name = prompt("Name for spell list?");
+
+		if(!name)
+			return;
+
+		window.localStorage.setItem(name, JSON.stringify(sl));
+		switchPath(`list.html#${name}`)
+	}
+}
+
+/** Loads the spell list from the URL fragment. Also sets the list-name HTML element. */
+function loadSpellList() : Spells.SpellList & { name : string }
+{
+	if(!window.location.hash)
+		window.location.pathname = "/";
+
+	const name = window.location.hash.substring(1);
+	const listJson = window.localStorage.getItem(name)
+
+	if(listJson === null)
+	{
+		// maybe handle via a custom html page instead, to serve an actual error code
+		alert("That spell list doesn't exist! Did you clear browser data?");
+		switchPath("/")
+	}
+
+	const list = JSON.parse(listJson) as Spells.SpellList;
+
+	return {
+		sources: list.sources,
+		prepared : list.prepared,
+		filter : list.filter,
+		name : name
+	}
+}
+
+function storeWith(list : Spells.SpellList & { name : string }, prepared : Iterable<string>|ArrayLike<string>)
+{
+	const newList : Spells.SpellList = {
+		filter : list.filter,
+		sources : list.sources,
+		prepared : Array.from(prepared)
+	}
+
+	window.localStorage.setItem(list.name, JSON.stringify(newList))
+}
+
+async function initListUI()
+{
+	const list = loadSpellList();
+	var preparedSet = new Set(list.prepared);
+	console.log(list)
+
+	{
+		const nameField = document.getElementById("list-name") as HTMLInputElement;
+		nameField.value = list.name;
+		nameField.readOnly = true; // TODO editable list name
+	}
+
+	Spells.isPrepared = x => preparedSet.has(x.name);
+
+	// TODO select all
+	Table.customRowElements = s => {
+		const inp = document.createElement("input")
+		inp.type = "checkbox"
+		inp.checked = preparedSet.has(s.name)
+		inp.onclick = _ => {
+			if(preparedSet.has(s.name))
+			{
+				preparedSet.delete(s.name);
+				inp.checked = false;
+			}
+			else
+			{
+				preparedSet.add(s.name);
+				inp.checked = true;
+			}
+
+			console.log(preparedSet);
+			// eager writeback for now
+			storeWith(list, preparedSet)
+		}
+
+		const td = document.createElement("td");
+		td.appendChild(inp);
+
+		return [td];
+	};
+
+	for (const src of list.sources)
+	{
+		var spells = await Spells.getFrom(src)
+
+		if(!spells)
+			console.error(`No such source: ${src}`)
+		else
+			Table.insert(spells.filter(s => Spells.match(list.filter, s)));
+	}
+
+	Table.init();
 }
