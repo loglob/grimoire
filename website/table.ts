@@ -2,15 +2,17 @@ import Spell = Spells.Spell;
 
 namespace Table
 {
+	export var searchField : HTMLInputElement;
+
 	/** The state of the table */
-	export let state : { sortOn: keyof Spell, reverse: boolean, filter: string[][][], spells : Spell[], display : Spell[] }
+	let state : { sortOn: keyof Spell, reverse: boolean, filter: string[][][], spells : Spell[], display : Spell[] }
 		= { sortOn: "level", reverse: true, filter: [], spells: [], display: [] };
 
 	/** The headers of the spell table, in order */
 	const headers : (keyof Spell)[] = [ "name", "level", "school", "castingTime", "ritual", "concentration", "source" ];
 
-	/** Initializes the table with the known headers */
-	export function init()
+	/** Initializes the table with the known headers, and sets up the search-field text input to filter the table */
+	export function init(q : string|null = null)
 	{
 		const UP_ARROW = "\u2191";
 		const DOWN_ARROW = "\u2193"
@@ -43,6 +45,22 @@ namespace Table
 				reset();
 				return false;
 			}
+		}
+
+		searchField = document.getElementById("search-field") as HTMLInputElement;
+
+		searchField.oninput = _ => {
+			state.filter = searchField.value
+				.split(';').map(x => x
+					.split('|').map(y => y
+						.split(',').map(z => z.toLowerCase().split(/\s+/).filter(x => x.length).join(' '))));
+			reset(false);
+		};
+
+		if(q)
+		{
+			searchField.value = q;
+			searchField.oninput(null)
 		}
 	}
 
@@ -154,7 +172,7 @@ namespace Table
 	}
 
 	/** Re-sorts and re-filters the table and rebuilds the displayed table from scratch. */
-	export function reset(resort : boolean = true) : void
+	function reset(resort : boolean = true) : void
 	{
 		if(resort)
 			state.spells.sort(compareSpell);

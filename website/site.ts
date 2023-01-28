@@ -73,32 +73,14 @@ function initUI()
 	const p = new URLSearchParams(window.location.search);
 	loadSources(p.getAll("from"));
 
-	Table.init();
-
-	const sf = document.getElementById("search-field") as HTMLInputElement;
-
-	sf.oninput = _ => {
-		Table.state.filter = sf.value
-			.split(';').map(x => x
-				.split('|').map(y => y
-					.split(',').map(z => z.toLowerCase().split(/\s+/).filter(x => x.length).join(' '))));
-		Table.reset(false);
-	};
-
-	const q = p.get("q");
-
-	if(q)
-	{
-		sf.value = q;
-		sf.oninput(null)
-	}
+	Table.init(p.get("q"));
 
 	document.getElementById("static-link").onclick = _ => {
 		const fs = Object.keys(sources)
 			.filter(x => (document.getElementById(`source_${x}`) as HTMLInputElement)?.checked)
 			.map(x => `from=${encodeURIComponent(x)}`)
 			.join('&');
-		const url = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(sf.value)}${fs.length ? '&' : ''}${fs}`;
+		const url = `${window.location.origin}${window.location.pathname}?q=${encodeURIComponent(Table.searchField.value)}${fs.length ? '&' : ''}${fs}`;
 		console.log(url);
 		navigator.clipboard.writeText(url)
 		return false;
