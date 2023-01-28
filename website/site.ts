@@ -204,13 +204,25 @@ async function initListUI()
 	Table.init();
 
 	{
-		const gs = document.getElementById("global-search") as HTMLInputElement
+		const globalSearch = document.getElementById("global-search") as HTMLInputElement;
 
-		gs.onchange = _ => {
-			if(gs.checked)
+		// this would be nicer if integrated into the table logic as a sort of multi-level filter
+		globalSearch.onchange = _ => {
+			if(globalSearch.checked)
 				Table.insert(spells.filter(s => !inclSpell(s)));
 			else
-				Table.filter(s => !inclSpell(s))
+				Table.filter(s => !inclSpell(s));
+		}
+	}
+
+	{
+		const downloadList = document.getElementById("download-list") as HTMLButtonElement;
+
+		downloadList.onclick = _ => {
+			var x : Blob = new Blob( [window.localStorage.getItem(list.name)], { type: "application/json" } );
+			var url = URL.createObjectURL(x);
+			window.open(url);
+			window.setTimeout(() => URL.revokeObjectURL(url), 10000);
 		}
 	}
 }
