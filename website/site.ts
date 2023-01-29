@@ -21,14 +21,6 @@ function setHidden(element : HTMLElement, hide : boolean)
 	element.style.display = hide ? "none" : "initial";
 }
 
-/** Switches location pathname, and also clears hash and parameters
- * @param newPath The new path. Not escaped in any way.
-*/
-function switchPath(newPath : string)
-{
-	window.location.href = `${window.location.protocol}//${window.location.host}${newPath[0] == '/' ? "" : "/"}${newPath}`;
-}
-
 /** Maps book IDs onto canonical titles */
 let sources : { [id: string] : string } = {}
 
@@ -113,7 +105,7 @@ function initUI()
 			return;
 
 		window.localStorage.setItem(name, JSON.stringify(sl));
-		switchPath(`list.html#${name}`)
+		window.location.href = `list.html#${name}`
 	}
 }
 
@@ -121,7 +113,7 @@ function initUI()
 function loadSpellList() : Spells.SpellList & { name : string }
 {
 	if(!window.location.hash)
-		window.location.pathname = "/";
+		window.location.href = "index.html";
 
 	const name = window.location.hash.substring(1);
 	const listJson = window.localStorage.getItem(name)
@@ -130,7 +122,7 @@ function loadSpellList() : Spells.SpellList & { name : string }
 	{
 		// maybe handle via a custom html page instead, to serve an actual error code
 		alert("That spell list doesn't exist! Did you clear browser data?");
-		switchPath("/")
+		window.location.href = "index.html";
 	}
 
 	const list = JSON.parse(listJson) as Spells.SpellList;
@@ -201,7 +193,6 @@ async function initListUI()
 	const inclSpell = function(s : Spell) { return Spells.match(list.filter, s) || preparedSet.has(s.name) }
 
 	Table.insert(spells.filter(inclSpell));
-
 	Table.init();
 
 	{
