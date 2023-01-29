@@ -51,6 +51,9 @@ internal static class Util
 
 	private static void clean(HtmlNode node)
 	{
+		if(node.Name == "a")
+			node.ParentNode.RemoveChild(node, true);
+
 		for (int i = node.ChildNodes.Count; i-- > 0;)
 		{
 			var c = node.ChildNodes[i];
