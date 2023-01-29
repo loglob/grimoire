@@ -26,6 +26,9 @@ namespace Spells
 			|| s.school.toLowerCase() === term
 			|| s.castingTime.toLowerCase() === term
 			|| s.duration.toLowerCase() === term
+			|| (s.verbal && term === "verbal")
+			|| (s.somatic && term === "somatic")
+			|| (s.materials && term === "materials")
 			|| (s.ritual && term === "ritual")
 			|| (s.concentration && term === "concentration")
 			|| (s.upcast && term === "upcast")
