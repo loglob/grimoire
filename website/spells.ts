@@ -28,7 +28,9 @@ namespace Spells
 			|| s.duration.toLowerCase() === term
 			|| (s.verbal && term === "verbal")
 			|| (s.somatic && term === "somatic")
-			|| (s.materials && term === "materials")
+			|| (s.materials && term === "material")
+			|| (term === "$$" && s.materials && /[1-9][0-9,]+\s*gp/i.test(s.materials))
+			|| (term[0] === '$' && s.materials && s.materials.toLowerCase().includes(term.substring(1)))
 			|| (s.ritual && term === "ritual")
 			|| (s.concentration && term === "concentration")
 			|| (s.upcast && term === "upcast")
