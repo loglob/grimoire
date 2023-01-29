@@ -34,6 +34,10 @@ Otherwise, the file contents between `\begin{document}` and `\end{document}` are
 Processes files from an overleaf server.
 Within the project, every file marked with `%% grimoire include`, followed by a book ID, within the first 10 lines, is included and parsed as above.
 
+### copy `[input.json ...]`
+Directly copy spells from the given database files.
+Expected to be in the same json format that the scraper outputs.
+
 ### dnd-wiki
 Processes all spells found on the [dnd-wiki](http://http://dnd5e.wikidot.com/).
 
