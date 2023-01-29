@@ -10,7 +10,7 @@ Where a source is one of:
 	latex [<latex.json>] [[book id] [input.tex ...] ...]
 	overleaf [<overleaf.json>]
 	dnd-wiki
-	copy [input.json ...]
+	copy [copy.json ...]
 If a json config file is not specified as an argument, the working directory is searched for the listed filename.
 Each of the listed sources is searched for DnD spells and the compiled databases are outputted in ./db/
 ";
@@ -38,7 +38,7 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 			switch(v[0])
 			{
 				case "copy":
-					sources.Add(new Copy(v.Skip(1)));
+					sources.Add(new Copy(v.Count < 2 ? new[]{ "copy.json" } : v.Slice(1)));
 				continue;
 
 				case "latex":
