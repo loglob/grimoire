@@ -35,14 +35,17 @@ public class Overleaf : ISource
 	/// When encountered in the first 10 lines of an overleaf document, scrapes that file for spells.
 	/// Optionally followed by a source name.
 	/// </summary>
-	const string ANCHOR = "%% grimoire include";
+	const string INCLUDE_ANCHOR = "%% grimoire include";
 
-
+	/// <summary>
+	/// Retrieves all code segments from multiple documents.
+	/// Filters out documents without an INCLUDE_ANCHOR
+	/// </summary>
 	internal static IEnumerable<(string source, IEnumerable<string> code)> GetCode(IEnumerable<Document> docs)
 		=> docs.SelectWith(d => d.Lines
 				.Take(10)
-				.FirstOrDefault(x => x.StartsWith(ANCHOR))
-				?.Substring(ANCHOR.Length)
+				.FirstOrDefault(x => x.StartsWith(INCLUDE_ANCHOR))
+				?.Substring(INCLUDE_ANCHOR.Length)
 				?.Trim())
 			.Where(x => !(x.Item2 is null))
 			.SelectMany(x => (x.Item2 is string src)
@@ -69,5 +72,4 @@ public class Overleaf : ISource
 			yield return s;
 
 	}
-
 }

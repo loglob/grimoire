@@ -4,6 +4,9 @@ using HtmlAgilityPack;
 
 internal static class Util
 {
+	/// <summary>
+	/// Loads an JSON formatted object from a file
+	/// </summary>
 	public static T LoadJson<T>(string filename)
 	{
 		using(var f = File.OpenText(filename))
@@ -18,18 +21,33 @@ internal static class Util
 		}
 	}
 
+	/// <summary>
+	/// Stores an object as JSON in a file
+	/// </summary>
 	public static void StoreJson<T>(this T obj, string filename)
 	{
 		using(var f = File.CreateText(filename))
 			new JsonSerializer().Serialize(f, obj);
 	}
 
+	/// <summary>
+	/// Asserts that two values are equal. Throws if that is now the case.
+	/// </summary>
+	/// <param name="a"> The expected value </param>
+	/// <param name="b"> The actual value </param>
+	/// <param name="message"> An error message to print </param>
 	public static void AssertEqual<T>(T a, T b, string message)
 	{
 		if(! EqualityComparer<T>.Default.Equals(a, b))
 			throw new Exception($"{message}: Expected {a}, got {b}");
 	}
 
+	/// <summary>
+	/// Splits an enumerable by a predicate
+	/// </summary>
+	/// <param name="ls"> The source enumerable </param>
+	/// <param name="pred"> If true, discard that value and insert a break </param>
+	/// <param name="noEmpty"> If true, discard any empty values </param>
 	public static IEnumerable<T[]> SplitBy<T>(this IEnumerable<T> ls, Func<T,bool> pred, bool noEmpty = false)
 	{
 		var cur = new List<T>();
@@ -49,6 +67,11 @@ internal static class Util
 			yield return cur.ToArray();
 	}
 
+	/// <summary>
+	/// Cleans a HtmlNode.
+	/// Deletes and flattens <a> nodes and erases empty #text nodes.
+	/// Traverses entire node tree.
+	/// </summary>
 	private static void clean(HtmlNode node)
 	{
 		if(node.Name == "a")
@@ -65,6 +88,10 @@ internal static class Util
 		}
 	}
 
+	/// <summary>
+	/// Normalizes whitespace in HTML node.
+	/// Also deletes and flattens <a> nodes.
+	/// </summary>
 	public static void Clean(this HtmlNode node)
 	{
 		node.InnerHtml = string.Join(' ',
@@ -73,9 +100,10 @@ internal static class Util
 		clean(node);
 	}
 
-	public static IEnumerable<T> Squeeze<T>(this IEnumerable<T> ls)
-		=> ls.Squeeze(EqualityComparer<T>.Default);
-
+	/// <summary>
+	/// Discards any adjacent, equal elements.
+	/// Yields and compares against the first element of a group.
+	/// </summary>
 	public static IEnumerable<T> Squeeze<T>(this IEnumerable<T> ls, IEqualityComparer<T> comp)
 	{
 		T? last = default;
@@ -91,6 +119,19 @@ internal static class Util
 		}
 	}
 
+	/// <summary>
+	/// Discards any adjacent, equal elements.
+	/// Yields and compares against the first element of a group.
+	/// </summary>
+	public static IEnumerable<T> Squeeze<T>(this IEnumerable<T> ls)
+		=> ls.Squeeze(EqualityComparer<T>.Default);
+
+	/// <summary>
+	/// Either read from cache or run an async computation.
+	/// Writes a cache entry if the directory below cache exists.
+	/// </summary>
+	/// <param name="cache"> The file to load from. Read/Stored as JSON. </param>
+	/// <param name="task"> How to compute a result if the cache doesn't exist or is invalid. </param>
 	public static async Task<T> Cached<T>(string cache, Func<Task<T>> task)
 	{
 		if(File.Exists(cache))
@@ -112,6 +153,16 @@ internal static class Util
 		return ret;
 	}
 
+	/// <summary>
+	/// Run multiple computations that are cached part-by-part.
+	/// </summary>
+	/// <param name="cache"> The file to load from. Read/Stored as JSON dictionary. </param>
+	/// <param name="keys"> The list of input keys. Processed in-order. </param>
+	/// <param name="task"> How to compute a result if the cache doesn't exist or is invalid. </param>
+	/// <param name="progress">
+	/// 	A callback that is issued after every processed element.
+	/// 	Returns a name to print as progress report.
+	/// </param>
 	public static async IAsyncEnumerable<Tval> PartiallyCached<Tkey, Tval>(
 		string cache, IEnumerable<Tkey> keys, Func<Tkey, Task<Tval>> task, Func<Tkey, string>? progress = null)
 		where Tkey : notnull
@@ -173,9 +224,6 @@ internal static class Util
 	/// Extracts every span of lines that is started by s and ended by another occurrence of s or end of file.
 	/// s may also appear within a line
 	/// </summary>
-	/// <param name="text"></param>
-	/// <param name="s"></param>
-	/// <returns></returns>
 	public static IEnumerable<string[]> Spans(this IEnumerable<string> lines, string s)
 	{
 		List<string>? cur = null;
@@ -204,9 +252,15 @@ internal static class Util
 			yield return cur.ToArray();
 	}
 
+	/// <summary>
+	/// Associates each value with its index
+	/// </summary>
 	public static IEnumerable<(T value, int index)> Indexed<T>(this IEnumerable<T> values)
 		=> values.Select((x,i) => (x,i));
 
+	/// <summary>
+	/// Encapsulates two enumerators one after another
+	/// </summary>
 	private class ConcatEnumerator<T> : IEnumerator<T>
 	{
 		private readonly IEnumerator<T> first, second;
@@ -222,7 +276,9 @@ internal static class Util
 			=> inSecond ? second.Current : first.Current;
 
 		object IEnumerator.Current
+		#pragma warning disable CS8603
 			=> this.Current;
+		#pragma warning restore CS8603
 
 		public bool MoveNext()
 		{
@@ -249,9 +305,18 @@ internal static class Util
 		}
 	}
 
+	/// <summary>
+	/// Concatenation with an enumerator
+	/// </summary>
 	public static IEnumerator<T> FollowedBy<T>(this IEnumerable<T> ls, IEnumerator<T> after)
 		=> new ConcatEnumerator<T>(ls.GetEnumerator(), after);
 
+	/// <summary>
+	/// Looks for a deliminator in the enumerable.
+	/// If that deliminator is found, all text after it is yielded.
+	/// The deliminator may be in the middle of a line, and all text of that line after the deliminator is yielded.
+	/// If that deliminator is never found, forward the input enumerable.
+	/// </summary>
 	public static IEnumerable<string> StartedWith(this IEnumerable<string> xs, string delim)
 	{
 		bool got = false;
@@ -279,6 +344,11 @@ internal static class Util
 			yield return x;
 	}
 
+	/// <summary>
+	/// Complement of StartedWith().
+	/// Forwards the input enumerable until the given deliminator is found in any part of a line.
+	/// Also yields preceding parts of the ending line if they aren't empty or whitespace.
+	/// </summary>
 	public static IEnumerable<string> EndedBy(this IEnumerable<string> xs, string delim)
 	{
 		foreach (var x in xs)
@@ -299,6 +369,10 @@ internal static class Util
 		}
 	}
 
+	/// <summary>
+	/// Splits by deliminator over multiple lines, preserving line separators.
+	/// Trims around deliminator.
+	/// </summary>
 	public static IEnumerable<string[]> Split(this IEnumerable<string> xs, string delim)
 	{
 		var cur = new List<string>();
@@ -325,6 +399,11 @@ internal static class Util
 		yield return cur.ToArray();
 	}
 
+	/// <summary>
+	/// Trims an array from the left and the right
+	/// </summary>
+	/// <param name="arr"> The array to segment </param>
+	/// <param name="pred"> Whether to trim an element </param>
 	public static ArraySegment<T> Trim<T>(this T[] arr, Func<T,bool> pred)
 	{
 		int l;
@@ -342,6 +421,9 @@ internal static class Util
 		return new ArraySegment<T>(arr, l, r - l + 1);
 	}
 
+	/// <summary>
+	/// Looks up a human-readable book name.
+	/// </summary>
 	public static SourceBook FindSource(this SourceBook[] books, string source)
 	{
 		var b = books.Where(b => b.Matches(source)).ToArray();
@@ -354,6 +436,9 @@ internal static class Util
 			return b[0];
 	}
 
+	/// <summary>
+	/// Maps with a decorating function
+	/// </summary>
 	public static IEnumerable<(A,B)> SelectWith<A,B>(this IEnumerable<A> ls, Func<A,B> f)
 		=> ls.Select(x => (x, f(x)));
 
