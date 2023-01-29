@@ -217,11 +217,7 @@ async function initListUI()
 	{
 		const downloadList = document.getElementById("download-list") as HTMLButtonElement;
 
-		downloadList.onclick = _ => {
-			var x : Blob = new Blob( [window.localStorage.getItem(list.name)], { type: "application/json" } );
-			var url = URL.createObjectURL(x);
-			window.open(url);
-			window.setTimeout(() => URL.revokeObjectURL(url), 300000);
-		}
+		downloadList.onclick = _ =>
+			window.open(`data:application/json,${encodeURIComponent(window.localStorage.getItem(list.name))}`);
 	}
 }
