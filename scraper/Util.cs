@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.Collections;
-using System.Text;
 using Newtonsoft.Json;
 using HtmlAgilityPack;
 
@@ -24,21 +22,6 @@ internal static class Util
 	{
 		using(var f = File.CreateText(filename))
 			new JsonSerializer().Serialize(f, obj);
-	}
-
-	public static async Task<HtmlDocument> GetDocumentAsync(this HttpClient client, string url)
-	{
-		var doc = new HtmlDocument();
-
-		using(var r = await client.GetAsync(url))
-		{
-			r.EnsureSuccessStatusCode();
-
-			using(var s = await r.Content.ReadAsStreamAsync())
-				doc.Load(s);
-		}
-
-		return doc;
 	}
 
 	public static void AssertEqual<T>(T a, T b, string message)

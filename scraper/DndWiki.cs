@@ -1,24 +1,18 @@
-using System.Text;
 using HtmlAgilityPack;
 using static System.StringSplitOptions;
 
 public class DndWiki : ISource
 {
-	private HttpClient client = new HttpClient() { BaseAddress = new Uri("http://dnd5e.wikidot.com") };
+	private ScraperClient client = new ScraperClient("http://dnd5e.wikidot.com");
 	private SourceBook[] books;
 
 	public DndWiki(SourceBook[] books)
 		=> this.books = books;
 
-	/// <summary>
-	/// The minimum time between HTTP requests
-	/// </summary>
-	public int RateLimit { get; init; } = 200;
-
 	public Task<string[]> SpellNames()
 		=> Util.Cached("cache/wikidot_names", async () =>
 		{
-			var doc = await client.GetDocumentAsync("/spells");
+			var doc = await client.GetHtmlAsync("/spells");
 
 			return doc.DocumentNode
 				.Descendants("a")
@@ -35,7 +29,7 @@ public class DndWiki : ISource
 			.Where(c => c < 0x7F && c != '\'')
 			.Select(Char.ToLower)
 			.ToArray());
-		var doc = await client.GetDocumentAsync($"/spell:{cName}");
+		var doc = await client.GetHtmlAsync($"/spell:{cName}");
 
 		var content = doc.GetElementbyId("page-content");
 		content.Clean();
@@ -127,13 +121,7 @@ public class DndWiki : ISource
 	}
 
 	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
-		=> Util.PartiallyCached("cache/wikidot_spells", names, async (string n) =>
-		{
-			var timer = Task.Delay(RateLimit);
-			var x = await details(n);
-			await timer;
-			return x;
-		}, x => x);
+		=> Util.PartiallyCached("cache/wikidot_spells", names, async (string n) => await details(n), x => x);
 
 	public async IAsyncEnumerable<Spell> Spells()
 	{
