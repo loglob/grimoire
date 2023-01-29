@@ -33,7 +33,7 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 		for (int io = 0; io < offs.Length; io++)
 		{
 			var v = new ArraySegment<string>(args, offs[io],
-				((io + 1 >= offs.Length) ? offs.Length : offs[io + 1]) - offs[io]);
+				((io + 1 >= offs.Length) ? args.Length : offs[io + 1]) - offs[io]);
 
 			switch(v[0])
 			{
