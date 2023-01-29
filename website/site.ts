@@ -7,6 +7,13 @@ function loading()
 	return l;
 }
 
+function bold(txt : string) : HTMLElement
+{
+	const b = document.createElement("b");
+	b.innerText = txt;
+	return b;
+}
+
 /**
  * @returns The index showing all known sources
  */
@@ -214,7 +221,7 @@ async function initListUI()
 			var x : Blob = new Blob( [window.localStorage.getItem(list.name)], { type: "application/json" } );
 			var url = URL.createObjectURL(x);
 			window.open(url);
-			window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+			window.setTimeout(() => URL.revokeObjectURL(url), 300000);
 		}
 	}
 }

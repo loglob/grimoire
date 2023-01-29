@@ -71,19 +71,10 @@ public class DndWiki : ISource
 			return string.Join(' ', pr.Skip(1).Select(x => x.InnerText.Trim()));
 		};
 
-		string cTime;
-		string? reaction;
-		(cTime, reaction) = Common.maybeSplitOn(chkProb(props[0], "casting time"), ",");
-
+		(string cTime, string? reaction) = Common.maybeSplitOn(chkProb(props[0], "casting time"), ",");
 		string range = Common.parseParen(chkProb(props[1], "range")).Item1;
-
-		string components;
-		string? materials;
-		(components, materials) = Common.parseParen(chkProb(props[2], "components"));
-
-		bool concentration;
-		string duration;
-		(concentration, duration) = Common.parseDuration(chkProb(props[3], "duration"));
+		(bool verbal, bool somatic, string? materials) = Common.parseComponents(chkProb(props[2], "components"));
+		(bool concentration, string duration) = Common.parseDuration(chkProb(props[3], "duration"));
 
 		var rest = content.ChildNodes.Skip(4).SkipLast(1).ToList();
 		string? statBlock;
@@ -131,7 +122,7 @@ public class DndWiki : ISource
 		}
 
 		return new Spell(name, source, school, level, cTime, reaction, ritual, range,
-			components, materials, concentration, duration,
+			verbal, somatic, materials, concentration, duration,
 			desc, upcast, classes, statBlock);
 	}
 

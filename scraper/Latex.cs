@@ -663,7 +663,7 @@ public class Latex
 		var lsr = Common.parseLevel(props[1]);
 		var tr = Common.maybeSplitOn(props[2], ",");
 		var range = props[3];
-		var cm = Common.parseParen(props[4]);
+		var vsm = Common.parseComponents(props[4]);
 		var cd = Common.parseDuration(props[5]);
 		var classes = props[6].Split(new[]{' ', '\t', ','}, StringSplitOptions.RemoveEmptyEntries).ToArray();
 
@@ -677,7 +677,7 @@ public class Latex
 			lsr.school, lsr.level,
 			tr.left, tr.right, lsr.ritual,
 			range,
-			cm.Item1, cm.Item2,
+			vsm.verbal, vsm.somatic, vsm.material,
 			cd.concentration, cd.duration,
 			desc,
 			upcast,

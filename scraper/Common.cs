@@ -47,7 +47,7 @@ public readonly record struct Spell(
 	School school, int level,
 	string castingTime, string? reaction, bool ritual,
 	string range,
-	string components, string? materials,
+	bool verbal, bool somatic, string? materials,
 	bool concentration, string duration,
 	string description, string? upcast,
 	string[] classes,
@@ -120,6 +120,43 @@ public static class Common
 		else
 			return (conc, str);
 
+	}
+
+	public static (bool verbal, bool somatic, string? material) parseComponents(string text)
+	{
+		bool mat = false, verbal = false, somatic = false;
+		(string components, string? materials) = parseParen(text);
+
+		foreach (var comp in components.Split(',', StringSplitOptions.TrimEntries))
+		{
+			switch(comp.ToLower())
+			{
+				case "v":
+					Util.AssertEqual(false, verbal, $"Component {comp} is redundant");
+					verbal = true;
+				break;
+
+				case "s":
+					Util.AssertEqual(false, somatic, $"Component {comp} is redundant");
+					somatic = true;
+				break;
+
+				case "m":
+					Util.AssertEqual(false, mat, $"Component {comp} is redundant");
+					mat = true;
+				break;
+
+				default:
+					throw new FormatException($"Unexpected component: {comp}");
+			}
+		}
+
+		if(!mat)
+			Util.AssertEqual(null, materials, "Got materials despite no 'M' in components");
+		else if(materials is null)
+			throw new FormatException("Expected materials due to 'M' in components");
+
+		return (verbal, somatic, materials);
 	}
 
 	public static (string left, string? right) maybeSplitOn(string str, string sep)

@@ -19,7 +19,42 @@ async function spellDetails(from : string, spell : string)
         : `${sp.school} Cantrip`;
     document.getElementById("casting-time").innerText = sp.reaction ? `${sp.castingTime}, ${sp.reaction}` : sp.castingTime;
     document.getElementById("range").innerText = sp.range;
-    document.getElementById("components").innerText = sp.materials ? `${sp.components} (${sp.materials})` : sp.components;
+
+	{
+		console.log(sp);
+		const comp = document.getElementById("components");
+
+		comp.append((sp.verbal ? ["V"] : []).concat(sp.somatic ? ["S"] : []).join(", "));
+
+		if(sp.materials)
+		{
+			const costRegex = /[1-9][0-9,]+\s*gp/ig;
+			let nodes : (string|Node)[] = [];
+			let off = 0;
+			let expensive = false;
+
+			for(let match of Array.from(sp.materials.matchAll(costRegex)))
+			{
+				nodes.push(sp.materials.substring(off, match.index));
+				nodes.push(bold( match[0] ));
+				console.log(off, match, match.index + match[0].length);
+				off = match.index + match[0].length;
+				expensive = true;
+			}
+
+			nodes.push(sp.materials.substring(off));
+
+			const consume = sp.materials.toLowerCase().endsWith("consumes");
+
+
+			if(sp.verbal || sp.somatic)
+				comp.append(", ");
+
+			comp.append(expensive ? bold(consume ? "M*" : "M") : "M", " (");
+			comp.append(...nodes, ")");
+		}
+	}
+
     document.getElementById("duration").innerText = (sp.concentration ? "Concentration, up to " : "") + sp.duration;
     document.getElementById("classes").innerText = sp.classes.join(", ");
 

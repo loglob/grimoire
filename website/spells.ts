@@ -6,7 +6,7 @@ namespace Spells
 		school : string, level : number,
 		castingTime : string, reaction : string, ritual : boolean,
 		range : string,
-		components : string, materials : string|null,
+		verbal : boolean, somatic : boolean, materials : string|null,
 		concentration : boolean, duration : string,
 		description : string, upcast : string|null,
 		classes : string[],
