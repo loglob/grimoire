@@ -1,0 +1,57 @@
+[
+	{
+		"fullName": "Player's Handbook",
+		"shorthand": "PHB"
+	},
+	{
+		"fullName": "Xanathar's Guide to Everything",
+		"shorthand": "XGE"
+	},
+	{
+		"fullName": "Tasha's Cauldron of Everything",
+		"shorthand": "TCE"
+	},
+	{
+		"fullName": "Homebrew Sheet",
+		"shorthand": "HB",
+		"alts": [ "Homebrew" ]
+	},
+	{
+		"fullName": "Lost Laboratory of Kwalish",
+		"shorthand": "LLK"
+	},
+	{
+		"fullName": "Guildmaster's Guide to Ravnica",
+		"shorthand": "GGR",
+		"alts": [ "Ravnica" ]
+	},
+	{
+		"fullName": "Acquisitions Incorporated",
+		"shorthand": "AI",
+		"alts": [ "Acquisitions Inc." ]
+	},
+	{
+		"fullName": "Explorer's Guide to Wildemount",
+		"shorthand": "EGW",
+		"alts": [ "Wildemount" ]
+	},
+	{
+		"fullName": "Icewind Dale: Rime of the Frostmaiden",
+		"shorthand": "ID:RF"
+	},
+	{
+		"fullName": "Fizban's Treasury of Dragons",
+		"shorthand": "FTD",
+		"alts": [ "Fizban" ]
+	},
+	{
+		"fullName": "Strixhaven: A Curriculum of Chaos",
+		"shorthand": "SCC",
+		"alts": [ "Strixhaven" ]
+	},
+	{
+		"fullName": "Spelljammer: Adventures in Space",
+		"shorthand": "SAS",
+		"alts": [ "Spelljammer: Adventures in Space - Astral Adventurer's Guide" ]
+	}
+]
