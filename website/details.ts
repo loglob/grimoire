@@ -13,7 +13,9 @@ async function spellDetails(from : string, spell : string)
 {
     let sp = (await Spells.getFrom(from)).find(s => s.name.toLowerCase() === spell.toLowerCase());
 
-    document.getElementById("spell-name").innerText = sp.name;
+	document.title = sp.name;
+
+	document.getElementById("spell-name").innerText = sp.name;
     document.getElementById("level+class").innerText = sp.level
         ? `${ordinal(sp.level)}-level ${sp.school}`
         : `${sp.school} Cantrip`;
