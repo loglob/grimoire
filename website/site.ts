@@ -100,19 +100,64 @@ function initUI()
 		return false;
 	}
 
-	document.getElementById("create-list").onclick = _ => {
-		const sl : Spells.SpellList = {
-			filter : Spells.toFilter(Table.searchField.value),
-			sources : selectedSources(),
-			prepared : []
-		}
+	function makeSpellList(list : Spells.SpellList)
+	{
 		const name = prompt("Name for spell list?");
 
 		if(!name)
 			return;
 
-		window.localStorage.setItem(name, JSON.stringify(sl));
+		window.localStorage.setItem(name, JSON.stringify(list));
 		window.location.href = `list.html#${name}`
+	}
+
+	document.getElementById("create-list").onclick = _ => makeSpellList({
+		filter : Spells.toFilter(Table.searchField.value),
+		sources : selectedSources(),
+		prepared : []
+	});
+
+	async function filesToSpellList(files : FileList)
+	{
+		function isStringArray(dims : number, thing : any) : boolean
+		{
+			if(!Array.isArray(thing))
+				return false;
+
+			return thing.every(x => (dims > 1) ? isStringArray(dims - 1, x) : typeof(x) === "string");
+		}
+
+		if(!files || files.length != 1 || files[0].type != "application/json")
+			return;
+
+		const data = JSON.parse(await files[0].text());
+
+		if(!isStringArray(3, data.filter) || !isStringArray(1, data.sources) || !isStringArray(1, data.prepared))
+		{
+			alert("The given spell list is invalid");
+			return;
+		}
+
+		makeSpellList({ filter: data.filter as string[][][], sources: data.sources as string[], prepared : data.prepared as string[] });
+	}
+
+	{
+		const uploadButton = document.getElementById("faux-upload-list") as HTMLButtonElement;
+		const uploadInput = document.getElementById("upload-list") as HTMLInputElement;
+
+		uploadButton.onclick = _ => uploadInput.click();
+		uploadButton.ondragover = ev => ev.preventDefault();
+		uploadButton.ondrop = async ev => {
+			ev.preventDefault();
+
+			if(!ev.dataTransfer)
+				return;
+
+			await filesToSpellList(ev.dataTransfer.files);
+		}
+		uploadInput.oninput = async ev => {
+			await filesToSpellList(uploadInput.files);
+		}
 	}
 }
 

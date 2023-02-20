@@ -97,3 +97,8 @@ button
 	padding-right: .5%;
 	cursor: pointer;
 }
+
+#upload-list
+{
+	display: none;
+}
