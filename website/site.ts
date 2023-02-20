@@ -265,4 +265,11 @@ async function initListUI()
 		downloadList.onclick = _ =>
 			window.open(`data:application/json,${encodeURIComponent(window.localStorage.getItem(list.name))}`);
 	}
+
+	{
+		const cardView = document.getElementById("spell-card-view") as HTMLButtonElement;
+
+		cardView.onclick = _ =>
+			window.location.href = `cards.html#${list.name}`;
+	}
 }

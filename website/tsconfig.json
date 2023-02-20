@@ -11,6 +11,7 @@
 		"details.ts",
 		"site.ts",
 		"spells.ts",
+		"cards.ts",
 		"table.ts"
 	]
 }
