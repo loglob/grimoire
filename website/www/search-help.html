@@ -71,6 +71,11 @@
 				A spell's full name, prefixed by <span class="code">\</span>.
 				For example, <span class="code">\shield</span> matches <i>Shield</i> but not <i>Shield of Faith</i>.
 			</li>
+			<li>
+				Any part of a spell's description, prefixed by <span class="code">/</span>.
+				Prefixing with <span class="code">//</span> matches a single word verbatim instead.
+				Words may be separated by space, or any non-letter characters, both matches are attempted.
+			</li>
             <li>
                 Any of the above, prefixed with <span class="code">!</span>.
                 Matches only spells which aren't matched by the following search term.

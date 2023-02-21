@@ -19,6 +19,7 @@ namespace Spells
 	function spellMatchesTerm(term : string, s : Spell) : boolean
 	{
 		const term1 = term.substring(1);
+		const term2 = term.substring(2);
 		const lim = (term[0] === 'l')
 			? term1.split('-').map(x => Number.parseInt(x))
 			: [];
@@ -31,15 +32,18 @@ namespace Spells
 			|| (s.verbal && term === "verbal")
 			|| (s.somatic && term === "somatic")
 			|| (s.materials && term === "material")
-			|| (term === "$$" && s.materials && /[1-9][0-9,]+\s*gp/i.test(s.materials))
-			|| (term[0] === '$' && s.materials && s.materials.toLowerCase().includes(term1))
-			|| (term[0] === ':' && s.source.toLowerCase() === term1)
-			|| (term[0] === '#' && s.hint && s.hint.toLowerCase().includes(term1))
 			|| (s.ritual && term === "ritual")
 			|| (s.concentration && term === "concentration")
 			|| (s.upcast && term === "upcast")
 			|| (isPrepared && term === "prepared" && isPrepared(s))
+			|| (term[0] === '$' && s.materials && s.materials.toLowerCase().includes(term1))
+			|| (term[0] === ':' && s.source.toLowerCase() === term1)
+			|| (term[0] === '#' && s.hint && s.hint.toLowerCase().includes(term1))
+			|| (term[0] === '/' && (term[1] === '/'
+				? s.description.toLowerCase().split(/\s+/).some(w => w === term2 || w.split(/\W+/).includes(term2))
+				: s.description.toLowerCase().includes(term1)))
 			|| (term[0] === '\\' && s.name.toLowerCase() === term1)
+			|| (term === "$$" && s.materials && /[1-9][0-9,]+\s*gp/i.test(s.materials))
 			|| (lim.length == 1 && lim[0] == s.level)
 			|| (lim.length == 2 && lim[0] <= s.level && s.level <= lim[1]);
 	}
