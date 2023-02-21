@@ -80,5 +80,5 @@ async function spellDetails(from : string, spell : string)
     if(sp.upcast)
         document.getElementById("upcast").innerHTML = "<strong>At higher levels: </strong>" + sp.upcast;
 
-	document.getElementById("from").innerText = book;
+	document.getElementById("from").innerText = typeof sp.hint === "string" ? `${book} (${sp.hint})` : book;
 }

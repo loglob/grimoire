@@ -10,7 +10,8 @@ namespace Spells
 		concentration : boolean, duration : string,
 		description : string, upcast : string|null,
 		classes : string[],
-		statBlock : string|null
+		statBlock : string|null,
+		hint : string|null
 	}
 
 	export var isPrepared : (s : Spell) => boolean = null
