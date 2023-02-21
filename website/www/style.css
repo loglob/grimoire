@@ -136,3 +136,9 @@ button
 	color: #AAA;
 	width: 80%;
 }
+
+#from
+{
+	font-size: small;
+	font-style: italic;
+}

@@ -11,7 +11,23 @@ function ordinal(i : number) : string
 
 async function spellDetails(from : string, spell : string)
 {
+	let book = (await getSources())[from];
+
+	if(!book)
+	{
+		alert(`No source named ${from} exists!`);
+		window.location.href = "index.html";
+		return;
+	}
+
     let sp = (await Spells.getFrom(from)).find(s => s.name.toLowerCase() === spell.toLowerCase());
+
+	if(!sp)
+	{
+		alert(`No spell named ${spell} in source ${book}!`);
+		window.location.href = "index.html";
+		return;
+	}
 
 	document.title = sp.name;
 
@@ -63,4 +79,6 @@ async function spellDetails(from : string, spell : string)
     document.getElementById("description").innerHTML = sp.description + (sp.statBlock ? sp.statBlock : "");
     if(sp.upcast)
         document.getElementById("upcast").innerHTML = "<strong>At higher levels: </strong>" + sp.upcast;
+
+	document.getElementById("from").innerText = book;
 }
