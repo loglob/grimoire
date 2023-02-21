@@ -251,19 +251,33 @@ public class Latex
 	}
 
 	/// <summary>
-	/// Skips an optional argument. Stops on the first token after closing ]
+	///  Skips an optional argument. Stops on the first token after closing ].
 	/// </summary>
-	private bool skipOpt(IEnumerator<Token> tks)
+	/// <param name="arg">
+	///  The read optional argument.
+	///  Null if no optional argument is given.
+	///  If the closing ']' is missing, reads all available tokens.
+	/// </param>
+	/// <returns>
+	///  True if there are any tokens after the optional argument
+	/// </returns>
+	private bool skipOpt(IEnumerator<Token> tks, out List<Token>? arg)
 	{
+		arg = null;
+
 		if(!skipWS(tks))
 			return false;
 
 		if(tks.Current is Character c && c.chr == '[')
 		{
+			arg = new List<Token>();
+
 			while(tks.MoveNext())
 			{
 				if(tks.Current is Character e && e.chr == ']')
 					return tks.MoveNext();
+
+				arg.Add(tks.Current);
 			}
 
 			return false;
@@ -271,6 +285,9 @@ public class Latex
 		else
 			return true;
 	}
+
+	private bool skipOpt(IEnumerator<Token> tks)
+		=> skipOpt(tks, out var _);
 
 	/// <summary>
 	/// Retrieves an amount of arguments and advances the token position to their last value
@@ -654,7 +671,7 @@ public class Latex
 
 		var lPos = collect(expand(tokenize(sect[0]))).GetEnumerator();
 
-		if(!lPos.MoveNext() || !skipOpt(lPos))
+		if(!lPos.MoveNext() || !skipOpt(lPos, out var hint))
 			throw new FormatException("Empty spell");
 
 		var props = getArgs(lPos, 7).Select(untokenize).ToArray();
@@ -681,7 +698,9 @@ public class Latex
 			cd.concentration, cd.duration,
 			desc,
 			upcast,
-			classes, null
+			classes,
+			null,
+			hint is null ? null : untokenize(hint)
 		);
 	}
 

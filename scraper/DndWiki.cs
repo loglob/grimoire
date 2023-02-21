@@ -117,7 +117,7 @@ public class DndWiki : ISource
 
 		return new Spell(name, source, school, level, cTime, reaction, ritual, range,
 			verbal, somatic, materials, concentration, duration,
-			desc, upcast, classes, statBlock);
+			desc, upcast, classes, statBlock, null);
 	}
 
 	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)

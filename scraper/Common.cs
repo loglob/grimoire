@@ -42,6 +42,7 @@ public readonly record struct SourceBook(string fullName, string shorthand, stri
 	}
 }
 
+[JsonObject( ItemNullValueHandling = NullValueHandling.Ignore )]
 public readonly record struct Spell(
 	string name, string source,
 	School school, int level,
@@ -51,7 +52,8 @@ public readonly record struct Spell(
 	bool concentration, string duration,
 	string description, string? upcast,
 	string[] classes,
-	string? statBlock
+	string? statBlock,
+	string? hint
 );
 
 
