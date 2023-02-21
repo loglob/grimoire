@@ -1,92 +1,101 @@
-/** Generates a single spell card as a self-contained HTML element */
-function spellCard(spell : Spell) : HTMLElement
+/** Handles the cards.html UI */
+namespace Cards
 {
-	var div = document.createElement("div");
-	div.appendChild( document.createElement("hr") );
+	import bold = Util.bold
 
+	/** Generates a single spell card as a self-contained HTML element */
+	function spellCard(spell : Spell) : HTMLElement
 	{
-		var name = document.createElement("h3");
-		name.innerText = spell.name;
-		var school = document.createElement("p");
-		school.innerText = spell.school;
-
-		div.append(name, school);
-	}
-
-	{
-		var properties = document.createElement("p");
-
-		properties.append(
-			"Level: ",
-			bold( spell.level ? spell.level.toString() : "Cantrip" ),
-			document.createElement("br"),
-			"Casting time: ",
-			bold( spell.castingTime ),
-			document.createElement("br"),
-			"Range: ",
-			bold( spell.range ),
-			document.createElement("br"),
-			"Components: ",
-			bold( (spell.verbal ? ["V"] : [])
-				.concat(spell.somatic ? ["S"] : [])
-				.concat(spell.materials ? [`M (${spell.materials})`] : [])
-				.join(", ") ),
-			document.createElement("br"),
-			"Duration: ",
-			bold( spell.duration )
-		);
-		div.appendChild( properties );
+		var div = document.createElement("div");
+		div.appendChild( document.createElement("hr") );
 
 		{
-			var desc = document.createElement("p");
-			desc.innerHTML = spell.description;
-			div.appendChild(desc)
+			var name = document.createElement("h3");
+			name.innerText = spell.name;
+			var school = document.createElement("p");
+			school.innerText = spell.school;
+
+			div.append(name, school);
 		}
 
-		if(spell.upcast)
 		{
-			var ahl = document.createElement("h4");
-			ahl.innerText = "At higher levels";
+			var properties = document.createElement("p");
 
-			var upc = document.createElement("p");
-			upc.innerHTML = spell.upcast;
+			properties.append(
+				"Level: ",
+				bold( spell.level ? spell.level.toString() : "Cantrip" ),
+				document.createElement("br"),
+				"Casting time: ",
+				bold( spell.castingTime ),
+				document.createElement("br"),
+				"Range: ",
+				bold( spell.range ),
+				document.createElement("br"),
+				"Components: ",
+				bold( (spell.verbal ? ["V"] : [])
+					.concat(spell.somatic ? ["S"] : [])
+					.concat(spell.materials ? [`M (${spell.materials})`] : [])
+					.join(", ") ),
+				document.createElement("br"),
+				"Duration: ",
+				bold( spell.duration )
+			);
+			div.appendChild( properties );
 
-			div.append(ahl, upc);
+			{
+				var desc = document.createElement("p");
+				desc.innerHTML = spell.description;
+				div.appendChild(desc)
+			}
+
+			if(spell.upcast)
+			{
+				var ahl = document.createElement("h4");
+				ahl.innerText = "At higher levels";
+
+				var upc = document.createElement("p");
+				upc.innerHTML = spell.upcast;
+
+				div.append(ahl, upc);
+			}
+
+			if(spell.statBlock)
+			{
+				var sb = document.createElement("p");
+				sb.innerHTML = spell.statBlock;
+
+				var hr =  document.createElement("hr");
+				hr.className = "subtle";
+
+				div.append(hr, sb);
+			}
 		}
 
-		if(spell.statBlock)
-		{
-			var sb = document.createElement("p");
-			sb.innerHTML = spell.statBlock;
-
-			var hr =  document.createElement("hr");
-			hr.className = "subtle";
-
-			div.append(hr, sb);
-		}
+		return div;
 	}
 
-	return div;
-}
-
-/** Initialized the spell card UI.
- * Must be called from cards.html on document load.
- */
-async function spellCards()
-{
-	var list = loadSpellList();
-	var div = document.getElementById("spell-cards");
-	var prepared = new Set(list.prepared);
-
-	document.title = `Spell cards - ${list.name}`
-
-	for (const spell of (await Promise.all(list.sources.map(Spells.getFrom)))
-		.flat()
-		.filter(s => prepared.has(s.name))
-		.sort((a,b) => a.name > b.name ? +1 : -1)
-		.sort((a,b) => a.level - b.level))
+	/** Initialized the spell card UI.
+	 * Must be called from cards.html on document load.
+	 */
+	export async function initUI()
 	{
-		div.appendChild(spellCard(spell));
-	}
+		if(!window.location.hash)
+			window.location.href = "index.html";
 
+		var list = Util.getSpellList(window.location.hash.substring(1));
+		var div = document.getElementById("spell-cards");
+		var prepared = new Set(list.prepared);
+
+		document.title = `Spell cards - ${list.name}`
+
+		for (const spell of (await Promise.all(list.sources.map(Spells.getFrom)))
+			.flat()
+			.filter(s => prepared.has(s.name))
+			.sort((a,b) => a.name > b.name ? +1 : -1)
+			.sort((a,b) => a.level - b.level))
+		{
+			div.appendChild(spellCard(spell));
+		}
+
+	}
 }

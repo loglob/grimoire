@@ -1,3 +1,4 @@
+/** Code for spells */
 namespace Spells
 {
 	export type Spell =
@@ -14,6 +15,9 @@ namespace Spells
 		hint : string|null
 	}
 
+	/** A predicate that determines whether a spell is prepared.
+	 * Overwritten iff the current frontend provides that information.
+	 */
 	export var isPrepared : (s : Spell) => boolean = null
 
 	/** Checks whether a spell matches a single search term

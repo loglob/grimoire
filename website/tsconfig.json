@@ -8,10 +8,12 @@
 		"lib": [ "DOM", "ES2022" ]
 	},
 	"files": [
-		"details.ts",
-		"site.ts",
+		"util.ts",
 		"spells.ts",
+		"table.ts",
+		"details.ts",
 		"cards.ts",
-		"table.ts"
+		"list.ts",
+		"index.ts"
 	]
 }
