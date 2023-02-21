@@ -48,9 +48,9 @@ namespace Spells
 			|| (term[0] === '$' && s.materials && s.materials.toLowerCase().includes(term1))
 			|| (term[0] === ':' && s.source.toLowerCase() === term1)
 			|| (term[0] === '#' && s.hint && s.hint.toLowerCase().includes(term1))
-			|| (term[0] === '/' && (term[1] === '/'
-				? s.description.toLowerCase().split(/\s+/).some(w => w === term2 || w.split(/\W+/).includes(term2))
-				: s.description.toLowerCase().includes(term1)))
+			|| (term[0] === '/' && [s.description, s.upcast, s.statBlock].some(txt => txt && (term[1] === '/'
+				? txt.toLowerCase().split(/\s+/).some(w => w === term2 || w.split(/\W+/).includes(term2))
+				: txt.toLowerCase().includes(term1))))
 			|| (term[0] === '\\' && s.name.toLowerCase() === term1)
 			|| (term === "$$" && s.materials && /[1-9][0-9,]+\s*gp/i.test(s.materials))
 			|| (lim.length == 1 && lim[0] == s.level)
