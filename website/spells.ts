@@ -16,6 +16,11 @@ namespace Spells
 
 	export var isPrepared : (s : Spell) => boolean = null
 
+	/** Checks whether a spell matches a single search term
+	 * @param term A single search term, without joining operators or the negation operator
+	 * @param s A spell to check against
+	 * @returns true iff the spell is selected by the term
+	 */
 	function spellMatchesTerm(term : string, s : Spell) : boolean
 	{
 		const term1 = term.substring(1);

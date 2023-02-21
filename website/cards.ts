@@ -1,3 +1,4 @@
+/** Generates a single spell card as a self-contained HTML element */
 function spellCard(spell : Spell) : HTMLElement
 {
 	var div = document.createElement("div");
@@ -68,6 +69,9 @@ function spellCard(spell : Spell) : HTMLElement
 	return div;
 }
 
+/** Initialized the spell card UI.
+ * Must be called from cards.html on document load.
+ */
 async function spellCards()
 {
 	var list = loadSpellList();

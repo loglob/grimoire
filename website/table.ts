@@ -1,7 +1,9 @@
 import Spell = Spells.Spell;
 
+/** Encapsulates the state of the table that displays the currently filtered spells. */
 namespace Table
 {
+	/** The text input for the current search query */
 	export var searchField : HTMLInputElement;
 
 	/** The state of the table */
@@ -11,6 +13,7 @@ namespace Table
 	/** The headers of the spell table, in order */
 	const headers : (keyof Spell)[] = [ "name", "level", "school", "castingTime", "ritual", "concentration", "source" ];
 
+	/** A callback for prepending custom row elements before each row */
 	export var customRowElements : (s : Spell) => HTMLTableCellElement[] = null
 
 	/** Initializes the table with the known headers, and sets up the search-field text input to filter the table */
@@ -63,6 +66,7 @@ namespace Table
 		}
 	}
 
+	/** Compared two spells for sorting according to the current table sort setting. */
 	function compareSpell(l : Spell, r : Spell) : number
 	{
 		let so = state.sortOn;
@@ -71,6 +75,7 @@ namespace Table
 		return (state.reverse ? -cmp : +cmp);
 	}
 
+	/** Displays a spell as a row in the spell table. */
 	function toRow(spell : Spell) : HTMLTableRowElement
 	{
 		var row = document.createElement("tr");
@@ -107,6 +112,7 @@ namespace Table
 		return row;
 	}
 
+	/** Updates the 'Found ??? spells' text next to the search bar */
 	function updateCount()
 	{
 		const sp = document.getElementById("spell-count") as HTMLSpanElement;

@@ -1,4 +1,7 @@
-function loading()
+/**
+ * @returns An element that displays a loading animations.
+ */
+function loading() : HTMLElement
 {
 	let l = document.createElement("embed");
 	l.height = "5";
@@ -7,6 +10,9 @@ function loading()
 	return l;
 }
 
+/**
+ * @returns A <b> element displaying the given text
+ */
 function bold(txt : string) : HTMLElement
 {
 	const b = document.createElement("b");
@@ -23,6 +29,9 @@ async function getSources() : Promise<{ [id: string] : string }>
 	return await r.json();
 }
 
+/** Hides or un-hides an element
+ * @param hide Whether to hide or un-hide
+ */
 function setHidden(element : HTMLElement, hide : boolean)
 {
 	element.style.display = hide ? "none" : "initial";
@@ -76,12 +85,14 @@ async function loadSources(preload : string[])
 	}
 }
 
+/** The sources that are currently selected */
 function selectedSources() : string[]
 {
 	return Object.keys(sources)
 		.filter(id => (document.getElementById(`source_${id}`) as HTMLInputElement).checked);
 }
 
+/** Initializes the index UI. Called from index.html on page load. */
 function initUI()
 {
 	const p = new URLSearchParams(window.location.search);
@@ -187,6 +198,11 @@ function loadSpellList() : Spells.SpellList & { name : string }
 	}
 }
 
+/** Saves a spell list with a modified prepared set.
+ * Updated the current
+ * @param list The current spell list
+ * @param prepared The new prepared set
+ */
 function storeWith(list : Spells.SpellList & { name : string }, prepared : Iterable<string>|ArrayLike<string>)
 {
 	const newList : Spells.SpellList = {
@@ -198,6 +214,7 @@ function storeWith(list : Spells.SpellList & { name : string }, prepared : Itera
 	window.localStorage.setItem(list.name, JSON.stringify(newList))
 }
 
+/** Initialized the spell list UI. Must be called from lists.html on page load. */
 async function initListUI()
 {
 	const list = loadSpellList();

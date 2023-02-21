@@ -24,7 +24,7 @@ The given book ID sets which source spells found in the following files are list
 If the book ID is `macros`, those files are searched for macro definitions and no spells are extracted.
 Macros from other files are not parsed.
 
-If a file contains a line starting with `%% grimoire begin`, only contents after that line until end of file or a closing `"%% grimoire end` is parsed.
+If a file contains a line starting with `%% grimoire begin`, only contents after that line until end of file or a closing `%% grimoire end` is parsed.
 The `%% grimoire begin` may also be followed by a book ID which overwrites the current book ID for that segment.
 A file may contain multiple such segments.
 
@@ -68,3 +68,26 @@ An object with the fields
 To compile the frontend, run `tsc` in the `website` directory.
 Then copy the `db` directory into `website/www/`.
 Then, start any webserver on the `website/www/` directory.
+
+## Features
+- Listing and filtering spells separated by source
+- Creating spell lists from a filtered set of spells
+- Selecting a prepared subset from such a spell list
+	- Spells outside of the filtered set are also possible
+- Creating printable spell cards from those prepared spells
+
+## Endpoints
+### /index.html?\[from=source ...]&\[<q=query>]
+Displays the spell index, using the sources given as `from` parameters, and filtering with the given query.
+
+### /list.html#\[list name]
+Displays the local spell list with the given name.
+
+### /details.html?\[from=source]&\[spell=name]
+Displays details on the spell from the given source with the given name.
+
+### /cards.html#\[list name]
+Displays spell cards for the local spell list with the given name.
+
+### /search-help.html
+Static page that shows documentation on query syntax.

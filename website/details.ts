@@ -1,3 +1,4 @@
+/** Turns a number into a corresponding ordinal (1st, 2nd, 3rd etc.) */
 function ordinal(i : number) : string
 {
     switch(i <= 20 ? i : i % 10)
@@ -9,6 +10,10 @@ function ordinal(i : number) : string
     }
 }
 
+/** Initializes the details UI. Must be called from details.html
+ * @param from The 'from' query parameter
+ * @param spell The 'spell' query parameter
+ */
 async function spellDetails(from : string, spell : string)
 {
 	let book = (await getSources())[from];
@@ -38,6 +43,7 @@ async function spellDetails(from : string, spell : string)
     document.getElementById("casting-time").innerText = sp.reaction ? `${sp.castingTime}, ${sp.reaction}` : sp.castingTime;
     document.getElementById("range").innerText = sp.range;
 
+	// display components s.t. expensive and consumed materials are highlighted
 	{
 		console.log(sp);
 		const comp = document.getElementById("components");
