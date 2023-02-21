@@ -88,10 +88,19 @@ namespace Spells
 	 * @param source A source id returned by getSources()
 	 * @returns The spells of that source
 	 */
-	export async function getFrom(source : string) : Promise<Spell[]>
+	async function getFromOne(source : string) : Promise<Spell[]>
 	{
 		const r = await fetch(`db/${source}.json`);
 		return await r.json();
+	}
+
+	/**
+	 * @param sources Source IDs returned from getSources()
+	 * @returns All spells in those sources
+	 */
+	export async function getFrom(...sources : string[]) : Promise<Spell[]>
+	{
+		return (await Promise.all(sources.map(getFromOne))).flat()
 	}
 
 	export type SpellList =

@@ -74,28 +74,39 @@ namespace Cards
 		return div;
 	}
 
-	/** Initialized the spell card UI.
-	 * Must be called from cards.html on document load.
-	 */
-	export async function initUI()
+	/** Generates spell cards for the given spells */
+	function spellCards(spells : Spell[])
 	{
-		if(!window.location.hash)
-			window.location.href = "index.html";
-
-		var list = Util.getSpellList(window.location.hash.substring(1));
 		var div = document.getElementById("spell-cards");
-		var prepared = new Set(list.prepared);
 
-		document.title = `Spell cards - ${list.name}`
-
-		for (const spell of (await Promise.all(list.sources.map(Spells.getFrom)))
-			.flat()
-			.filter(s => prepared.has(s.name))
+		for (const spell of spells
 			.sort((a,b) => a.name > b.name ? +1 : -1)
 			.sort((a,b) => a.level - b.level))
 		{
 			div.appendChild(spellCard(spell));
 		}
+	}
 
+	/** Initialized the spell card UI.
+	 * Must be called from cards.html on document load.
+	 */
+	export async function initUI()
+	{
+		if(window.location.hash)
+		{
+			var list = Util.getSpellList(window.location.hash.substring(1));
+			var prepared = new Set(list.prepared);
+
+			document.title = `Spell cards - ${list.name}`
+
+			spellCards( (await Spells.getFrom(... list.sources)).filter(s => prepared.has(s.name)) );
+		}
+		else
+		{
+			const q = new URLSearchParams(window.location.search);
+			const f = Spells.toFilter(q.get("q"));
+
+			spellCards( (await Spells.getFrom(... q.getAll("from"))).filter(s => Spells.match(f, s)) );
+		}
 	}
 }

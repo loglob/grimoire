@@ -15,10 +15,7 @@ namespace Details
 		}
 	}
 
-	/** Initializes the details UI. Must be called from details.html
-	 * @param from The 'from' query parameter
-	 * @param spell The 'spell' query parameter
-	 */
+	/** Initializes the details UI. Must be called from details.html */
 	export async function initUI()
 	{
 		const p = new URLSearchParams(window.location.search);

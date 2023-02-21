@@ -89,5 +89,8 @@ Displays details on the spell from the given source with the given name.
 ### /cards.html#\[list name]
 Displays spell cards for the local spell list with the given name.
 
+### /cards.html#?\[from=source ...]&\[<q=query>]
+Displays spell cards for all spells matching the given source and query.
+
 ### /search-help.html
 Static page that shows documentation on query syntax.

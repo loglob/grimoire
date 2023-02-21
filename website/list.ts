@@ -64,7 +64,7 @@ namespace List
 			return [td];
 		};
 
-		const spells = (await Promise.all(list.sources.map(Spells.getFrom))).flat();
+		const spells = await Spells.getFrom(... list.sources);
 		const inclSpell = function(s : Spell) { return Spells.match(list.filter, s) || preparedSet.has(s.name) }
 
 		Table.insert(spells.filter(inclSpell));
