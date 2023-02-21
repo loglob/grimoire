@@ -34,6 +34,7 @@ namespace Spells
 			|| (term === "$$" && s.materials && /[1-9][0-9,]+\s*gp/i.test(s.materials))
 			|| (term[0] === '$' && s.materials && s.materials.toLowerCase().includes(term1))
 			|| (term[0] === ':' && s.source.toLowerCase() === term1)
+			|| (term[0] === '#' && s.hint && s.hint.toLowerCase().includes(term1))
 			|| (s.ritual && term === "ritual")
 			|| (s.concentration && term === "concentration")
 			|| (s.upcast && term === "upcast")
