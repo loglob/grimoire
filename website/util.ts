@@ -42,7 +42,9 @@ namespace Util
 
 	export type NamedSpellList = Spells.SpellList & { name : string };
 
-	/** Loads the spell list with the given name. */
+	/** Loads the spell list with the given name.
+	 * Emits an alert() and changes back to the index page if it doesn't exist.
+	*/
 	export function getSpellList(name : string) : NamedSpellList
 	{
 		const listJson = window.localStorage.getItem(name)
@@ -52,6 +54,7 @@ namespace Util
 			// maybe handle via a custom html page instead, to serve an actual error code
 			alert("That spell list doesn't exist! Did you clear browser data?");
 			window.location.href = "index.html";
+			return;
 		}
 
 		const list = JSON.parse(listJson) as Spells.SpellList;

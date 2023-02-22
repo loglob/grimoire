@@ -4,9 +4,9 @@ namespace Cards
 	import bold = Util.bold
 
 	/** Generates a single spell card as a self-contained HTML element */
-	function spellCard(spell : Spell) : HTMLElement
+	function spellCard(spell : Spell, book : string) : HTMLElement
 	{
-		var div = document.createElement("div");
+		const div = document.createElement("div");
 		div.appendChild( document.createElement("hr") );
 
 		{
@@ -40,50 +40,62 @@ namespace Cards
 				"Duration: ",
 				bold( spell.duration )
 			);
+
 			div.appendChild( properties );
+		}
 
-			{
-				var desc = document.createElement("p");
-				desc.innerHTML = spell.description;
-				div.appendChild(desc)
-			}
+		{
+			const desc = document.createElement("p");
+			desc.innerHTML = spell.description;
 
-			if(spell.upcast)
-			{
-				var ahl = document.createElement("h4");
-				ahl.innerText = "At higher levels";
+			div.appendChild(desc)
+		}
 
-				var upc = document.createElement("p");
-				upc.innerHTML = spell.upcast;
+		if(spell.upcast)
+		{
+			var ahl = document.createElement("h4");
+			ahl.innerText = "At higher levels";
 
-				div.append(ahl, upc);
-			}
+			var upc = document.createElement("p");
+			upc.innerHTML = spell.upcast;
 
-			if(spell.statBlock)
-			{
-				var sb = document.createElement("p");
-				sb.innerHTML = spell.statBlock;
+			div.append(ahl, upc);
+		}
 
-				var hr =  document.createElement("hr");
-				hr.className = "subtle";
+		if(spell.statBlock)
+		{
+			var sb = document.createElement("p");
+			sb.innerHTML = spell.statBlock;
 
-				div.append(hr, sb);
-			}
+			var hr =  document.createElement("hr");
+			hr.className = "subtle";
+
+			div.append(hr, sb);
+		}
+
+		{
+			const src = document.createElement("p");
+			src.id = "from";
+			src.className = "subtle";
+			src.innerText = spell.hint ? `${book} (${spell.hint})` : book;
+
+			div.appendChild(src);
 		}
 
 		return div;
 	}
 
 	/** Generates spell cards for the given spells */
-	function spellCards(spells : Spell[])
+	async function spellCards(spells : Spell[])
 	{
-		var div = document.getElementById("spell-cards");
+		const books = await Util.getSources();
+		const div = document.getElementById("spell-cards");
 
 		for (const spell of spells
 			.sort((a,b) => a.name > b.name ? +1 : -1)
 			.sort((a,b) => a.level - b.level))
 		{
-			div.appendChild(spellCard(spell));
+			div.appendChild(spellCard(spell, books[spell.source]));
 		}
 	}
 
@@ -99,14 +111,14 @@ namespace Cards
 
 			document.title = `Spell cards - ${list.name}`
 
-			spellCards( (await Spells.getFrom(... list.sources)).filter(s => prepared.has(s.name)) );
+			await spellCards( (await Spells.getFrom(... list.sources)).filter(s => prepared.has(s.name)) );
 		}
 		else
 		{
 			const q = new URLSearchParams(window.location.search);
 			const f = Spells.toFilter(q.get("q"));
 
-			spellCards( (await Spells.getFrom(... q.getAll("from"))).filter(s => Spells.match(f, s)) );
+			await spellCards( (await Spells.getFrom(... q.getAll("from"))).filter(s => Spells.match(f, s)) );
 		}
 	}
 }
