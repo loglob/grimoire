@@ -172,16 +172,16 @@ public class Latex
 
 #region TeX Compiler
 	/** A regular macro. */
-	private sealed record Macro(int argc, Token[] replacement);
+	private sealed record Macro(int argc, Token[]? opt, Token[] replacement);
 
 	private static Macro tagWrap(string tag)
-		=> new Macro(1, new Token[]{ new HtmlChunk($"<{tag}>"), new ArgumentRef(1), new HtmlChunk($"</{tag}>") });
+		=> new Macro(1, null, new Token[]{ new HtmlChunk($"<{tag}>"), new ArgumentRef(1), new HtmlChunk($"</{tag}>") });
 
 	private static Macro translate(char c)
-		=> new Macro(0, new Token[] { new Character(c) });
+		=> new Macro(0, null, new Token[] { new Character(c) });
 
 	private static Macro constant(string html)
-		=> new Macro(0, new Token[]{ new HtmlChunk(html) });
+		=> new Macro(0, null, new Token[]{ new HtmlChunk(html) });
 
 	/// <summary>
 	/// The known macros.
@@ -208,6 +208,13 @@ public class Latex
 	};
 
 	/// <summary>
+	/// A list of special macros that should not be expanded and not warned about
+	/// </summary>
+	private static readonly HashSet<string> specialMacros = new HashSet<string>{
+		"begin", "end", "item"
+	};
+
+	/// <summary>
 	/// Replaces every argument reference with its value in the given argument vector
 	/// </summary>
 	/// <param name="tks">A token list</param>
@@ -220,7 +227,7 @@ public class Latex
 			if(tk is ArgumentRef a)
 			{
 				if(a.number < 1 || a.number > argv.Length)
-					Console.Error.WriteLine("[WARN] Discarding out-of-bound argument number");
+					Console.Error.WriteLine($"[WARN] Discarding out-of-bound argument number #{a.number}");
 				else foreach(var x in argv[a.number - 1])
 					yield return x;
 			}
@@ -298,7 +305,7 @@ public class Latex
 	/// </param>
 	/// <param name="argc">The amount of arguments to retrieve</param>
 	/// <returns>THe argument vectors. braced tokens are unpacked automatically</returns>
-	private Token[][] getArgs(IEnumerator<Token> tks, int argc)
+	private Token[][] getArgs(IEnumerator<Token> tks, int argc, Token[]? opt = null)
 	{
 		var args = new Token[argc][];
 
@@ -312,6 +319,11 @@ public class Latex
 					args[j] = new Token[0];
 
 				break;
+			}
+			else if(i == 0 && !(opt is null))
+			{
+				skipOpt(tks, out var optVal);
+				args[0] = optVal?.ToArray() ?? opt;
 			}
 			else if(tks.Current is Braced b)
 				args[i] = b.inner.ToArray();
@@ -344,15 +356,16 @@ public class Latex
 				if(!tks.MoveNext() || !skipWS(tks))
 					throw new Exception("No definition after macro name");
 
-				int argc = 0;
-				var argcSpec = new List<Token>();
-
-				if(!skipOpt(tks, argcSpec))
+				if(!skipOpt(tks, out var argcSpec))
 					throw new FormatException("Bad arity specification");
-				if(argcSpec.Count > 0)
-					argc = int.Parse(untokenize(argcSpec));
+				int argc = argcSpec is null ? 0 : int.Parse(untokenize(argcSpec));
 
-				macros[mn.macro] = new Macro(argc, getArgs(tks, 1)[0]);
+				List<Token>? optSpec = null;
+				
+				if(argc > 0 && !skipOpt(tks, out optSpec))
+					throw new FormatException("Bad arity specification");
+				
+				macros[mn.macro] = new Macro(argc, optSpec?.ToArray(), getArgs(tks, 1)[0]);
 			}
 			catch(Exception ex)
 			{
@@ -389,14 +402,19 @@ public class Latex
 						args = Enumerable.Repeat(new Token[0], m.argc).ToArray();
 					}
 					else
-						args = getArgs(tks, m.argc);
+						args = getArgs(tks, m.argc, m.opt);
 					//Console.Error.WriteLine($"Expanding {mn.macro} -> {untokenize(m.replacement)}");
 					//Console.Error.WriteLine($"With argv: {string.Join(' ', args.Select(a => '{' + untokenize(a) + '}'))}");
 
 					tks = replaceArgs(m.replacement, args).FollowedBy(tks);
 				}
 				else
+				{
+					if(!specialMacros.Contains(mn.macro))
+						Console.WriteLine($"[WARN] Unknown macro '\\{mn.macro}'");
+
 					yield return tks.Current;
+				}
 			}
 			else if(tks.Current is Braced br)
 				yield return new Braced(expand((br.inner as IEnumerable<Token>).GetEnumerator()).ToArray());
@@ -466,36 +484,6 @@ public class Latex
 
 	private IEnumerable<Token> collect(IEnumerable<Token> tks)
 		=> collect(tks.GetEnumerator());
-
-	/// <summary>
-	/// Skips an optional argument. Also skips leading whitespace
-	/// </summary>
-	/// <param name="tks">
-	///  Positioned at the first possible '[' token.
-	///  Advances until AFTER the closing ']'
-	/// </param>
-	/// <returns>
-	///  False if token stream is completely whitespace, or ended before ']', true otherwise
-	/// </returns>
-	private bool skipOpt(IEnumerator<Token> tks, List<Token>? content = null)
-	{
-		if(!skipWS(tks))
-			return false;
-		if(tks.Current is Character open && open.chr == '[')
-		{
-			for(;;)
-			{
-				if(!tks.MoveNext())
-					return false;
-				if(tks.Current is Character close && close.chr == ']')
-					return tks.MoveNext();
-				if(!(content is null))
-					content.Add(tks.Current);
-			}
-		}
-		else
-			return true;
-	}
 
 	/// <summary>
 	/// Processes a fully expanded and collected token stream into a HTML string
