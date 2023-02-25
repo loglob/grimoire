@@ -13,24 +13,22 @@ public class LatexFiles : ISource
 		this.files = files.ToArray();
 	}
 
-	public async IAsyncEnumerable<Spell> Spells()
+	public IAsyncEnumerable<Spell> Spells()
 	{
-		var content = new List<(string src, string[] code)>();
+		foreach(var f in files.Where(f => f.src == Latex.MACROS_SOURCE_NAME))
+			latex.LearnMacros(File.ReadLines(f.file));
 
-		foreach (var f in files)
-		{
-			if(f.src == Latex.MACROS_SOURCE_NAME)
-				latex.LearnMacros(File.ReadLines(f.file));
-			else foreach(var seg in Latex.CodeSegments(await File.ReadAllLinesAsync(f.file), f.src))
-			{
-				if(seg.source == Latex.MACROS_SOURCE_NAME)
-					latex.LearnMacros(seg.code);
-				else
-					content.Add((seg.source, seg.code.ToArray()));
-			}
-		}
+		var segments = files
+			.Where(f => f.src != Latex.MACROS_SOURCE_NAME)
+			.SelectMany(f => Latex.CodeSegments(File.ReadAllLines(f.file), f.src))
+			.ToList();
 
-		foreach (var sp in content.SelectMany(seg => latex.ExtractSpells(seg.code, seg.src)))
-			yield return sp;
+		foreach (var seg in segments.Where(seg => seg.source == Latex.MACROS_SOURCE_NAME))
+			latex.LearnMacros(seg.code);
+		
+		return segments
+			.Where(seg => seg.source != Latex.MACROS_SOURCE_NAME)
+			.SelectMany(seg => latex.ExtractSpells(seg.code.ToArray(), seg.source))
+			.ToAsyncEnumerable();
 	}
 }

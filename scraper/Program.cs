@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using static Util;
 
@@ -43,12 +43,14 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 
 				case "latex":
 				{
+					var isSrcName = (string x) => bookNames.Contains(x) || x == Latex.MACROS_SOURCE_NAME;
+
 					if(v.Count < 2)
 						goto usage;
 
 					var cfgFile = "latex.json";
 
-					if(!bookNames.Contains(v[1]))
+					if(!isSrcName(v[1]))
 					{
 						cfgFile = v[1];
 						v = v.Slice(2);
@@ -56,7 +58,7 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 					else
 						v = v.Slice(1);
 
-					if(v.Count == 0 || !bookNames.Contains(v[0]))
+					if(v.Count == 0 || !isSrcName(v[0]))
 						goto usage;
 
 					var book = v[0];
@@ -66,7 +68,7 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 
 					foreach (var a in v)
 					{
-						if(bookNames.Contains(a))
+						if(isSrcName(a))
 							book = a;
 						else
 							files.Add((book, a));
