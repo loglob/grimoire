@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using static Util;
 
@@ -117,8 +117,8 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 		}
 
 		int total = 0;
-
 		Directory.CreateDirectory("db");
+
 		foreach (var kvp in spellsByBook)
 		{
 			total += kvp.Value.Count;
@@ -129,7 +129,10 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 				Console.Error.WriteLine($"[Warn] No spells for source '{kvp.Key}'");
 		}
 
-		books.ToDictionary(s => s.shorthand, s => s.fullName).StoreJson("db/index.json");
+		books
+			.Where(b => spellsByBook.TryGetValue(b.shorthand, out var found) && found.Any())
+			.ToDictionary(s => s.shorthand, s => s.fullName)
+			.StoreJson("db/index.json");
 		Console.WriteLine($"Done. Found {total} spells.");
 
 		return 0;
