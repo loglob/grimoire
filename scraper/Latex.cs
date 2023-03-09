@@ -78,10 +78,27 @@ public class Latex
 						Console.Error.WriteLine("[WARN] trailing, unmatched, unescaped '\\'");
 						tk = new Character('\\');
 					}
-					else
-						tk = new MacroName(input.Substring(off + 1, len == 0 ? 1 : len));
+					else if(len == 1 && input[off + 1] == '<')
+					{
+						// HTML chunk
+						int matching = input.IndexOf("\\>", off + 2);
 
-					off += len;
+						if(matching == -1)
+						{
+							// swallow the illegal symbol and continue
+							Console.Error.WriteLine("[WARN] Unmatched HTML chunk start. Multiline chunks not allowed.");
+							off += 2;
+							continue;
+						}
+
+						tk = new HtmlChunk(input.Substring(off + 2, matching - off - 2));
+						off = matching + 1;
+					}
+					else
+					{
+						tk = new MacroName(input.Substring(off + 1, len == 0 ? 1 : len));
+						off += len;
+					}
 				}
 				break;
 

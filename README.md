@@ -29,6 +29,8 @@ The `%% grimoire begin` may also be followed by a book ID which overwrites the c
 A file may contain multiple such segments.
 
 Otherwise, the file contents between `\begin{document}` and `\end{document}` are searched for spells.
+The compiler permits the escape sequence `\< ... \>` for inserting literal HTML code.
+Such a sequence may not span over multiple lines, and is copied verbatim, without checking for syntactical correctness.
 
 ### overleaf `[<overleaf.json>]`
 Processes files from an overleaf server.
