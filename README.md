@@ -55,6 +55,7 @@ An objects with the fields
 - **spellAnchor** a string that always precedes a spell definition. Matched before macro expansion.
 - **upcastAnchor** a string that is always between a spell description and upcast description.
 - **environments** a string -> string dictionary that maps LaTeX environments onto HTML tags, `itemize` or `tabular`.
+- **images** a string -> string dictionary that maps images (either full paths or just filenames) used with `\includegraphics` onto TeX code that should be inserted where they are included instead.
 
 ### overleaf.json
 An object with the fields

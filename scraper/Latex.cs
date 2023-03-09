@@ -361,10 +361,10 @@ public class Latex
 				int argc = argcSpec is null ? 0 : int.Parse(untokenize(argcSpec));
 
 				List<Token>? optSpec = null;
-				
+
 				if(argc > 0 && !skipOpt(tks, out optSpec))
 					throw new FormatException("Bad arity specification");
-				
+
 				macros[mn.macro] = new Macro(argc, optSpec?.ToArray(), getArgs(tks, 1)[0]);
 			}
 			catch(Exception ex)
@@ -407,6 +407,25 @@ public class Latex
 					//Console.Error.WriteLine($"With argv: {string.Join(' ', args.Select(a => '{' + untokenize(a) + '}'))}");
 
 					tks = replaceArgs(m.replacement, args).FollowedBy(tks);
+				}
+				else if(mn.macro == "includegraphics")
+				{
+					if(!tks.MoveNext() || !skipOpt(tks))
+					{
+						Console.Error.WriteLine($"[WARN] No filename after \\includegraphics");
+						continue;
+					}
+
+					var file = untokenize(getArgs(tks, 1)[0]);
+
+					if(config.images is null || !(config.images.TryGetValue(file, out var replace)
+						|| config.images.TryGetValue(Path.GetFileName(file), out replace)))
+					{
+						Console.Error.WriteLine($"[WARN] Discarding use of unknown image '{file}' ");
+						continue;
+					}
+
+					tks = tokenize(replace, new()).FollowedBy(tks);
 				}
 				else
 				{
@@ -588,10 +607,11 @@ public class Latex
 	/// <param name="spellAnchor"> A latex command that initializes a spell description </param>
 	/// <param name="upcastAnchor"> A latex command that initiates an upcast section </param>
 	/// <param name="environments"> Maps latex environments onto equivalent HTML tags</param>
-	public record class Config(string spellAnchor, string upcastAnchor, Dictionary<string, string> environments);
+	/// <param name="images"> Text to replace instances of specific images with </param>
+	public record class Config(string spellAnchor, string upcastAnchor,
+		Dictionary<string, string> environments, Dictionary<string, string> images);
 
 	private readonly Config config;
-
 
 	public Latex(Config config)
 	{
