@@ -23,7 +23,7 @@ namespace List
 		if(!window.location.hash)
 			window.location.href = "index.html";
 
-		const list = Util.getSpellList(window.location.hash.substring(1));
+		const list = Util.getSpellList(decodeURIComponent(window.location.hash.substring(1)));
 		var preparedSet = new Set(list.prepared);
 
 		document.title += `: ${list.name}`;
