@@ -550,7 +550,10 @@ public class Latex
 					{
 						sb.Append("<ul>");
 
-						foreach (var point in env.inner.SplitBy(tk => tk is MacroName m && m.macro == "item"))
+						foreach (var point in env.inner
+								.SplitBy(tk => tk is MacroName m && m.macro == "item")
+								.ToArray()
+								.Trim(xs => xs.All(x => x is WhiteSpace)))
 						{
 							sb.Append("<li>");
 							latexToHtml((point as IEnumerable<Token>).GetEnumerator(), sb);
