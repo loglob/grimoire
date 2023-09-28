@@ -116,6 +116,11 @@ button
 	{
 		font-size: 9pt;
 	}
+
+	footer
+	{
+		display: none;
+	}
 }
 
 #spell-cards div
@@ -141,4 +146,11 @@ button
 {
 	font-size: small;
 	font-style: italic;
+}
+
+footer
+{
+	margin-top: 2em;
+	font-size: small;
+	color: #AAA;
 }
