@@ -481,4 +481,14 @@ internal static class Util
 
 		return sb.ToString();
 	}
+
+	public static (string left, string? right) MaybeSplitOn(string str, string sep)
+	{
+		var spl = str.Split(sep, 2, StringSplitOptions.TrimEntries);
+
+		if(spl.Length > 1)
+			return (spl[0], spl[1]);
+		else
+			return (spl[0], null);
+	}
 }

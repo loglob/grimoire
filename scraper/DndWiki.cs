@@ -1,7 +1,9 @@
 using HtmlAgilityPack;
-using static System.StringSplitOptions;
 
-public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource
+using static System.StringSplitOptions;
+using static DnD5e;
+
+public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<Spell>
 {
 	private readonly ScraperClient client = new("http://dnd5e.wikidot.com", Cfg.RateLimit);
 
@@ -46,7 +48,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource
 		bool ritual;
 		School school;
 		int level;
-		(level, school, ritual) = Common.parseLevel(content.ChildNodes[2].InnerText);
+		(level, school, ritual) = ParseLevel(content.ChildNodes[2].InnerText);
 
 
 		content.ChildNodes[3].Clean();
@@ -61,10 +63,10 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource
 			return string.Join(' ', pr.Skip(1).Select(x => x.InnerText.Trim()));
 		};
 
-		(string cTime, string? reaction) = Common.maybeSplitOn(chkProb(props[0], "casting time"), ",");
-		string range = Common.parseParen(chkProb(props[1], "range")).Item1;
-		(bool verbal, bool somatic, string? materials) = Common.parseComponents(chkProb(props[2], "components"));
-		(bool concentration, string duration) = Common.parseDuration(chkProb(props[3], "duration"));
+		(string cTime, string? reaction) = Util.MaybeSplitOn(chkProb(props[0], "casting time"), ",");
+		string range = ParseParen(chkProb(props[1], "range")).Item1;
+		(bool verbal, bool somatic, string? materials) = ParseComponents(chkProb(props[2], "components"));
+		(bool concentration, string duration) = ParseDuration(chkProb(props[3], "duration"));
 
 		var rest = content.ChildNodes.Skip(4).SkipLast(1).ToList();
 		string? statBlock;

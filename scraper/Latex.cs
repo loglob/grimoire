@@ -4,7 +4,7 @@ using System.Net;
 /// <summary>
 /// Scraper for processing LaTeX snippets
 /// </summary>
-public class Latex
+public record Latex(Config.LatexOptions Conf)
 {
 #region TeX Lexer
 	public abstract record Token();
@@ -182,7 +182,7 @@ public class Latex
 		}
 	}
 
-	private static string untokenize(IEnumerable<Token> tks)
+	public static string Untokenize(IEnumerable<Token> tks)
 		=> string.Join("", tks).Trim();
 
 #endregion TeX Lexer
@@ -263,7 +263,7 @@ public class Latex
 	/// <returns>
 	/// Whether a non-whitespace token was found before
 	/// </returns>
-	private bool skipWS(IEnumerator<Token> tks)
+	private static bool skipWS(IEnumerator<Token> tks)
 	{
 		while(tks.Current is WhiteSpace)
 		{
@@ -285,7 +285,7 @@ public class Latex
 	/// <returns>
 	///  True if there are any tokens after the optional argument
 	/// </returns>
-	private bool skipOpt(IEnumerator<Token> tks, out List<Token>? arg)
+	public static bool SkipOpt(IEnumerator<Token> tks, out List<Token>? arg)
 	{
 		arg = null;
 
@@ -310,8 +310,8 @@ public class Latex
 			return true;
 	}
 
-	private bool skipOpt(IEnumerator<Token> tks)
-		=> skipOpt(tks, out var _);
+	public static bool SkipOpt(IEnumerator<Token> tks)
+		=> SkipOpt(tks, out var _);
 
 	/// <summary>
 	/// Retrieves an amount of arguments and advances the token position to their last value
@@ -322,7 +322,7 @@ public class Latex
 	/// </param>
 	/// <param name="argc">The amount of arguments to retrieve</param>
 	/// <returns>THe argument vectors. braced tokens are unpacked automatically</returns>
-	private Token[][] getArgs(IEnumerator<Token> tks, int argc, Token[]? opt = null)
+	public static Token[][] GetArgs(IEnumerator<Token> tks, int argc, Token[]? opt = null)
 	{
 		var args = new Token[argc][];
 
@@ -339,7 +339,7 @@ public class Latex
 			}
 			else if(i == 0 && !(opt is null))
 			{
-				skipOpt(tks, out var optVal);
+				SkipOpt(tks, out var optVal);
 				args[0] = optVal?.ToArray() ?? opt;
 			}
 			else if(tks.Current is Braced b)
@@ -364,7 +364,7 @@ public class Latex
 				if(!tks.MoveNext())
 					throw new Exception("Empty definition");
 
-				var name = getArgs(tks, 1)[0].Where(t => !(t is WhiteSpace)).ToList();
+				var name = GetArgs(tks, 1)[0].Where(t => !(t is WhiteSpace)).ToList();
 				Util.AssertEqual(1, name.Count, "Multiple names in command definition");
 
 				if(!(name[0] is MacroName mn))
@@ -373,16 +373,16 @@ public class Latex
 				if(!tks.MoveNext() || !skipWS(tks))
 					throw new Exception("No definition after macro name");
 
-				if(!skipOpt(tks, out var argcSpec))
+				if(!SkipOpt(tks, out var argcSpec))
 					throw new FormatException("Bad arity specification");
-				int argc = argcSpec is null ? 0 : int.Parse(untokenize(argcSpec));
+				int argc = argcSpec is null ? 0 : int.Parse(Untokenize(argcSpec));
 
 				List<Token>? optSpec = null;
 
-				if(argc > 0 && !skipOpt(tks, out optSpec))
+				if(argc > 0 && !SkipOpt(tks, out optSpec))
 					throw new FormatException("Bad arity specification");
 
-				macros[mn.macro] = new Macro(argc, optSpec?.ToArray(), getArgs(tks, 1)[0]);
+				macros[mn.macro] = new Macro(argc, optSpec?.ToArray(), GetArgs(tks, 1)[0]);
 			}
 			catch(Exception ex)
 			{
@@ -419,7 +419,7 @@ public class Latex
 						args = Enumerable.Repeat(new Token[0], m.argc).ToArray();
 					}
 					else
-						args = getArgs(tks, m.argc, m.opt);
+						args = GetArgs(tks, m.argc, m.opt);
 					//Console.Error.WriteLine($"Expanding {mn.macro} -> {untokenize(m.replacement)}");
 					//Console.Error.WriteLine($"With argv: {string.Join(' ', args.Select(a => '{' + untokenize(a) + '}'))}");
 
@@ -427,16 +427,16 @@ public class Latex
 				}
 				else if(mn.macro == "includegraphics")
 				{
-					if(!tks.MoveNext() || !skipOpt(tks))
+					if(!tks.MoveNext() || !SkipOpt(tks))
 					{
 						Console.Error.WriteLine($"[WARN] No filename after \\includegraphics");
 						continue;
 					}
 
-					var file = untokenize(getArgs(tks, 1)[0]);
+					var file = Untokenize(GetArgs(tks, 1)[0]);
 
-					if(config.Images is null || !(config.Images.TryGetValue(file, out var replace)
-						|| config.Images.TryGetValue(Path.GetFileName(file), out replace)))
+					if(Conf.Images is null || !(Conf.Images.TryGetValue(file, out var replace)
+						|| Conf.Images.TryGetValue(Path.GetFileName(file), out replace)))
 					{
 						Console.Error.WriteLine($"[WARN] Discarding use of unknown image '{file}' ");
 						continue;
@@ -483,7 +483,7 @@ public class Latex
 					continue;
 				}
 
-				var env = untokenize(getArgs(tks, 1)[0]);
+				var env = Untokenize(GetArgs(tks, 1)[0]);
 
 				if(mn.macro == "begin")
 				{
@@ -542,7 +542,7 @@ public class Latex
 				sb.Append(ch.data);
 			else if(tks.Current is Environment env)
 			{
-				string name = config.Environments.GetValueOrDefault(env.env, env.env);
+				string name = Conf.Environments.GetValueOrDefault(env.env, env.env);
 
 				switch(name)
 				{
@@ -609,23 +609,17 @@ public class Latex
 		}
 	}
 
-	private string latexToHtml(IEnumerator<Token> tks)
+	public string LatexToHtml(IEnumerator<Token> tks)
 	{
 		var sb = new StringBuilder();
 		latexToHtml(tks, sb);
 		return sb.ToString();
 	}
 
-	private string latexToHtml(IEnumerable<Token> tks)
-		=> latexToHtml(tks.GetEnumerator());
+	public string LatexToHtml(IEnumerable<Token> tks)
+		=> LatexToHtml(tks.GetEnumerator());
 
 #endregion TeX Compiler
-	private readonly Config.LatexOptions config;
-
-	public Latex(Config.LatexOptions config)
-	{
-		this.config = config;
-	}
 
 	/// <summary>
 	/// Marks the following lines to be included.
@@ -679,49 +673,23 @@ public class Latex
 				.EndedBy(SECTION_END_ANCHOR));
 	}
 
-	internal Spell ExtractSpell(IEnumerable<string> lines, string source)
+	internal TSpell ExtractSpell<TSpell>(IGame<TSpell> game, IEnumerable<string> lines, string source)
 	{
-		var sect = lines.Split(config.UpcastAnchor).ToArray();
+		var sect = Conf.UpcastAnchor == null
+			? new[]{ lines.ToArray() }
+			: lines.Split(Conf.UpcastAnchor).ToArray();
 
 		if(sect.Length > 2)
-			throw new FormatException($"Too many occurrences of {config.UpcastAnchor}, got {sect.Length}");
-
-		var lPos = collect(expand(tokenize(sect[0]))).GetEnumerator();
-
-		if(!lPos.MoveNext() || !skipOpt(lPos, out var hint))
-			throw new FormatException("Empty spell");
-
-		var props = getArgs(lPos, 7).Select(untokenize).ToArray();
-
-		var name = props[0];
-		var lsr = Common.parseLevel(props[1]);
-		var tr = Common.maybeSplitOn(props[2], ",");
-		var range = props[3];
-		var vsm = Common.parseComponents(props[4]);
-		var cd = Common.parseDuration(props[5]);
-		var classes = props[6].Split(new[]{' ', '\t', ','}, StringSplitOptions.RemoveEmptyEntries).ToArray();
-
-		string desc = latexToHtml(lPos);
-		string? upcast = (sect.Length > 1)
-			? latexToHtml(collect(expand(tokenize(sect[1]))))
-			: null;
-
-		return new Spell(
-			name, source,
-			lsr.school, lsr.level,
-			tr.left, tr.right, lsr.ritual,
-			range,
-			vsm.verbal, vsm.somatic, vsm.material,
-			cd.concentration, cd.duration,
-			desc,
-			upcast,
-			classes,
-			null,
-			hint is null ? null : untokenize(hint)
-		);
+			throw new FormatException($"Too many occurrences of {Conf.UpcastAnchor}, got {sect.Length}");
+		
+		return game.ExtractLatexSpell(this, source,
+			collect(expand(tokenize(sect[0]))),
+			(sect.Length > 1)
+				? LatexToHtml(collect(expand(tokenize(sect[1]))))
+				: null);
 	}
 
-	public IEnumerable<Spell> ExtractSpells(IEnumerable<string> lines, string source)
+	public IEnumerable<TSpell> ExtractSpells<TSpell>(IGame<TSpell> game, IEnumerable<string> lines, string source)
 	{
 		Console.WriteLine($"Extracting LATEX spells for {source}....");
 		const string DOC_BEGIN = @"\begin{document}", DOC_END = @"\end{document}";
@@ -729,13 +697,13 @@ public class Latex
 		if(lines.Any(l => l == DOC_BEGIN))
 			lines = lines.SkipWhile(l => l != DOC_BEGIN).Skip(1).TakeWhile(l => l != DOC_END);
 
-		foreach(var snip in lines.Spans(config.SpellAnchor))
+		foreach(var snip in lines.Spans(Conf.SpellAnchor))
 		{
-			Spell spell;
+			TSpell spell;
 
 			try
 			{
-				spell = ExtractSpell(snip.Trim(string.IsNullOrWhiteSpace), source);
+				spell = ExtractSpell(game, snip.Trim(string.IsNullOrWhiteSpace), source);
 			}
 			catch (System.Exception ex)
 			{

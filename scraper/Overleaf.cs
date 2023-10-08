@@ -1,13 +1,15 @@
 using Olspy;
 
-public class Overleaf : ISource
+public class Overleaf<TSpell> : ISource<TSpell>
 {
 	private readonly Olspy.Overleaf overleaf;
 	private readonly Olspy.Project project;
 	private readonly Latex latex;
+	private readonly IGame<TSpell> game;
 
-	public Overleaf(Config.OverleafSource config)
+	public Overleaf(IGame<TSpell> game, Config.OverleafSource config)
 	{
+		this.game = game;
 		this.overleaf = (config.Host is string s) ?
 			this.overleaf = new Olspy.Overleaf(s) :
 			Olspy.Overleaf.RunningInstance;
@@ -42,7 +44,7 @@ public class Overleaf : ISource
 				? Latex.CodeSegments(x.Item1.Lines, src)
 				: Enumerable.Empty<(string,IEnumerable<string>)>());
 
-	public async IAsyncEnumerable<Spell> Spells()
+	public async IAsyncEnumerable<TSpell> Spells()
 	{
 		var docs = await Util.Cached("cache/overleaf_documents", async() => {
 			if(!await overleaf.Available)
@@ -58,7 +60,7 @@ public class Overleaf : ISource
 
 		foreach(var s in snippets
 			.Where(s => s.source != Latex.MACROS_SOURCE_NAME)
-			.SelectMany(s => latex.ExtractSpells(s.code, s.source)))
+			.SelectMany(s => latex.ExtractSpells(game, s.code, s.source)))
 			yield return s;
 
 	}

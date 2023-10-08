@@ -1,52 +1,54 @@
 {
-	"books": {
-		"PHB": "Player's Handbook",
-		"XGE": "Xanathar's Guide to Everything",
-		"TCE": "Tasha's Cauldron of Everything",
-		"LLK": "Lost Laboratory of Kwalish",
-		"GGR": {
-			"fullName": "Guildmaster's Guide to Ravnica",
-			"alts": [ "Ravnica" ]
-		},
-		"AI": {
-			"fullName": "Acquisitions Incorporated",
-			"alts": [ "Acquisitions Inc." ]
-		},
-		"EGW": {
-			"fullName": "Explorer's Guide to Wildemount",
-			"alts": [ "Wildemount" ]
-		},
-		"ID:RF": "Icewind Dale: Rime of the Frostmaiden",
-		"FTD": {
-			"fullName": "Fizban's Treasury of Dragons",
-			"alts": [ "Fizban" ]
-		},
-		"SCC": {
-			"fullName": "Strixhaven: A Curriculum of Chaos",
-			"alts": [ "Strixhaven" ]
-		},
-		"SAS": {
-			"fullName": "Spelljammer: Adventures in Space",
-			"alts": [ "Spelljammer: Adventures in Space - Astral Adventurer's Guide" ]
-		}
-	},
-	"sources": [
-		"dndwiki",
-		{
-			"type": "overleaf",
-			"projectID": "--PROJECT ID HERE--",
-			"password": "--PASSWORD HERE (see olspy docs)--",
-			"latex": {
-				"spellAnchor": "\\spell",
-				"upcastAnchor": "At higher levels",
-				"environments": {
-					"DndTable": "tabular"
-				}
+	"dnd5e": {
+		"books": {
+			"PHB": "Player's Handbook",
+			"XGE": "Xanathar's Guide to Everything",
+			"TCE": "Tasha's Cauldron of Everything",
+			"LLK": "Lost Laboratory of Kwalish",
+			"GGR": {
+				"fullName": "Guildmaster's Guide to Ravnica",
+				"alts": [ "Ravnica" ]
+			},
+			"AI": {
+				"fullName": "Acquisitions Incorporated",
+				"alts": [ "Acquisitions Inc." ]
+			},
+			"EGW": {
+				"fullName": "Explorer's Guide to Wildemount",
+				"alts": [ "Wildemount" ]
+			},
+			"ID:RF": "Icewind Dale: Rime of the Frostmaiden",
+			"FTD": {
+				"fullName": "Fizban's Treasury of Dragons",
+				"alts": [ "Fizban" ]
+			},
+			"SCC": {
+				"fullName": "Strixhaven: A Curriculum of Chaos",
+				"alts": [ "Strixhaven" ]
+			},
+			"SAS": {
+				"fullName": "Spelljammer: Adventures in Space",
+				"alts": [ "Spelljammer: Adventures in Space - Astral Adventurer's Guide" ]
 			}
 		},
-		{
-			"type": "copy",
-			"from": [ "copy.json" ]
-		}
-	]
+		"sources": [
+			"dndwiki",
+			{
+				"type": "overleaf",
+				"projectID": "--PROJECT ID HERE--",
+				"password": "--PASSWORD HERE (see olspy docs)--",
+				"latex": {
+					"spellAnchor": "\\spell",
+					"upcastAnchor": "At higher levels",
+					"environments": {
+						"DndTable": "tabular"
+					}
+				}
+			},
+			{
+				"type": "copy",
+				"from": [ "copy.json" ]
+			}
+		]
+	}
 }
