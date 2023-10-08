@@ -5,18 +5,17 @@ public static class Config
 	private static string[] strArray(JsonNode? n)
 		=> n!.AsArray().Select(x => (string)x!).ToArray();
 
-	public record Game(string Shorthand, string FullName, Dictionary<string, Book> Books, Source[] Sources)
+	public record Game(string Shorthand, Dictionary<string, Book> Books, Source[] Sources)
 	{
 		public static Game Parse(string shorthand, JsonObject o)
 			=> new(
 				shorthand,
-				o["fullName"]!.GetValue<string>(),
 				o["books"]!.AsObject().ToDictionary(kvp => kvp.Key, kvp => Book.Parse(kvp.Key, kvp.Value!)),
 				o["sources"]!.AsArray().Select(n => Source.Parse(n!)).ToArray()
 			);
 
         public override string ToString()
-			=> $"Game( Shorthand = {Shorthand}, FullName = {FullName}, Books = {Books.Show()}, Sources = {Sources.Show()} )";
+			=> $"Game( Shorthand = {Shorthand}, Books = {Books.Show()}, Sources = {Sources.Show()} )";
     }
 
 	public record Book(string Shorthand, string FullName, string[] Alts)

@@ -1,21 +1,10 @@
 ﻿public class Program
 {
-	public const string USAGE =
-@"USAGE: {0} [<config.json>] [sources...]
-Where a source is one of:
-	latex [<latex.json>] [[book id] [input.tex ...] ...]
-	overleaf [<overleaf.json>]
-	dnd-wiki
-	copy [copy.json ...]
-If a json config file is not specified as an argument, the working directory is searched for the listed filename.
-Each of the listed sources is searched for DnD spells and the compiled databases are outputted in ./db/
-";
+	private record class GameIndex(string fullName, Dictionary<string, string> books);
 
-	/// <summary>
-	///  
-	/// </summary>
-	/// <returns> The number of spells read </returns>
-	private static async Task<(string game, List<Config.Book> books, int count)> processGame<TSpell>(IGame<TSpell> game) where TSpell : ISpell
+	public const string USAGE = @"USAGE: {0} [<config.json>]";
+
+	private static async Task<(Config.Game game, int count)> processGame<TSpell>(IGame<TSpell> game) where TSpell : ISpell
 	{
 		var spellsByBook = game.Conf.Books.ToDictionary(x => x.Key, x => new List<TSpell>());
 		var warnedAbout = new HashSet<string>();
@@ -43,15 +32,16 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 				Console.Error.WriteLine($"[Warn] No spells for source '{game.Conf.Shorthand}/{kvp.Key}'");
 		}
 
-		var got = game.Conf.Books.Values
+		game.Conf.Books.Values
 			.Where(b => spellsByBook.TryGetValue(b.Shorthand, out var found) && found.Any())
-			.ToList();
+			.ToDictionary(b => b.Shorthand, b => b.FullName)
+			.StoreJson($"db/{game.Conf.Shorthand}/index.json");
 
-		Console.WriteLine($"Parsed {total} spells for {game.Conf.FullName}.");
-		return (game.Conf.Shorthand, got ,total);
+		Console.WriteLine($"Parsed {total} spells for {game.Conf.Shorthand}.");
+		return (game.Conf, total);
 	}
 
-	private static Task<(string game, List<Config.Book> books, int count)> processGame(Config.Game conf)
+	private static Task<(Config.Game game, int count)> processGame(Config.Game conf)
 		=> conf.Shorthand switch
 		{
 			"dnd5e" => processGame(new DnD5e(conf)),
@@ -68,15 +58,14 @@ Each of the listed sources is searched for DnD spells and the compiled databases
 		Console.WriteLine($"Processing {games.Count} games with {games.Sum(g => g.Books.Count)} sources...");
 		Directory.CreateDirectory("db");
 		int total = 0;
-		Dictionary<string, Dictionary<string, string>> index = new();
 
-		foreach(var (game, books, count) in await Task.WhenAll(games.Select(processGame)))
+		foreach(var (game, count) in await Task.WhenAll(games.Select(processGame)))
 		{
-			index[game] = books.ToDictionary(b => b.Shorthand, b => b.FullName);
+			if(count == 0)
+				Console.WriteLine($"[WARN] No spells for game '{game.Shorthand}'");
+
 			total += count;
 		}
-
-		index.StoreJson("db/index.json");	
 
 		Console.WriteLine($"Done processing {total} spells.");
 		return 0;
