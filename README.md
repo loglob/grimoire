@@ -11,18 +11,61 @@ The supported sources are:
 - An overleaf instance
 
 ## Usage
-Running `dotnet run [<books.json>] [sources...]` from the scraper directory processes all listed sources and outputs a spell database in the `./db/` directory.
+Running `dotnet run [<config.json>]` processes all sources configured in the given file and outputs a spell database in the `./db/` directory.
 
-When a `.json` argument is listed, a path to a json file containing a configuration as described below is expected.
-If omitted, the listed filename is searched in the working directory.
+## Configuration
+An object with the fields `books` and `sources`.
 
-Possible sources are:
-### latex `[<latex.json>] [[book id] [input.tex ...] ...]`
-Processes local LaTeX files using the given configuration.
+### books
+Gives the recognized source books. A map from (unique) book shorthands onto an object with
+- `fullName`: The full name of the book to display to users
+- `alts`: Optional list of other names for the book. Used when scraping from the dnd wiki
+or just a `fullName` value, with empty `alts`.
 
-The given book ID sets which source spells found in the following files are listed under, and must be a shorthand from the books.json file, or the special `macros` ID.
-If the book ID is `macros`, those files are searched for macro definitions and no spells are extracted.
-Macros from other files are not parsed.
+### sources
+Gives the sources to read from.
+A list of source items, which are either objects with a `type` field, or just a value for that field.
+The possible `type` values are:
+
+#### dnd-wiki
+Copies all spells found on the [dnd-wiki](http://http://dnd5e.wikidot.com/).
+
+Optionally an object with the field
+- `rateLimit`: A number of milliseconds between HTTP requests to the wiki. 250ms by default. 
+
+#### latex
+Processes local LaTeX files.
+Expects an object with the fields:
+- `MacroFiles`: A list of filenames to extract macros from.
+	No spells are extracted from these and macros from other files are not parsed.
+- `Files`: A list of filenames to extract spells from, using the procedure described below
+- The latex options described below, embedded directly into the object
+
+#### overleaf
+Processes files from an overleaf server.
+
+- `projectID`: the overleaf project ID to scrape
+- `password`: the overleaf web API password (see [olspy documentation](https://github.com/loglob/olspy) for more details)
+- `host`: optional hostname for the overleaf instance.
+	If omitted, attempt to connect to a local docker instance.
+- `latex`: a separate object containing latex options as described above.
+
+Within the project, every file marked with `%% grimoire include`, followed by a book ID, within the first 10 lines, is included and parsed like a regular latex file.
+
+#### copy
+An object with the fields:
+- `From`: A list of filenames to copy.
+
+Directly copies spells from the given database files.
+Expected to be in the same json format that the scraper outputs.
+
+
+### latex options
+Sources that process latex files provide latex options with the fields:
+- `spellAnchor`: a string that always precedes a spell definition. Matched before macro expansion.
+- `upcastAnchor`: a string that is always between a spell description and upcast description.
+- `environments`: a string -> string dictionary that maps LaTeX environments onto HTML tags, `itemize` or `tabular`.
+- `images`: a string -> string dictionary that maps images (either full paths or just filenames) used with `\includegraphics` onto TeX code that should be inserted where they are included instead.
 
 If a file contains a line starting with `%% grimoire begin`, only contents after that line until end of file or a closing `%% grimoire end` is parsed.
 The `%% grimoire begin` may also be followed by a book ID which overwrites the current book ID for that segment.
@@ -32,40 +75,6 @@ Otherwise, the file contents between `\begin{document}` and `\end{document}` are
 The compiler permits the escape sequence `\< ... \>` for inserting literal HTML code.
 Such a sequence may not span over multiple lines, and is copied verbatim, without checking for syntactical correctness.
 
-### overleaf `[<overleaf.json>]`
-Processes files from an overleaf server.
-Within the project, every file marked with `%% grimoire include`, followed by a book ID, within the first 10 lines, is included and parsed as above.
-
-### copy `[<copy.json ...>]`
-Directly copy spells from the given database files.
-Expected to be in the same json format that the scraper outputs.
-
-### dnd-wiki
-Processes all spells found on the [dnd-wiki](http://http://dnd5e.wikidot.com/).
-
-## Configuration
-Configuration is given by multiple json files in these formats:
-
-### books.json
-Gives the recognized source books. Consists of a list of objects with these fields:
-- **fullName**: The full name of the book to display to users
-- **shorthand**: The *unique* ID used internally to identify the book.
-- **alts**: Optional list of other names for the book. Used when scraping from the dnd wiki
-
-### latex.json
-An objects with the fields
-- **spellAnchor** a string that always precedes a spell definition. Matched before macro expansion.
-- **upcastAnchor** a string that is always between a spell description and upcast description.
-- **environments** a string -> string dictionary that maps LaTeX environments onto HTML tags, `itemize` or `tabular`.
-- **images** a string -> string dictionary that maps images (either full paths or just filenames) used with `\includegraphics` onto TeX code that should be inserted where they are included instead.
-
-### overleaf.json
-An object with the fields
-- **projectID** the overleaf project ID to scrape
-- **password** the overleaf web API password (see [olspy documentation](https://github.com/loglob/olspy) for more details)
-- **host** optional hostname for the overleaf instance.
-	If omitted, attempt to connect to a local docker instance.
-- **latex** a `latex.json` as described above.
 
 # Website
 To compile the frontend, run `tsc` in the `website` directory.
