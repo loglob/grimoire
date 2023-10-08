@@ -435,8 +435,8 @@ public class Latex
 
 					var file = untokenize(getArgs(tks, 1)[0]);
 
-					if(config.images is null || !(config.images.TryGetValue(file, out var replace)
-						|| config.images.TryGetValue(Path.GetFileName(file), out replace)))
+					if(config.Images is null || !(config.Images.TryGetValue(file, out var replace)
+						|| config.Images.TryGetValue(Path.GetFileName(file), out replace)))
 					{
 						Console.Error.WriteLine($"[WARN] Discarding use of unknown image '{file}' ");
 						continue;
@@ -542,7 +542,7 @@ public class Latex
 				sb.Append(ch.data);
 			else if(tks.Current is Environment env)
 			{
-				string name = config.environments.GetValueOrDefault(env.env, env.env);
+				string name = config.Environments.GetValueOrDefault(env.env, env.env);
 
 				switch(name)
 				{
@@ -620,20 +620,9 @@ public class Latex
 		=> latexToHtml(tks.GetEnumerator());
 
 #endregion TeX Compiler
+	private readonly Config.LatexOptions config;
 
-	/// <summary>
-	///
-	/// </summary>
-	/// <param name="spellAnchor"> A latex command that initializes a spell description </param>
-	/// <param name="upcastAnchor"> A latex command that initiates an upcast section </param>
-	/// <param name="environments"> Maps latex environments onto equivalent HTML tags</param>
-	/// <param name="images"> Text to replace instances of specific images with </param>
-	public record class Config(string spellAnchor, string upcastAnchor,
-		Dictionary<string, string> environments, Dictionary<string, string> images);
-
-	private readonly Config config;
-
-	public Latex(Config config)
+	public Latex(Config.LatexOptions config)
 	{
 		this.config = config;
 	}
@@ -692,10 +681,10 @@ public class Latex
 
 	internal Spell ExtractSpell(IEnumerable<string> lines, string source)
 	{
-		var sect = lines.Split(config.upcastAnchor).ToArray();
+		var sect = lines.Split(config.UpcastAnchor).ToArray();
 
 		if(sect.Length > 2)
-			throw new FormatException($"Too many occurrences of {config.upcastAnchor}, got {sect.Length}");
+			throw new FormatException($"Too many occurrences of {config.UpcastAnchor}, got {sect.Length}");
 
 		var lPos = collect(expand(tokenize(sect[0]))).GetEnumerator();
 
@@ -740,7 +729,7 @@ public class Latex
 		if(lines.Any(l => l == DOC_BEGIN))
 			lines = lines.SkipWhile(l => l != DOC_BEGIN).Skip(1).TakeWhile(l => l != DOC_END);
 
-		foreach(var snip in lines.Spans(config.spellAnchor))
+		foreach(var snip in lines.Spans(config.SpellAnchor))
 		{
 			Spell spell;
 

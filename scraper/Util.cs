@@ -1,6 +1,7 @@
-using System.Collections;
-using Newtonsoft.Json;
 using HtmlAgilityPack;
+using Newtonsoft.Json;
+using System.Collections;
+using System.Text;
 
 internal static class Util
 {
@@ -424,14 +425,14 @@ internal static class Util
 	/// <summary>
 	/// Looks up a human-readable book name.
 	/// </summary>
-	public static SourceBook FindSource(this SourceBook[] books, string source)
+	public static Config.Book FindSource(this Config.Book[] books, string source)
 	{
 		var b = books.Where(b => b.Matches(source)).ToArray();
 
 		if(b.Length == 0)
 			throw new Exception($"Unknown source: '{source}'");
 		else if(b.Length > 1)
-			throw new Exception($"Unknown source: '{source}': Ambigous between {string.Join(", ", b)}");
+			throw new Exception($"Unknown source: '{source}': Ambigous between {b.Show()}");
 		else
 			return b[0];
 	}
@@ -442,4 +443,42 @@ internal static class Util
 	public static IEnumerable<(A,B)> SelectWith<A,B>(this IEnumerable<A> ls, Func<A,B> f)
 		=> ls.Select(x => (x, f(x)));
 
+	public static string Show<A,B>(this Dictionary<A,B[]> dict) where A : notnull
+		=> dict.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Show()).Show();
+
+	public static string Show<A,B>(this Dictionary<A,B> dict) where A : notnull
+	{
+		var sb = new StringBuilder("{");
+		bool first = true;
+
+		foreach (var item in dict)
+		{
+			if(!first)
+				sb.Append(',');
+
+			sb.Append($" {item.Key}: {item.Value}");
+			first = false;
+		}
+
+		sb.Append(" }");
+
+		return sb.ToString();
+	}
+	
+	public static string Show<T>(this T[] arr)
+	{
+		var sb = new StringBuilder("[");
+		bool first = true;
+
+		foreach (var item in arr)
+		{
+			sb.Append(first ? " " : ", ");
+			sb.Append(item);
+			first = false;
+		}
+
+		sb.Append(" ]");
+
+		return sb.ToString();
+	}
 }

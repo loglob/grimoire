@@ -23,6 +23,13 @@ public class ScraperClient
 		this.client = new HttpClient(){ BaseAddress = new Uri(baseURI) };
 	}
 
+	public ScraperClient(string baseURI, TimeSpan? rateLimit) : this(baseURI)
+	{
+		if(rateLimit.HasValue)
+			this.RateLimit = rateLimit.Value;
+	}
+
+
 	/// <summary>
 	/// Requests a resource from the HTTP server. Enforces rate limit.
 	/// </summary>

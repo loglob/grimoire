@@ -2,33 +2,23 @@ using Olspy;
 
 public class Overleaf : ISource
 {
-	/// <summary>
-	/// The configuration for the overleaf scraper
-	/// </summary>
-	/// <param name="projectID"> The project ID to scrape for spells. Mandatory </param>
-	/// <param name="password"> The password to connect to overleaf with. See olspy's documentation for details.</param>
-	/// <param name="latex"> The latex configuration to use.</param>
-	/// <param name="user"> The username to connect to overleaf with. See olspy's documentation for details.</param>
-	/// <param name="host">The hostname of the overleaf server. If blank, determined automatically</param>
-	public readonly record struct Config(string projectID, string password, Latex.Config latex, string? user = null, string? host = null);
-
 	private readonly Olspy.Overleaf overleaf;
 	private readonly Olspy.Project project;
 	private readonly Latex latex;
 
-	public Overleaf(Config config)
+	public Overleaf(Config.OverleafSource config)
 	{
-		this.overleaf = (config.host is string s) ?
+		this.overleaf = (config.Host is string s) ?
 			this.overleaf = new Olspy.Overleaf(s) :
 			Olspy.Overleaf.RunningInstance;
 
-		this.project = this.overleaf.Open(config.projectID);
-		this.latex = new Latex(config.latex);
+		this.project = this.overleaf.Open(config.ProjectID);
+		this.latex = new Latex(config.Latex);
 
-		if(config.user is string u)
-			this.overleaf.SetCredentials(config.password, u);
+		if(config.User is string u)
+			this.overleaf.SetCredentials(config.Password, u);
 		else
-			this.overleaf.SetCredentials(config.password);
+			this.overleaf.SetCredentials(config.Password);
 	}
 
 	/// <summary>

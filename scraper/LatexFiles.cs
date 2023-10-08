@@ -2,25 +2,18 @@
 /// <summary>
 /// Scraper for processing LaTeX files
 /// </summary>
-public class LatexFiles : ISource
+public record LatexFiles(Config.LatexSource Cfg) : ISource
 {
-	private readonly Latex latex;
-	private readonly (string src, string file)[] files;
-
-	public LatexFiles(Latex.Config cfg, IEnumerable<(string src, string file)> files)
-	{
-		this.latex = new Latex(cfg);
-		this.files = files.ToArray();
-	}
+	private readonly Latex latex = new(Cfg.Options);
 
 	public IAsyncEnumerable<Spell> Spells()
 	{
-		foreach(var f in files.Where(f => f.src == Latex.MACROS_SOURCE_NAME))
-			latex.LearnMacros(File.ReadLines(f.file));
+		foreach(var f in Cfg.MacroFiles)
+			latex.LearnMacros(File.ReadLines(f));
 
-		var segments = files
-			.Where(f => f.src != Latex.MACROS_SOURCE_NAME)
-			.SelectMany(f => Latex.CodeSegments(File.ReadAllLines(f.file), f.src))
+		var segments = Cfg.Files
+			.SelectMany(kvp => kvp.Value.Select(file => (kvp.Key, file)))
+			.SelectMany(x => Latex.CodeSegments(File.ReadAllLines(x.file), x.Key))
 			.ToList();
 
 		foreach (var seg in segments.Where(seg => seg.source == Latex.MACROS_SOURCE_NAME))

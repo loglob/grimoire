@@ -1,13 +1,9 @@
 using HtmlAgilityPack;
 using static System.StringSplitOptions;
 
-public class DndWiki : ISource
+public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource
 {
-	private ScraperClient client = new ScraperClient("http://dnd5e.wikidot.com");
-	private SourceBook[] books;
-
-	public DndWiki(SourceBook[] books)
-		=> this.books = books;
+	private readonly ScraperClient client = new("http://dnd5e.wikidot.com", Cfg.RateLimit);
 
 	public Task<string[]> SpellNames()
 		=> Util.Cached("cache/wikidot_names", async () =>
@@ -41,9 +37,9 @@ public class DndWiki : ISource
 
 		string source;
 		{
-			var ctl = content.ChildNodes[1].InnerText.Split(':', 2, TrimEntries);
+			string[] ctl = content.ChildNodes[1].InnerText.Split(':', 2, TrimEntries);
 			Util.AssertEqual("Source", ctl[0], "Bad source format");
-			source = books.FindSource(ctl[1].Split('/')[0]).shorthand;
+			source = Books.FindSource(ctl[1].Split('/')[0]).Shorthand;
 		}
 
 
