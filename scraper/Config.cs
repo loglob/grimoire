@@ -85,15 +85,23 @@ public static class Config
 	/// <param name="Password"> The password to connect to overleaf with. See olspy's documentation for details.</param>
 	/// <param name="User"> The username to connect to overleaf with. See olspy's documentation for details.</param>
 	/// <param name="Host">The hostname of the overleaf server. If blank, determined automatically</param>
+	/// <param name="IncludeAnchor">
+ 	///  When encountered in the first 10 lines of an overleaf document, scrapes that file for spells.
+	///  Optionally followed by a source name.
+	///  Default is <c>%% grimoire include</c>
+	/// </param>
 	/// <param name="Latex"> The latex configuration to use.</param>
-	public record OverleafSource(string ProjectID, string Password, string? User, string? Host, LatexOptions Latex) : Source
+	public record OverleafSource(string ProjectID, string Password, string? User, string? Host, string IncludeAnchor, LatexOptions Latex) : Source
 	{
+		public const string DEFAULT_INCLUDE_ANCHOR = "%% grimoire include";
+
 		internal static OverleafSource Parse(JsonObject o)
 			=> new(
 				(string)o["projectID"]!,
 				(string)o["password"]!,
 				(string?)o["user"],
 				(string?)o["host"],
+				(string?)o["includeAnchor"] ?? DEFAULT_INCLUDE_ANCHOR,
 				LatexOptions.Parse(o["latex"]!.AsObject())
 			);
 
@@ -154,8 +162,8 @@ public static class Config
 			=> new(
 				(string)o["spellAnchor"]!,
 				(string?)o["upcastAnchor"],
-				o["environments"]!.AsObject().ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!),
-				o["images"]!.AsObject().ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!)
+				o["environments"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? new(),
+				o["images"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? new()
 			);
 
 		public override string ToString()

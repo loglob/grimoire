@@ -6,6 +6,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 	private readonly Olspy.Project project;
 	private readonly Latex latex;
 	private readonly IGame<TSpell> game;
+	private readonly string includeAnchor;
 
 	public Overleaf(IGame<TSpell> game, Config.OverleafSource config)
 	{
@@ -16,6 +17,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 		this.project = this.overleaf.Open(config.ProjectID);
 		this.latex = new Latex(config.Latex);
+		this.includeAnchor = config.IncludeAnchor;
 
 		if(config.User is string u)
 			this.overleaf.SetCredentials(config.Password, u);
@@ -24,20 +26,14 @@ public class Overleaf<TSpell> : ISource<TSpell>
 	}
 
 	/// <summary>
-	/// When encountered in the first 10 lines of an overleaf document, scrapes that file for spells.
-	/// Optionally followed by a source name.
-	/// </summary>
-	const string INCLUDE_ANCHOR = "%% grimoire include";
-
-	/// <summary>
 	/// Retrieves all code segments from multiple documents.
 	/// Filters out documents without an INCLUDE_ANCHOR
 	/// </summary>
-	internal static IEnumerable<(string source, IEnumerable<string> code)> GetCode(IEnumerable<Document> docs)
+	internal IEnumerable<(string source, IEnumerable<string> code)> GetCode(IEnumerable<Document> docs)
 		=> docs.SelectWith(d => d.Lines
 				.Take(10)
-				.FirstOrDefault(x => x.StartsWith(INCLUDE_ANCHOR))
-				?.Substring(INCLUDE_ANCHOR.Length)
+				.FirstOrDefault(x => x.StartsWith(includeAnchor))
+				?.Substring(includeAnchor.Length)
 				?.Trim())
 			.Where(x => !(x.Item2 is null))
 			.SelectMany(x => (x.Item2 is string src)
@@ -46,7 +42,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 	public async IAsyncEnumerable<TSpell> Spells()
 	{
-		var docs = await Util.Cached("cache/overleaf_documents", async() => {
+		var docs = await Util.Cached($"cache/{game.Conf.Shorthand}_overleaf_documents", async() => {
 			if(!await overleaf.Available)
 				throw new Exception($"Overleaf instance at {overleaf.Host} isn't ready");
 
