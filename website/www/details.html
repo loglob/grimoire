@@ -3,43 +3,15 @@
 	<head>
 		<script src="js/site.js"></script>
 		<script>
-			window.onload = _ => Details.initUI();
+			window.onload = _ => UI.initDetails();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 		<link rel="shortcut icon" href="favicon.ico" />
 	</head>
 	<body>
 		<h1 id="spell-name"> <embed src="loading.svg" height="15"></embed> </h1>
-		<i id="level+class"></i>
-
-
-		<table>
-			<tr>
-				<th>Casting Time</th>
-				<td id="casting-time"> </td>
-			</tr>
-			<tr>
-				<th>Range</th>
-				<td id="range"> </td>
-			</tr>
-			<tr>
-				<th>Components</th>
-				<td id="components"> </td>
-			</tr>
-			<tr>
-				<th>Duration</th>
-				<td id="duration"> </td>
-			</tr>
-			<tr>
-				<th>Classes</th>
-				<td id="classes"> </td>
-			</tr>
-		</table>
-		<hr>
-		<div id="description"></div>
-		<hr>
-		<div id="upcast"></div>
-		<p id="from" class="subtle"></p>
+		<div id="spell-details">
+		</div>
 		<footer>
 			grimoire is provided under the AGPL-3.0 license without warranty. Source code is available <a href="https://github.com/loglob/grimoire">here</a>.
 		</footer>

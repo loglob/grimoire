@@ -3,7 +3,7 @@
 	<head>
 		<script src="js/site.js"></script>
 		<script>
-			window.onload = _ => Index.initUI();
+			window.onload = _ => UI.initIndex();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 		<link rel="shortcut icon" href="favicon.ico" />
@@ -25,14 +25,8 @@
 		<button id="create-list" title="Create new spell list">&#128213;</button>
 		<button id="spell-card-view" title="Spell cards">&#128424;</button>
 		<table id="spells">
-			<tr id="spells-header">
+			<tr id="spell-headers">
 				<th class="left" id="name-header"> Spell </th>
-				<th id="level-header"> Level </th>
-				<th id="school-header"> School </th>
-				<th id="castingTime-header"> Casting time </th>
-				<th id="ritual-header"> Ritual </th>
-				<th id="concentration-header"> Concentration </th>
-				<th id="source-header"> Source </th>
 			</tr>
 		</table>
 		<footer>

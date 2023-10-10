@@ -8,12 +8,15 @@
 		"lib": [ "DOM", "ES2022" ]
 	},
 	"files": [
-		"util.ts",
-		"spells.ts",
-		"table.ts",
-		"details.ts",
-		"cards.ts",
-		"list.ts",
-		"index.ts"
+		"Data.ts",
+		"Util.ts",
+		"Games/IGame.ts",
+		"Games/DnD5e.ts",
+		"UI/Common.ts",
+		"UI/Cards.ts",
+		"UI/Details.ts",
+		"UI/Index.ts",
+		"UI/Table.ts",
+		"UI/List.ts"
 	]
 }

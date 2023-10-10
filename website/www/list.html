@@ -3,7 +3,7 @@
 	<head>
 		<script src="js/site.js"></script>
 		<script>
-			window.onload = _ => List.initUI();
+			window.onload = _ => UI.initList();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 		<link rel="shortcut icon" href="favicon.ico" />
@@ -20,15 +20,9 @@
 		<button id="download-list" title="Download spell list">&#128190;</button>
 		<button id="spell-card-view" title="Spell cards">&#128424;</button>
 		<table id="spells">
-			<tr id="spells-header">
+			<tr id="spell-headers">
 				<th> <!--<input type="checkbox" id="prepare-all">--> </th>
 				<th class="left" id="name-header"> Spell </th>
-				<th id="level-header"> Level </th>
-				<th id="school-header"> School </th>
-				<th id="castingTime-header"> Casting time </th>
-				<th id="ritual-header"> Ritual </th>
-				<th id="concentration-header"> Concentration </th>
-				<th id="source-header"> Source </th>
 			</tr>
 		</table>
 		<footer>
