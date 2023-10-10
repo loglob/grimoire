@@ -23,6 +23,9 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			this.overleaf.SetCredentials(config.Password, u);
 		else
 			this.overleaf.SetCredentials(config.Password);
+
+		foreach (var f in config.localMacros)
+			latex.LearnMacros(File.ReadLines(f));
 	}
 
 	/// <summary>

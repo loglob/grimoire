@@ -91,7 +91,7 @@ public static class Config
 	///  Default is <c>%% grimoire include</c>
 	/// </param>
 	/// <param name="Latex"> The latex configuration to use.</param>
-	public record OverleafSource(string ProjectID, string Password, string? User, string? Host, string IncludeAnchor, LatexOptions Latex) : Source
+	public record OverleafSource(string ProjectID, string Password, string? User, string? Host, string IncludeAnchor, string[] localMacros, LatexOptions Latex) : Source
 	{
 		public const string DEFAULT_INCLUDE_ANCHOR = "%% grimoire include";
 
@@ -102,6 +102,7 @@ public static class Config
 				(string?)o["user"],
 				(string?)o["host"],
 				(string?)o["includeAnchor"] ?? DEFAULT_INCLUDE_ANCHOR,
+				o["localMacros"]?.AsArray()?.Select(x => (string)x!)?.ToArray() ?? Array.Empty<string>(),
 				LatexOptions.Parse(o["latex"]!.AsObject())
 			);
 

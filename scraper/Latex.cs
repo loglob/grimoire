@@ -192,13 +192,13 @@ public record Latex(Config.LatexOptions Conf)
 	private sealed record Macro(int argc, Token[]? opt, Token[] replacement);
 
 	private static Macro tagWrap(string tag)
-		=> new Macro(1, null, new Token[]{ new HtmlChunk($"<{tag}>"), new ArgumentRef(1), new HtmlChunk($"</{tag}>") });
+		=> new(1, null, new Token[]{ new HtmlChunk($"<{tag}>"), new ArgumentRef(1), new HtmlChunk($"</{tag}>") });
 
 	private static Macro translate(char c)
-		=> new Macro(0, null, new Token[] { new Character(c) });
+		=> new(0, null, new Token[] { new Character(c) });
 
 	private static Macro constant(string html)
-		=> new Macro(0, null, new Token[]{ new HtmlChunk(html) });
+		=> new(0, null, new Token[]{ new HtmlChunk(html) });
 
 	/// <summary>
 	/// The known macros.
