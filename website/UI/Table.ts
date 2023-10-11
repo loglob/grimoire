@@ -126,9 +126,12 @@ namespace UI
 				row.appendChild(c);
 			}
 
-			/** TODO: turn true/false into yes/no */
-			for (const h of this.game.tableHeaders) {
-				td(spell[h].toString());
+			for (const h of this.game.tableHeaders)
+			{
+				if(typeof spell[h] === "boolean")
+					td(spell[h] ? "Yes" : "No")
+				else
+					td(spell[h].toString());
 			}
 
 			return row;
