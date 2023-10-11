@@ -465,6 +465,10 @@ internal static class Util
 		return sb.ToString();
 	}
 	
+
+	public static string Show<T>(this T[][] arr)
+		=> arr.Select(x => x.Show()).ToArray().Show();
+
 	public static string Show<T>(this T[] arr)
 	{
 		var sb = new StringBuilder("[");
@@ -490,5 +494,84 @@ internal static class Util
 			return (spl[0], spl[1]);
 		else
 			return (spl[0], null);
+	}
+
+	public static List<T> FromHere<T>(this IEnumerator<T> iter)
+	{
+		var buf = new List<T>();
+
+		while(iter.MoveNext())
+			buf.Add(iter.Current);
+		
+		return buf;
+	}
+
+	public static List<T> TakeWhile<T>(this IEnumerator<T> iter, Func<T, bool> pred)
+	{
+		var buf = new List<T>();
+
+		while(iter.MoveNext() && pred(iter.Current))
+			buf.Add(iter.Current);
+
+		return buf;
+	}
+
+	public static IEnumerable<ArraySegment<T>> SplitBy<T>(this ArraySegment<T> arr, Func<T, bool> pred)
+	{
+		int l = 0;
+
+		for (int i = 0; i < arr.Count; ++i)
+		{
+			if(pred(arr[i]))
+			{
+				yield return arr.Slice(l, i - l);
+				l = i + 1;
+			}
+		}
+
+		yield return arr.Slice(l, arr.Count - l);
+	}
+
+	/// <summary>
+	///  Splits into exactly n (possibly empty) arrays
+	/// </summary>
+	public static ArraySegment<T>[] SplitBy<T>(this ArraySegment<T> arr, Func<T, bool> pred, int n)
+	{
+		ArraySegment<T>[] buf = new ArraySegment<T>[n];
+		Array.Fill(buf, ArraySegment<T>.Empty);
+		int l = 0;
+		int o = 0;
+
+		for (int i = 0; i < arr.Count && o < n - 1; ++i)
+		{
+			if(pred(arr[i]))
+			{
+				buf[o++] = arr.Slice(l, i - l);
+				l = i + 1;
+			}
+		}
+
+		buf[n - 1] = arr.Slice(l, arr.Count - l);
+		return buf;
+	}
+
+	public static B[] ArraySelect<A,B>(this A[] arr, Func<A,B> f)
+	{
+		var res = new B[arr.Length];
+
+		for (int i = 0; i < arr.Length; ++i)
+			res[i] = f(arr[i]);
+
+		return res;
+	}
+
+	public static IEnumerable<T> SkipLastIf<T>(this IEnumerable<T> xs, Func<T, bool> pred)
+	{
+		var cache = xs.ToList();
+		bool drop = cache.Count > 0 && pred(cache[cache.Count - 1]);
+		int len = drop ? cache.Count - 1 : cache.Count;
+
+		for (int i = 0; i < len; ++i)
+			yield return cache[i];
 	}
 }

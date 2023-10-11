@@ -218,6 +218,8 @@ public record Latex(Config.LatexOptions Conf)
 		{ ",", translate(' ') },
 		{ "%", translate('%') },
 		{ "#", translate('#') },
+		{ "$", constant("$") },
+		{ "&", constant("&") },
 		{ "textbf",			tagWrap("b") },
 		{ "textit",			tagWrap("i") },
 		{ "chapter",		tagWrap("h1") },
@@ -226,8 +228,8 @@ public record Latex(Config.LatexOptions Conf)
 		{ "subsubsection",	tagWrap("h4")},
 		{ "paragraph",		tagWrap("h5")},
 		{ "subparagraph",	tagWrap("h6")},
-		{ "[", constant("[")},
-		{ "]", constant("]")}
+		{ "[", translate(' ')},
+		{ "]", translate(' ')}
 	};
 
 	/// <summary>
@@ -527,7 +529,7 @@ public record Latex(Config.LatexOptions Conf)
 		=> expand(tks.GetEnumerator());
 
 	/// <summary>
-	/// Groups tokens together into [...] and environments, via the Bracketed and Environment tokens.
+	/// Groups tokens together into environments segments via Environment tokens.
 	/// </summary>
 	/// <param name="tks">An expanded token stream returned by expand()</param>
 	/// <returns>An equivalent stream with every environment translated to HTML primitives</returns>
@@ -592,81 +594,104 @@ public record Latex(Config.LatexOptions Conf)
 	{
 		while(tks.MoveNext())
 		{
-			if(tks.Current is MacroName mn)
-				Console.Error.WriteLine($"[WARN] Discarding unknown macro: \\{mn.macro}");
-			else if(tks.Current is BackBack)
-				sb.Append("<br/>");
-			else if(tks.Current is Character cr)
-				sb.Append(WebUtility.HtmlEncode(cr.chr.ToString()));
-			else if(tks.Current is WhiteSpace)
-				sb.Append(' ');
-			else if(tks.Current is Braced br)
-				latexToHtml((br.inner as IEnumerable<Token>).GetEnumerator(), sb);
-			else if(tks.Current is ArgumentRef)
-				Console.Error.WriteLine("[WARN] Discarding orphaned argument reference");
-			else if(tks.Current is HtmlChunk ch)
-				sb.Append(ch.data);
-			else if(tks.Current is Environment env)
+			switch(tks.Current)
 			{
-				string name = Conf.Environments.GetValueOrDefault(env.env, env.env);
+				case MacroName mn:
+					Console.Error.WriteLine($"[WARN] Discarding unknown macro: \\{mn.macro}");
+				break;
 
-				switch(name)
+				case BackBack:
+					sb.Append("<br/>");
+				break;
+
+				case Character cr:
+					// ignore math-mode
+					if(cr.chr == '$')
+						continue;
+
+					sb.Append(WebUtility.HtmlEncode(cr.chr.ToString()));
+				break;
+
+				case WhiteSpace:
+					sb.Append(' ');
+				break;
+
+				case Braced br:
+					latexToHtml((br.inner as IEnumerable<Token>).GetEnumerator(), sb);
+				break;
+
+				case ArgumentRef:
+					Console.Error.WriteLine("[WARN] Discarding orphaned argument reference");
+				break;
+
+				case HtmlChunk ch:
+					sb.Append(ch.data);
+				break;
+
+				case Environment env:
 				{
-					case "itemize":
+					string name = Conf.Environments.GetValueOrDefault(env.env, env.env);
+
+					switch(name)
 					{
-						sb.Append((env.env != name) ? $"<ul class=\"{WebUtility.HtmlEncode(env.env)}\">" : "<ul>");
-
-						foreach (var point in env.inner
-								.SplitBy(tk => tk is MacroName m && m.macro == "item")
-								.ToArray()
-								.Trim(xs => xs.All(x => x is WhiteSpace)))
+						case "itemize":
 						{
-							sb.Append("<li>");
-							latexToHtml((point as IEnumerable<Token>).GetEnumerator(), sb);
-							sb.Append("</li>");
-						}
+							sb.Append((env.env != name) ? $"<ul class=\"{WebUtility.HtmlEncode(env.env)}\">" : "<ul>");
 
-						sb.Append("</ul>");
-					}
-					break;
-
-					case "tabular":
-					{
-						var contents = Tabular(env.inner);
-						sb.Append((env.env != name) ? $"<table  class=\"{WebUtility.HtmlEncode(env.env)}\">" : "<table>");
-						bool header = true;
-
-						foreach(var row in contents)
-						{
-							sb.Append("<tr>");
-
-							foreach (var cell in row)
+							foreach (var point in env.inner
+									.SplitBy(tk => tk is MacroName m && m.macro == "item")
+									.ToArray()
+									.Trim(xs => xs.All(x => x is WhiteSpace)))
 							{
-								sb.Append(header ? "<th>" : "<td>");
-								latexToHtml(cell.GetEnumerator(), sb);
-								sb.Append(header ? "</th>" : "</td>");
+								sb.Append("<li>");
+								latexToHtml((point as IEnumerable<Token>).GetEnumerator(), sb);
+								sb.Append("</li>");
 							}
 
-							sb.Append("</tr>");
-							header = false;
+							sb.Append("</ul>");
 						}
+						break;
 
-						sb.Append("</table>");
-					}
-					break;
+						case "tabular":
+						{
+							var contents = Tabular(env.inner);
+							sb.Append((env.env != name) ? $"<table  class=\"{WebUtility.HtmlEncode(env.env)}\">" : "<table>");
+							bool header = true;
 
-					default:
-					{
-						Console.Error.WriteLine($"[WARN] Unknown environment {name}");
-						sb.Append($"<div class=\"{name}\">");
-						latexToHtml((env.inner as IEnumerable<Token>).GetEnumerator(), sb);
-						sb.Append("</div>");
+							foreach(var row in contents)
+							{
+								sb.Append("<tr>");
+
+								foreach (var cell in row)
+								{
+									sb.Append(header ? "<th>" : "<td>");
+									latexToHtml(cell.GetEnumerator(), sb);
+									sb.Append(header ? "</th>" : "</td>");
+								}
+
+								sb.Append("</tr>");
+								header = false;
+							}
+
+							sb.Append("</table>");
+						}
+						break;
+
+						default:
+						{
+							Console.Error.WriteLine($"[WARN] Unknown environment {name}");
+							sb.Append($"<div class=\"{name}\">");
+							latexToHtml((env.inner as IEnumerable<Token>).GetEnumerator(), sb);
+							sb.Append("</div>");
+						}
+						break;
 					}
-					break;
 				}
+				break;
+
+				default:
+					throw new FormatException("Unhandled token kind");
 			}
-			else
-				throw new FormatException("Unhandled token kind");
 		}
 	}
 
