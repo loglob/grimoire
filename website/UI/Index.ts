@@ -122,14 +122,18 @@ namespace UI
 			return this.selectedSources()
 				.map(x => `from=${encodeURIComponent(x)}`)
 				.concat(`q=${encodeURIComponent(this.table.searchField.value)}`)
+				.concat(`game=${encodeURIComponent(this.game.shorthand)}`)
 				.join('&');
 		}
 
 		/** The sources that are currently selected */
 		private selectedSources() : string[]
 		{
-			return Object.keys(this.books)
-				.filter(id => (document.getElementById(`source_${id}`) as HTMLInputElement).checked);
+			const k = Object.keys(this.books);
+
+			return (k.length == 1)
+				? [ k[0] ]
+				: k.filter(id => (document.getElementById(`source_${id}`) as HTMLInputElement).checked);
 		}
 
 		/** Creates a spell list from the current filter and switches location to its list view */
