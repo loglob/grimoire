@@ -34,19 +34,12 @@ namespace Games.DnD5e
 		spellCard(spell: Spell, book: string): HTMLDivElement
 		{
 			const div = document.createElement("div");
-			div.appendChild( document.createElement("hr") );
-	
+			child(div, "hr");
+			child(div, "h3").innerText = spell.name;
+			child(div, "p").innerText = spell.school;
+		
 			{
-				var name = document.createElement("h3");
-				name.innerText = spell.name;
-				var school = document.createElement("p");
-				school.innerText = spell.school;
-	
-				div.append(name, school);
-			}
-	
-			{
-				var properties = document.createElement("p");
+				const properties = child(div, "p");
 	
 				properties.append(
 					"Level: ",
@@ -67,47 +60,23 @@ namespace Games.DnD5e
 					"Duration: ",
 					bold( spell.duration )
 				);
-	
-				div.appendChild( properties );
 			}
 	
-			{
-				const desc = document.createElement("p");
-				desc.innerHTML = spell.description;
-	
-				div.appendChild(desc)
-			}
+			child(div, "p").innerHTML = spell.description;
 	
 			if(spell.upcast)
 			{
-				var ahl = document.createElement("h4");
-				ahl.innerText = "At higher levels";
-	
-				var upc = document.createElement("p");
-				upc.innerHTML = spell.upcast;
-	
-				div.append(ahl, upc);
+				child(div, "h4").innerText = "At higher levels";
+				child(div, "p").innerHTML = spell.upcast;
 			}
 	
 			if(spell.statBlock)
 			{
-				var sb = document.createElement("p");
-				sb.innerHTML = spell.statBlock;
-	
-				var hr =  document.createElement("hr");
-				hr.className = "subtle";
-	
-				div.append(hr, sb);
+				child(div, "p").innerHTML = spell.statBlock;
+				child(div, "hr", "subtle")
 			}
 	
-			{
-				const src = document.createElement("p");
-				src.id = "from";
-				src.className = "subtle";
-				src.innerText = spell.hint ? `${book} (${spell.hint})` : book;
-	
-				div.appendChild(src);
-			}
+			child(div, "p", "subtle from").innerText = spell.hint ? `${book} (${spell.hint})` : book;
 	
 			return div;
 		}
