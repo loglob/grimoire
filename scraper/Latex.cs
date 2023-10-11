@@ -188,8 +188,12 @@ public record Latex(Config.LatexOptions Conf)
 		}
 	}
 
-	public static string Untokenize(IEnumerable<Token> tks)
-		=> string.Join("", tks).Trim();
+	public static string Untokenize(IEnumerable<Token> tks, bool dropMath = false)
+		=> string.Join("", dropMath ? tks.Where(t => !(t is Character c && c.chr == '$')) : tks).Trim();
+
+	public static string Untokenize(ArraySegment<Token> tks, bool dropMath = false)
+		=> Untokenize((IEnumerable<Token>)tks, dropMath);
+
 
 #endregion TeX Lexer
 

@@ -45,6 +45,7 @@
 		=> conf.Shorthand switch
 		{
 			"dnd5e" => processGame(new DnD5e(conf)),
+			"gd" => processGame(new Goedendag(conf)),
 			var s => throw new ArgumentException($"Invalid game shorthand: {s}")
 		};
 

@@ -5,7 +5,8 @@ namespace UI
 	import ISpell = Data.ISpell
 
 	export const games = {
-		dnd5e: "D&D 5e"
+		dnd5e: "D&D 5e",
+		gd: "Goedendag"
 	};
 
 	export async function withGameNamed<A>(id : string, f : <T extends ISpell>(g : IGame<T>) => Promise<A>) : Promise<A>
@@ -14,6 +15,9 @@ namespace UI
 		{
 			case "dnd5e":
 				return await f(new Games.DnD5e.Game(id, games[id]));
+
+			case "gd":
+				return await f(new Games.Goedendag.Game(id, games[id]));
 
 			default:
 				alert(`Invalid game ID: '${id}'. Either the URL is wrong or your browser cache is outdated.`);

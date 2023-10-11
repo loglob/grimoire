@@ -150,7 +150,7 @@ public class DnD5e : IGame<DnD5e.Spell>
 		if(!lPos.MoveNext() || !SkipOpt(lPos, out var hint))
 			throw new FormatException("Empty spell");
 
-		var props = GetArgs(lPos, 7).Select(Untokenize).ToArray();
+		var props = GetArgs(lPos, 7).Select(x => Untokenize(x)).ToArray();
 
 		var name = props[0];
 		var (level, school, ritual) = ParseLevel(props[1]);
