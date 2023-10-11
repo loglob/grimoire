@@ -23,6 +23,9 @@ namespace Games.DnD5e
 		tableHeaders: (keyof Spell)[] = [
 			"level", "school", "castingTime", "ritual", "concentration", "source"
 		]
+
+		customComparers = {}
+
 		getSource(s: Spell)
 		{
 			return s.source;

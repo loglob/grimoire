@@ -89,8 +89,12 @@ namespace UI
 		/** Compares two spells for sorting according to the current table sort setting. */
 		compareSpell(l : TSpell, r : TSpell) : number
 		{
-			let so = this.sortOn;
-			let cmp = l[so] > r[so] ? -1 : l[so] < r[so] ? +1 : 0;
+			const so = this.sortOn;
+			const sos = so as string;
+
+			const cmp = (sos in this.game.customComparers)
+				? this.game.customComparers[sos](l, r)
+				: (l[so] > r[so] ? -1 : l[so] < r[so] ? +1 : 0)
 
 			return (this.reverse ? -cmp : +cmp);
 		}
