@@ -713,6 +713,10 @@ public record Latex(Config.LatexOptions Conf)
 			{
 				spell = ExtractSpell(game, snip.Trim(string.IsNullOrWhiteSpace), source);
 			}
+			catch(NotASpellException)
+			{
+				continue;
+			}
 			catch (System.Exception ex)
 			{
 				Console.WriteLine($"At '{snip[0].Substring(0,Math.Min(snip[0].Length, 25))}...': {ex.Message}\n{ex.StackTrace}");
