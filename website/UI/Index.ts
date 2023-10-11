@@ -28,6 +28,8 @@ namespace UI
 			this.table = table;
 			this.books = books;
 
+			document.title = `Grimoire: ${game.fullName} Spells`
+
 			document.getElementById("static-link").onclick = _ => {
 				const url = `${window.location.origin}${window.location.pathname}?${this.urlParams()}`;
 				console.log(url);
