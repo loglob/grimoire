@@ -14,6 +14,37 @@
 	<br/>
 	<br/>
 		Search terms consist of the following:
+		<h3>For all Games</h3>
+		<ul>
+			<li>
+				<span class="code">prepared</span>, which matches if a spell is currently prepared (only on spell list page)
+			</li>
+			<li>
+				<span class="code">$</span> followed by any part of a spell's material components,
+				which matches if a spell's material components contain that string.
+			</li>
+			<li>
+				A verbatim casting time value, such as <span class="code">1 bonus action</span> or <span class="code">3 [action points]</span>.
+			</li>
+			<li>
+				Any part of a spell's name. Any spell which has that string contained in its name is matched.
+			</li>
+			<li>
+				A spell's full name, prefixed by <span class="code">\</span>.
+				For example, <span class="code">\shield</span> matches <i>Shield</i> but not <i>Shield of Faith</i>.
+			</li>
+			<li>
+				Any part of a spell's description, prefixed by <span class="code">/</span>.
+				Prefixing with <span class="code">//</span> matches a single word verbatim instead.
+				Words may be separated by space, or any non-letter characters, both matches are attempted.
+			</li>
+            <li>
+                Any of these terms, prefixed with <span class="code">!</span>.
+                Matches only spells which aren't matched by the following search term.
+            </li>
+		</ul>
+
+		<h3>For D&D 5e</h3>
 		<ul>
 			<li>
 				<span class="code">ritual</span>, which matches if a spell is a ritual
@@ -23,9 +54,6 @@
 			</li>
 			<li>
 				<span class="code">upcast</span>, which matches if a spell has an upcast
-			</li>
-			<li>
-				<span class="code">prepared</span>, which matches if a spell is currently prepared (only on spell list page)
 			</li>
 			<li>
 				<span class="code">verbal</span>, which matches if a spell requires verbal components
@@ -38,10 +66,6 @@
 			</li>
 			<li>
 				<span class="code">$$</span>, which matches if a spell requires expensive material components
-			</li>
-			<li>
-				<span class="code">$</span> followed by any part of a spell's material components,
-				which matches if a spell's material components contain that string.
 			</li>
 			<li>
 				<span class="code">L</span> which matches the spell's level against a value or range.
@@ -57,31 +81,32 @@
 				A verbatim duration value, such as <span class="code">1 minute</span>.
 			</li>
 			<li>
-				A verbatim casting time value, such as <span class="code">1 bonus action</span>.
-			</li>
-			<li>
 				A spell school, such as <span class="code">enchantment</span>.
 			</li>
 			<li>
 				A caster class, such as <span class="code">wizard</span>.
 			</li>
-			<li>
-				Any part of a spell's name. Any spell which has that string contained in its name is matched.
-			</li>
-			<li>
-				A spell's full name, prefixed by <span class="code">\</span>.
-				For example, <span class="code">\shield</span> matches <i>Shield</i> but not <i>Shield of Faith</i>.
-			</li>
-			<li>
-				Any part of a spell's description, prefixed by <span class="code">/</span>.
-				Prefixing with <span class="code">//</span> matches a single word verbatim instead.
-				Words may be separated by space, or any non-letter characters, both matches are attempted.
-			</li>
-            <li>
-                Any of the above, prefixed with <span class="code">!</span>.
-                Matches only spells which aren't matched by the following search term.
-            </li>
 		</ul>
+
+		<h3>For Goedendag</h3>
+		<ul>
+			<li>
+				A verbatim arcanum, such as <span class="code">nature</span>
+			</li>
+			<li>
+				A verbatim power level, such as <span class="code">petty</span>
+			</li>
+			<li>
+				A verbatim distance value, such as <span class="code">touch</span>
+			</li>
+			<li>
+				<span class="code">combat</span>, which matches if a spell has the combat (C) tag
+			</li>
+			<li>
+				<span class="code">reaction</span>, which matches if a spell has the reaction (R) tag
+			</li>
+		</ul>
+
 		Even if one of these cases match, all others are tried anyways.
 		In particular, any term used is tested against the spells' names.
         The same applies to how <span class="code">!</span> search terms are matched.
