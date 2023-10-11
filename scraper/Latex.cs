@@ -269,7 +269,7 @@ public record Latex(Config.LatexOptions Conf)
 	/// <returns>
 	/// Whether a non-whitespace token was found before
 	/// </returns>
-	private static bool skipWS(IEnumerator<Token> tks)
+	public static bool SkipWS(IEnumerator<Token> tks)
 	{
 		while(tks.Current is WhiteSpace)
 		{
@@ -278,6 +278,15 @@ public record Latex(Config.LatexOptions Conf)
 		}
 
 		return true;
+	}
+
+	public static ArraySegment<Token> SkipWS(ArraySegment<Token> tks)
+	{
+		int s;
+
+		for (s = 0; s < tks.Count && tks[s] is WhiteSpace; ++s);
+		
+		return tks.Slice(s);
 	}
 
 	/// <summary>
@@ -295,7 +304,7 @@ public record Latex(Config.LatexOptions Conf)
 	{
 		arg = null;
 
-		if(!skipWS(tks))
+		if(!SkipWS(tks))
 			return false;
 
 		if(tks.Current is Character c && c.chr == '[')
@@ -316,6 +325,29 @@ public record Latex(Config.LatexOptions Conf)
 			return true;
 	}
 
+	public static ArraySegment<Token> SkipOpt(ArraySegment<Token> tks, out ArraySegment<Token>? arg)
+	{
+		arg = null;
+
+		tks = SkipWS(tks);
+
+		if(tks.Count > 0 && tks[0] is Character o && o.chr == '[')
+		{
+			int len;
+
+			for (len = 0; 1 + len < tks.Count; ++len)
+			{
+				if(tks[1 + len] is Character c && c.chr == ']')
+				{
+					arg = tks.Slice(1, len);
+					return tks.Slice(len + 2);
+				}
+			}
+		}
+
+		return tks;
+	}
+
 	public static bool SkipOpt(IEnumerator<Token> tks)
 		=> SkipOpt(tks, out var _);
 
@@ -334,7 +366,7 @@ public record Latex(Config.LatexOptions Conf)
 
 		for (int i = 0; i < argc; i++)
 		{
-			if((i > 0 && !tks.MoveNext()) || !skipWS(tks) || (tks.Current is Character c && c.chr == '\n'))
+			if((i > 0 && !tks.MoveNext()) || !SkipWS(tks) || (tks.Current is Character c && c.chr == '\n'))
 			{
 				Console.Error.WriteLine($"[WARN] Incomplete call");
 
@@ -358,6 +390,32 @@ public record Latex(Config.LatexOptions Conf)
 	}
 
 	/// <summary>
+	///  Grabs mandatory(!) arguments from a slice
+	/// </summary>
+	public static ArraySegment<Token> GetArgs(ArraySegment<Token> tks, ArraySegment<Token>[] argv)
+	{
+		for (int i = 0; i < argv.Length; ++i)
+		{
+			tks = SkipWS(tks);
+
+			if(tks.Count == 0)
+			{
+				Console.Error.WriteLine($"[WARN] Incomplete call");
+				return tks;
+			}
+
+			if(tks[0] is Braced b)
+				argv[i] = b.inner;
+			else
+				argv[i] = tks.Slice(0, 1);
+			
+			tks = tks.Slice(1);			
+		}
+
+		return tks;
+	}
+
+	/// <summary>
 	/// Learns every macro definition from a raw token stream
 	/// </summary>
 	/// <param name="tks">A token stream returned by tokenize()</param>
@@ -376,7 +434,7 @@ public record Latex(Config.LatexOptions Conf)
 				if(!(name[0] is MacroName mn))
 					throw new FormatException("Expected a macro name in command definition");
 
-				if(!tks.MoveNext() || !skipWS(tks))
+				if(!tks.MoveNext() || !SkipWS(tks))
 					throw new Exception("No definition after macro name");
 
 				if(!SkipOpt(tks, out var argcSpec))
@@ -556,7 +614,7 @@ public record Latex(Config.LatexOptions Conf)
 				{
 					case "itemize":
 					{
-						sb.Append("<ul>");
+						sb.Append((env.env != name) ? $"<ul class=\"{WebUtility.HtmlEncode(env.env)}\">" : "<ul>");
 
 						foreach (var point in env.inner
 								.SplitBy(tk => tk is MacroName m && m.macro == "item")
@@ -574,23 +632,18 @@ public record Latex(Config.LatexOptions Conf)
 
 					case "tabular":
 					{
-						sb.Append("<table>");
+						var contents = Tabular(env.inner);
+						sb.Append((env.env != name) ? $"<table  class=\"{WebUtility.HtmlEncode(env.env)}\">" : "<table>");
 						bool header = true;
-						IEnumerable<Token> tokens = env.inner;
 
-						if(tokens.SkipWhile(x => x is WhiteSpace).First() is Braced)
-							tokens = tokens.SkipWhile(x => x is WhiteSpace).Skip(1);
-						else
-							Console.Error.WriteLine("Expected a format argument after \\begin{tabular}");
-
-						foreach(var row in env.inner.SplitBy(tk => tk is Character c && c.chr == '\n'))
+						foreach(var row in contents)
 						{
 							sb.Append("<tr>");
 
-							foreach (var cell in row.SplitBy(tk => tk is Character c && c.chr == '&'))
+							foreach (var cell in row)
 							{
 								sb.Append(header ? "<th>" : "<td>");
-								latexToHtml((cell as IEnumerable<Token>).GetEnumerator(), sb);
+								latexToHtml(cell.GetEnumerator(), sb);
 								sb.Append(header ? "</th>" : "</td>");
 							}
 
@@ -624,8 +677,58 @@ public record Latex(Config.LatexOptions Conf)
 		return sb.ToString();
 	}
 
+	/// <summary>
+	///  Parses tabular contents, including leading arguments.
+	/// </summary>
+	public static List<ArraySegment<Token>[]> Tabular(ArraySegment<Token> tks, out ArraySegment<Token>? optArgs)
+	{
+		optArgs = null;
+		tks = SkipWS(tks);
+		tks = SkipOpt(tks, out var _);
+
+		var fmtArgs = new ArraySegment<Token>[1] { ArraySegment<Token>.Empty };
+		tks = GetArgs(tks, fmtArgs);
+
+		if(fmtArgs[0].Count > 0)
+			optArgs = fmtArgs[0];
+
+		string fmt = Untokenize(fmtArgs[0]);
+		int width = 0;
+		int braces = 0;
+
+		foreach (var c in fmt)
+		{
+			if(Char.IsWhiteSpace(c))
+				continue;
+			else if(c == '{')
+				++braces;
+			else if(braces == 0)
+				++width;
+			else if(c == '}')
+				--braces;
+		}
+
+		if(braces != 0)
+			throw new FormatException($"Malformed table format: '{fmt}'");
+		if(width == 0)
+			throw new FormatException($"Bad table without format spec");
+
+		var table = new List<ArraySegment<Token>[]>();
+
+		return tks.SplitBy(t => t is BackBack)
+			.SkipLastIf(x => x.All(c => c is WhiteSpace))
+			.Select(r => r.SplitBy(t => t is Character s && s.chr == '&', width))
+			.ToList();
+	}
+	
+	public static List<ArraySegment<Token>[]> Tabular(ArraySegment<Token> tks)
+		=> Tabular(tks, out var _);
+
 	public string LatexToHtml(IEnumerable<Token> tks)
-		=> LatexToHtml(tks.GetEnumerator());
+		=> LatexToHtml(tks.GetEnumerator()).Trim();
+
+	public string LatexToHtml(ArraySegment<Token> tks)
+		=> LatexToHtml(tks.GetEnumerator()).Trim();
 
 #endregion TeX Compiler
 
