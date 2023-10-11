@@ -46,4 +46,23 @@ namespace Util
 	{
 		return new Array(n).fill(ns).map(n => child(parent, ns))
 	}
+
+	/** Checks a term for full-text match as described in the search help
+	 * @param term The exact user-supplied term (after query parsing), with possibly leading '/'
+	 * @param test the text fields to check against
+	 */
+	export function fullTextMatch(term : string, ...test : (string | undefined | null)[]) : boolean
+	{
+		const t1 = term.substring(1);
+		const t2 = term.substring(2);
+
+		return (term[0] === '/' && test.some(txt => txt && (term[1] === '/'
+			? txt.toLowerCase().split(/\s+/).some(w => w === t2 || w.split(/\W+/).includes(t2))
+			: txt.toLowerCase().includes(t1))))
+	}
+
+	export function fieldTermMatch<T>(obj : T, term : string, ...fields : (keyof T)[]) : boolean
+	{
+		return fields.some(f => obj[f] && term === f);
+	}
 }
