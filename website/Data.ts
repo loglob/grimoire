@@ -21,9 +21,7 @@ namespace Data
 
 	export interface ISpell
 	{
-		name : string,
-		source : string
-
+		name : string
 	}
 
 	/** Normalizes a query. Resolved operators, squeezes whitespace and converts to lowercase. */

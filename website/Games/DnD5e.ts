@@ -23,6 +23,10 @@ namespace Games.DnD5e
 		tableHeaders: (keyof Spell)[] = [
 			"level", "school", "castingTime", "ritual", "concentration", "source"
 		]
+		getSource(s: Spell)
+		{
+			return s.source;
+		}
 
 		spellCard(spell: Spell, book: string): HTMLDivElement
 		{

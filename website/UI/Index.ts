@@ -16,7 +16,7 @@ namespace UI
 			const p = new URLSearchParams(window.location.search);
 			const ind = new Index(game, new Table(game, p.get("q")), await game.getBooks());
 
-			ind.makeSourceSelector(p.getAll("from"))
+			await ind.makeSourceSelector(p.getAll("from"))
 
 			return ind;
 		}
@@ -68,10 +68,17 @@ namespace UI
 		/** Creates the source selector
 		 * @param preload A list of book IDs to import immediately
 		*/
-		private makeSourceSelector(preload : string[])
+		private async makeSourceSelector(preload : string[])
 		{
 			let elem = document.getElementById("source-selector");
 			document.getElementById("source-selector-placeholder")?.remove();
+
+			if(Object.keys(this.books).length == 1)
+			{
+				const id = Object.keys(this.books)[0];
+				this.table.insert(await this.game.fetchSource(id));
+				return;
+			}
 
 			for (const id in this.books)
 			{
@@ -94,7 +101,7 @@ namespace UI
 						setHidden(l, true);
 					}
 					else
-						this.table.deleteIf(s => s.source === id);
+						this.table.deleteIf(s => this.game.getSource(s) === id);
 				}
 
 				container.appendChild(select);

@@ -10,7 +10,7 @@ namespace UI
 		const div = document.getElementById("spell-cards");
 
 		for (const spell of game.cardOrder(spells))
-			div.appendChild(game.spellCard(spell, books[spell.source]));
+			div.appendChild(game.spellCard(spell, books[game.getSource(spell)]));
 	}
 
 	/** Initialized the spell card UI.
