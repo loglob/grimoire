@@ -13,19 +13,19 @@ public record Latex(Config.LatexOptions Conf)
 	/// A reference to a macro, of the form \<name>.
 	/// </summary>
 	/// <param name="macro">The name of the referenced macro, without backslash</param>
-	private sealed record MacroName(string macro) : Token
+	public sealed record MacroName(string macro) : Token
 	{ public override string ToString() => $"\\{macro}"; }
 
 	/// <summary>
 	/// Any regular character. \n indicates a paragraph break, not a (source) line break
 	/// </summary>
-	private sealed record Character(char chr) : Token
+	public sealed record Character(char chr) : Token
 	{ public override string ToString() => chr.ToString(); }
 
 	/// <summary>
 	/// TeX whitespace, which is discarded when searching for function arguments
 	/// </summary>
-	private sealed record WhiteSpace : Token
+	public sealed record WhiteSpace : Token
 	{ public override string ToString() => " "; }
 
 	/// <summary>
@@ -37,17 +37,23 @@ public record Latex(Config.LatexOptions Conf)
 	/// <summary>
 	/// Reference to an argument, of the form #<number>
 	/// </summary>
-	private sealed record ArgumentRef(int number) : Token
+	public sealed record ArgumentRef(int number) : Token
 	{ public override string ToString() => $"#{number}"; }
 
 	/// <summary>
 	/// A chunk that should not be escaped when translating to HTML
 	/// </summary>
-	private sealed record HtmlChunk(string data) : Token
+	public sealed record HtmlChunk(string data) : Token
 	{ public override string ToString() => data; }
 
-	private sealed record Environment(string env, Token[] inner) : Token
+	public sealed record Environment(string env, Token[] inner) : Token
 	{ public override string ToString() => $"\\begin{{{env}}} "+string.Join("", inner as object[])+$" \\end{{{env}}}"; }
+
+	/// <summary>
+	///  Special token for "\\" since it's treated differently depending on context
+	/// </summary>
+	public sealed record BackBack() : Token
+	{ public override string ToString() => "\n"; }
 
 
 	/// <summary>
@@ -205,7 +211,7 @@ public record Latex(Config.LatexOptions Conf)
 	/// </summary>
 	private readonly Dictionary<string, Macro> macros = new Dictionary<string, Macro>
 	{
-		{ "\\", translate('\n') },
+		{ "\\", new(0, null, new Token[]{ new BackBack() }) },
 		{ "{", translate('{') },
 		{ "}", translate('}') },
 		{ " ", translate(' ') },
@@ -530,8 +536,10 @@ public record Latex(Config.LatexOptions Conf)
 		{
 			if(tks.Current is MacroName mn)
 				Console.Error.WriteLine($"[WARN] Discarding unknown macro: \\{mn.macro}");
+			else if(tks.Current is BackBack)
+				sb.Append("<br/>");
 			else if(tks.Current is Character cr)
-				sb.Append(cr.chr == '\n' ? "<br/>" : WebUtility.HtmlEncode(cr.chr.ToString()));
+				sb.Append(WebUtility.HtmlEncode(cr.chr.ToString()));
 			else if(tks.Current is WhiteSpace)
 				sb.Append(' ');
 			else if(tks.Current is Braced br)
