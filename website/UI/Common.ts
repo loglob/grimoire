@@ -54,7 +54,7 @@ namespace UI
 		return {
 			sources: list.sources,
 			prepared : list.prepared,
-			query : list.query || list.filter,
+			query : q,
 			game : list.game || "dnd5e"
 		}
 	}

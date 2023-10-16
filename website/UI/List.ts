@@ -71,7 +71,7 @@ namespace UI
 				return [td];
 			});
 
-			game.isPrepared = this.isPrepared;
+			game.isPrepared = x => this.isPrepared(x);
 
 			document.title += `: ${this.name}`;
 

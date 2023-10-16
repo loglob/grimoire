@@ -18,23 +18,22 @@ namespace UI
 	 */
 	export async function initCards()
 	{
-		await withGame(async function(g) {
-			if(window.location.hash)
-			{
-				var list = getSpellList(window.location.hash.substring(1));
-				var prepared = new Set(list.prepared);
-	
-				document.title = `Spell cards - ${list.name}`
-	
+		if(window.location.hash)
+		{
+			var list = getSpellList(window.location.hash.substring(1));
+			var prepared = new Set(list.prepared);
+
+			document.title = `Spell cards - ${list.name}`
+
+			await withGameNamed(list.game, async function(g) {
 				return await spellCards(g, (await g.fetchSources(... list.sources)).filter(s => prepared.has(s.name)) );
-			}
-			else
-			{
-				const q = new URLSearchParams(window.location.search);
-				const f = Data.parseQuery(q.get("q"));
-	
-				return await spellCards(g, (await g.fetchSources(... q.getAll("from"))).filter(s => g.spellMatchesQuery(f, s)) );
-			}
+			})
+		}
+		else await withGame(async function(g) {
+			const q = new URLSearchParams(window.location.search);
+			const f = Data.parseQuery(q.get("q"));
+
+			return await spellCards(g, (await g.fetchSources(... q.getAll("from"))).filter(s => g.spellMatchesQuery(f, s)) );
 		})
 	}
 }
