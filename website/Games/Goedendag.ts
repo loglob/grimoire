@@ -27,6 +27,7 @@ namespace Games.Goedendag
 		combat : boolean,
 		reaction : boolean,
 		distance : string,
+		duration : string,
 		castingTime : string,
 		components : string,
 		brief : string,
@@ -53,6 +54,7 @@ namespace Games.Goedendag
 			[ "Power Level", `${spell.powerLevel} (DV ${PowerLevelDCs[spell.powerLevel]})` + (spell.combat ? " (C)" : "") ],
 			[ "Casting Time", spell.castingTime + (spell.reaction ? " (R)" : "") ],
 			[ "Distance", spell.distance ],
+			[ "Duration", spell.duration ],
 			[ "Components", spell.components ]
 		]
 	}
@@ -90,7 +92,7 @@ namespace Games.Goedendag
 				if(! fst)
 					child(p, "br");
 
-				p.append( kvp[0] + ":", bold(kvp[1]) )
+				p.append( kvp[0] + ": ", bold(kvp[1]) )
 				fst = false;
 			}
 
@@ -123,7 +125,7 @@ namespace Games.Goedendag
 			const term1 = term.substring(1);
 			
 			return  s.name.toLowerCase().includes(term)
-				|| [ s.arcanum, s.powerLevel, s.distance, s.castingTime ].some(x => x.toLowerCase() === term)
+				|| [ s.arcanum, s.powerLevel, s.distance, s.duration, s.castingTime ].some(x => x.toLowerCase() === term)
 				|| [ "combat", "reaction" ].some(x => s[x as keyof Spell] && term === x)
 				|| (this.isPrepared && term === "prepared" && this.isPrepared(s))
 				|| (term[0] === '$' && s.components && s.components.toLowerCase().includes(term1))

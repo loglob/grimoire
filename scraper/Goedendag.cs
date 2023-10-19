@@ -33,6 +33,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		bool combat,
 		bool reaction,
 		string distance,
+		string duration,
 		string castingTime,
 		string components,
 		string brief,
@@ -150,7 +151,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			? comp.LatexToHtml(trailing)
 			: null;
 
-		return new(name, arcanum, powerLevel, combat, reaction, distance, castingTime, components, brief, effect, crit, fail, extra);
+		return new(name, arcanum, powerLevel, combat, reaction, distance, duration, castingTime, components, brief, effect, crit, fail, extra);
     }
 
     public ISource<Spell> Instantiate(Config.Source src)
