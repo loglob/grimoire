@@ -65,7 +65,7 @@ public static class Config
 			};
 	}
 
-	public record DndWikiSource(TimeSpan? RateLimit = default) : Source
+	public sealed record DndWikiSource(TimeSpan? RateLimit = default) : Source
 	{
 		public override string ToString()
 			=> $"DndWikiSource";
@@ -92,7 +92,7 @@ public static class Config
 	///  Default is <c>%% grimoire include</c>
 	/// </param>
 	/// <param name="Latex"> The latex configuration to use.</param>
-	public record OverleafSource(string ProjectID, string Password, string? User, string? Host, string IncludeAnchor, string[] localMacros, LatexOptions Latex) : Source
+	public sealed record OverleafSource(string ProjectID, string Password, string? User, string? Host, string IncludeAnchor, string[] localMacros, LatexOptions Latex) : Source
 	{
 		public const string DEFAULT_INCLUDE_ANCHOR = "%% grimoire include";
 
@@ -111,7 +111,7 @@ public static class Config
 			=> $"OverleafSource( ProjectID = {ProjectID}, Password = {Password}, User = {User}, Host = {Host}, Latex = {Latex} )";
 	}
 
-	public record LatexSource(LatexOptions Options, string[] MacroFiles, Dictionary<string, string[]> Files) : Source
+	public sealed record LatexSource(LatexOptions Options, string[] MacroFiles, Dictionary<string, string[]> Files) : Source
 	{
 		private static Dictionary<string, string[]> parseFiles(JsonObject o)
 		{
@@ -141,7 +141,7 @@ public static class Config
 			=> $"LatexSource( Options = {Options}, MacroFiles = {MacroFiles.Show()}, Files = {Files.Show()} )";
 	}
 
-	public record CopySource(string[] From) : Source
+	public sealed record CopySource(string[] From) : Source
 	{
 		internal static CopySource Parse(JsonObject o)
 			=> new( strArray(o["from"]) );
@@ -153,23 +153,30 @@ public static class Config
 	/// <param name="SpellAnchor"> A latex command that initializes a spell description </param>
 	/// <param name="UpcastAnchor"> A latex command that initiates an upcast section </param>
 	/// <param name="Environments"> Maps latex environments onto equivalent HTML tags</param>
-	/// <param name="Images"> Text to replace instances of specific images with </param>
-	public record LatexOptions(
+	/// <param name="Images"> Raw HTML text to replace instances of specific images with </param>
+	/// <param name="MaximumExpansions"> The maximum number of expansions to perform for one expand() call </param>
+	public sealed record LatexOptions(
 		string SpellAnchor,
 		string? UpcastAnchor,
 		Dictionary<string, string> Environments,
-		Dictionary<string, string> Images)
+		Dictionary<string, string> Images,
+		int MaximumExpansions = LatexOptions.DEFAULT_MAXIMUM_EXPANSIONS)
 	{
+		public const int DEFAULT_MAXIMUM_EXPANSIONS = 1_000_000;
+
+		public const string MACROS_SOURCE_NAME = "macros";
+
 		internal static LatexOptions Parse(JsonObject o)
 			=> new(
 				(string)o["spellAnchor"]!,
 				(string?)o["upcastAnchor"],
 				o["environments"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? new(),
-				o["images"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? new()
+				o["images"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? new() ,
+				((int?)o["maximumExpansions"]) ?? DEFAULT_MAXIMUM_EXPANSIONS
 			);
 
 		public override string ToString()
-			=> $"LatexOptions( SpellAnchor = {SpellAnchor}, UpcastAnchor = {UpcastAnchor}, Environments = {Environments.Show()}, Images = {Images.Show()} )";
+			=> $"{nameof(LatexOptions)}( {nameof(SpellAnchor)} = {SpellAnchor}, {nameof(UpcastAnchor)} = {UpcastAnchor}, {nameof(Environments)} = {Environments.Show()}, {nameof(Images)} = {Images.Show()}, {nameof(MaximumExpansions)} = {MaximumExpansions} )";
 	}
 
 	public static Dictionary<string, Game> Parse(JsonObject o)

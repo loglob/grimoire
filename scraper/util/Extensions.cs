@@ -1,7 +1,5 @@
 using HtmlAgilityPack;
 using Newtonsoft.Json;
-using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Util;
@@ -266,10 +264,7 @@ internal static class Extensions
 
 		return sb.ToString();
 	}
-	
 
-	public static string Show<T>(this T[][] arr)
-		=> arr.Select(x => x.Show()).ToArray().Show();
 
 	public static string Show<T>(this T[] arr)
 	{
@@ -407,7 +402,7 @@ internal static class Extensions
 			yield return (last, null);
 	}
 
-	public static B WithValue<A,B>(this A? a, Func<A,B> f, B fallback) where A : struct 
+	public static B WithValue<A,B>(this A? a, Func<A,B> f, B fallback) where A : struct
 		=> a.HasValue ? f(a.Value) : fallback;
 
 	public static string Quote(this string str)

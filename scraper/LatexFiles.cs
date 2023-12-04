@@ -1,27 +1,28 @@
+using Latex;
 
 /// <summary>
 /// Scraper for processing LaTeX files
 /// </summary>
 public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : ISource<TSpell>
 {
-	private readonly Latex latex = new(Conf.Options);
+	private readonly Compiler comp = new(Conf.Options);
 
 	public IAsyncEnumerable<TSpell> Spells()
 	{
 		foreach(var f in Conf.MacroFiles)
-			latex.LearnMacros(File.ReadLines(f));
+			comp.LearnMacrosFrom(File.ReadLines(f), f);
 
 		var segments = Conf.Files
 			.SelectMany(kvp => kvp.Value.Select(file => (kvp.Key, file)))
-			.SelectMany(x => Latex.CodeSegments(File.ReadAllLines(x.file), x.Key))
+			.Select(x => (source: x.Key, code: Lexer.Tokenize(File.ReadLines(x.file), x.file) ))
 			.ToList();
 
-		foreach (var seg in segments.Where(seg => seg.source == Latex.MACROS_SOURCE_NAME))
-			latex.LearnMacros(seg.code);
-		
+		foreach (var (_, code) in segments.Where(seg => seg.source == Config.LatexOptions.MACROS_SOURCE_NAME))
+			comp.LearnMacrosFrom(code);
+
 		return segments
-			.Where(seg => seg.source != Latex.MACROS_SOURCE_NAME)
-			.SelectMany(seg => latex.ExtractSpells(Game, seg.code.ToArray(), seg.source))
+			.Where(seg => seg.source != Config.LatexOptions.MACROS_SOURCE_NAME)
+			.SelectMany(seg => comp.ExtractSpells(Game, seg.code.ToArray(), seg.source))
 			.ToAsyncEnumerable();
 	}
 }

@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
+using Latex;
 using Util;
 
 public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
@@ -46,38 +47,51 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
         string ISpell.Source => "GD";
     }
 
-    public Spell ExtractLatexSpell(Latex comp, string source, IEnumerable<Latex.Token> body, string? upcast)
+
+	private static (Chain<Token> left, string[][] table, Chain<Token> rest) takeTable(Compiler comp, Chain<Token> code, string name = "spells")
+	{
+		int off = code.Items().FindOnSameLevel(x => x is BeginEnv b && b.Env == name);
+
+		if(off < 0)
+			throw new FormatException($"Expected a '\\begin{{{name}}}'");
+
+		var left = code.Slice(0, off);
+
+		var spec = code.Slice(off + 1).Args(1, 2);
+		code = spec.rest;
+
+		if(code.SplitOn(x => x is EndEnv, true) is not var (inner, end, rest))
+			throw new FormatException($"No matching \\end{{{name}}}");
+		if(end is not EndEnv e || e.Env != name)
+			throw new FormatException($"Malformed environments don't match");
+
+		var table = inner.SplitBy(x => x is BackBack, true)
+			.Select(x => x.SplitBy(y => y is AlignTab, true)
+				.Select(comp.ToString)
+				.ToArray())
+			.ToList();
+
+		if(table[^1] is [] || (table[^1] is [ var x ] && string.IsNullOrWhiteSpace(x)))
+			table.RemoveAt(table.Count - 1);
+
+		return (left, table.ToArray(), rest);
+	}
+
+    public Spell ExtractLatexSpell(Compiler comp, string source, Chain<Token> body)
     {
-		//Console.WriteLine(Untokenize(body));
-		var pos = body.GetEnumerator();
-		SkipWS(pos);
+		if(body.SplitOn(x => x is MacroName mn && mn.Macro == "label") is not var (_name, _, _label))
+			throw new FormatException("Bad spell format");
 
-		// Why is there 1 extra arg?
-		var args = GetArgs(pos, 3);
-		Arcanum arcanum;
-
-		{
-			var link = Untokenize(args[1]);
-
-			arcanum = link.Split('_') switch {
-				["arc", _] => throw new NotASpellException(),
-				[_, "gen",  _] => Arcanum.General,
-				[_, "nat",  _] => Arcanum.Nature,
-				[_, "ele",  _] => Arcanum.Elementalism,
-				[_, "cha",  _] => Arcanum.Charms,
-				[_, "div",  _] => Arcanum.Divine,
-				[_, "conj", _] => Arcanum.Conjuration,
-				_ => throw new FormatException($"Unexpected hyperref format '{link}'")
-			};
-		}
-
+		var label = _label.Args(0, 1);
+		var labelUri = label.args[0]!;
+		body = label.rest;
 
 		bool combat = false;
 		bool reaction = false;
 		string name;
 
 		{
-			var nameWords = Untokenize(args[2]).Split();
+			var nameWords = comp.ToString(_name).Split();
 			int wLen = nameWords.Length;
 			recheck_combat:
 			if(!combat && nameWords[wLen - 1] == "\\C")
@@ -95,60 +109,71 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			name = string.Join(' ', nameWords.Take(wLen));
 		}
 
-		
-		string brief = Untokenize(pos.TakeWhile(x => x is not Latex.Environment));
-		
-		var props = Tabular(((Latex.Environment)pos.Current).inner);
+		Arcanum arcanum;
 
-		if(props.Count != 2 || props[0].Length != 4)
-			throw new FormatException($"Properties must be a 2x4 table, got {props.Count}x{props[0].Length}");
+		{
+			var link = comp.ToString(labelUri.Value);
 
-		var p0 = props[0].ArraySelect(x => Untokenize(x, true));
-		var (distance, duration) = p0 switch {
+			arcanum = link.Split(':') switch {
+				["arc", _] => throw new NotASpellException(),
+				[_, "general",  _] => Arcanum.General,
+				[_, "nature",  _] => Arcanum.Nature,
+				[_, "ele",  _] => Arcanum.Elementalism,
+				[_, "charm",  _] => Arcanum.Charms,
+				[_, "divine",  _] => Arcanum.Divine,
+				[_, "conj", _] => Arcanum.Conjuration,
+				_ => throw new FormatException($"Unexpected hyperref format '{link}'")
+			};
+		}
+
+
+		var (_brief, props, afterProps) = takeTable(comp, body);
+		string brief = comp.ToHTML(_brief);
+		body = afterProps;
+
+		// there is a trailing '\\'
+		if(props.Length != 2 || props.Min(x => x.Length) != 4)
+			throw new FormatException($"Properties must be a 2x4 table, got {props.Length}x{props.Max(x => x.Length)}");
+
+		var (distance, duration) = props[0] switch {
 			[ "Distance:", var x, "Duration:", var y ] => (x, y),
-			_ => throw new FormatException("Bad format of first properties row: " + p0.Show())
+			_ => throw new FormatException("Bad format of first properties row: " + props[0].Show())
 		};
 
-		var p1 = props[1].ArraySelect(x => Untokenize(x, true));
-		var (castingTime, powerLevel) = p1 switch {
+		var (castingTime, powerLevel) = props[1] switch {
 			[ "Casting Time:", var x, "Power Level:", var y ] => (x, Enum.Parse<PowerLevel>(y, true)),
-			_ => throw new FormatException("Bad format of second properties row: " + p1.Show())
+			_ => throw new FormatException("Bad format of second properties row: " + props[0].Show())
 		};
 
-		if(! pos.MoveNext()) 
-			throw new FormatException("No data after properties table");
+		var (discard, details, afterDetails) = takeTable(comp, afterProps);
 
-		SkipWS(pos);
-		var details = Tabular(((Latex.Environment)pos.Current).inner);
+		if(discard.Items().Any(x => x is not WhiteSpace))
+			throw new FormatException($"Unexpected tokens between spell tables: '{Lexer.Untokenize(discard)}'");
 
-		if(details.Count != 4 || details[0].Length != 2)
-			throw new FormatException("Details table must be 4x2");
-		
-		var d0 = details[0].ArraySelect(x => Untokenize(x, true));
-		var components= d0 switch {
+		var dtDim = (x: details.Length, y: details.Min(x => x.Length));
+
+		if(dtDim != (4,2))
+			throw new FormatException($"Details table must be 4x2, got {dtDim.x}x{dtDim.y}");
+
+		var components = details[0] switch {
 			["Components:", var x] => x,
-			_ => throw new FormatException("Bad format of first details row: " + d0.Show())
+			_ => throw new FormatException("Bad format of first details row: " + details[0].Show())
 		};
-		var d1 = details[1].ArraySelect(x => Untokenize(x, true));
-		var effect = d1 switch {
+		var effect = details[1] switch {
 			["Effect:", var x] => x,
-			_ => throw new FormatException("Bad format of second details row: " + d1.Show())
+			_ => throw new FormatException("Bad format of second details row: " + details[1].Show())
 		};
-		var d2 = details[2].ArraySelect(x => Untokenize(x, true));
-		var crit = d2  switch {
+		var crit = details[2] switch {
 			["Passing \\geq 10:", var x] => x,
-			_ => throw new FormatException("Bad format of third details row: " + d2.Show())
+			_ => throw new FormatException("Bad format of third details row: " + details[2].Show())
 		};
-		var d3 = details[3].ArraySelect(x => Untokenize(x, true));
-		var fail = d3  switch {
+		var fail = details[3] switch {
 			["Failing \\leq 5:", var x] => x,
-			_ => throw new FormatException("Bad format of fourth details row: " + d3.Show())
+			_ => throw new FormatException("Bad format of fourth details row: " + details[3].Show())
 		};
 
-		var trailing = pos.FromHere();
-
-		var extra = trailing.Any(x => x is not WhiteSpace)
-			? comp.LatexToHtml(trailing)
+		var extra = afterDetails.Items().Any(x => x is not WhiteSpace)
+			? comp.ToHTML(afterDetails)
 			: null;
 
 		return new(name, arcanum, powerLevel, combat, reaction, distance, duration, castingTime, components, brief, effect, crit, fail, extra);

@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 using static System.StringSplitOptions;
+using Latex;
 using static Util.Extensions;
 using Util;
 
@@ -45,7 +46,7 @@ public class DnD5e : IGame<DnD5e.Spell>
     /// </summary>
     public static (int level, School school, bool ritual) ParseLevel(string input)
 	{
-		var lvlLine = input.Split(null as char[], StringSplitOptions.RemoveEmptyEntries);
+		var lvlLine = input.Split(null as char[], RemoveEmptyEntries);
 
 		if(lvlLine.Length < 2 || lvlLine.Skip(2).Any(x => x[0] != '('))
 			throw new FormatException($"Invalid school/level format: got '{input.Trim()}'");
@@ -144,24 +145,32 @@ public class DnD5e : IGame<DnD5e.Spell>
     public DnD5e(Config.Game c)
 		=> Conf = c;
 
-	public Spell ExtractLatexSpell(Latex comp, string source, IEnumerable<Token> body, string? upcast)
+	public Spell ExtractLatexSpell(Compiler comp, string source, Chain<Token> body)
 	{
-		var lPos = body.GetEnumerator();
+		var (_props, rest) = body.Args(1, 8);
 
-		if(!lPos.MoveNext() || !SkipOpt(lPos, out var hint))
-			throw new FormatException("Empty spell");
+		string? hint = _props[0].WithValue(comp.ToString, null);
 
-		var props = GetArgs(lPos, 7).Select(x => Untokenize(x)).ToArray();
+		var props = _props.Skip(1).Select(x => {
+			if(! x.HasValue)
+				throw new FormatException("Partial spell properties");
+
+			return comp.ToString(x.Value);
+		}).ToArray();
 
 		var name = props[0];
 		var (level, school, ritual) = ParseLevel(props[1]);
-		var (left, right) = Util.MaybeSplitOn(props[2], ",");
+		var (left, right) = MaybeSplitOn(props[2], ",");
 		var range = props[3];
 		var (verbal, somatic, material) = ParseComponents(props[4]);
 		var (concentration, duration) = ParseDuration(props[5]);
 		var classes = props[6].Split(new[]{' ', '\t', ','}, StringSplitOptions.RemoveEmptyEntries).ToArray();
 
-		string desc = comp.LatexToHtml(lPos);
+		var (_desc, _upcast) = comp.upcastAnchor is Token[] ua && rest.SplitOn(ua, (a,b) => a.IsSame(b)) is var (x,y)
+			? (x, (Chain<Token>?)y)
+			: (rest, null);
+
+		string desc = comp.ToHTML(_desc);
 
 		return new Spell(
 			name, source,
@@ -170,11 +179,11 @@ public class DnD5e : IGame<DnD5e.Spell>
 			range,
 			verbal, somatic, material,
 			concentration, duration,
-			desc,
-			upcast,
+			comp.ToHTML(_desc),
+			_upcast.WithValue(comp.ToString, null),
 			classes,
 			null,
-			hint is null ? null : Untokenize(hint)
+			hint
 		);
 	}
 

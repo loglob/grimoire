@@ -1,12 +1,13 @@
 using Olspy;
 using static Util.Extensions;
+using Latex;
 using Util;
 
 public class Overleaf<TSpell> : ISource<TSpell>
 {
 	private readonly Olspy.Overleaf overleaf;
 	private readonly Olspy.Project project;
-	private readonly Latex latex;
+	private readonly Compiler latex;
 	private readonly IGame<TSpell> game;
 	private readonly string includeAnchor;
 
@@ -18,7 +19,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			Olspy.Overleaf.RunningInstance;
 
 		this.project = this.overleaf.Open(config.ProjectID);
-		this.latex = new Latex(config.Latex);
+		this.latex = new(config.Latex);
 		this.includeAnchor = config.IncludeAnchor;
 
 		if(config.User is string u)
@@ -27,23 +28,22 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			this.overleaf.SetCredentials(config.Password);
 
 		foreach (var f in config.localMacros)
-			latex.LearnMacros(File.ReadLines(f));
+			latex.LearnMacrosFrom(File.ReadLines(f), f);
 	}
 
 	/// <summary>
 	/// Retrieves all code segments from multiple documents.
 	/// Filters out documents without an INCLUDE_ANCHOR
 	/// </summary>
-	internal IEnumerable<(string source, IEnumerable<string> code)> GetCode(IEnumerable<Document> docs)
+	internal IEnumerable<(string source, ArraySegment<Token> code)> GetCodeSegments(IEnumerable<Document> docs)
 		=> docs.SelectWith(d => d.Lines
 				.Take(10)
 				.FirstOrDefault(x => x.StartsWith(includeAnchor))
 				?.Substring(includeAnchor.Length)
 				?.Trim())
-			.Where(x => !(x.Item2 is null))
-			.SelectMany(x => (x.Item2 is string src)
-				? Latex.CodeSegments(x.Item1.Lines, src)
-				: Enumerable.Empty<(string,IEnumerable<string>)>());
+			.Where(x => x.Item2 is not null)
+			.Select(x => (source: x.Item2!, doc: new ArraySegment<Token>(Lexer.Tokenize(x.Item1.Lines, x.Item1.ID ?? "<unknown overleaf file>"))))
+			.Select(x => (x.source, x.doc.DocumentContents() ?? x.doc) );
 
 	public async IAsyncEnumerable<TSpell> Spells()
 	{
@@ -54,13 +54,13 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			return await project.GetDocuments();
 		});
 
-		var snippets = GetCode(docs).ToList();
+		var snippets = GetCodeSegments(docs).ToList();
 
-		foreach (var m in snippets.Where(s => s.source == Latex.MACROS_SOURCE_NAME))
-			latex.LearnMacros(m.code);
+		foreach (var (_, code) in snippets.Where(s => s.source == Config.LatexOptions.MACROS_SOURCE_NAME))
+			latex.LearnMacrosFrom(code);
 
 		foreach(var s in snippets
-			.Where(s => s.source != Latex.MACROS_SOURCE_NAME)
+			.Where(s => s.source != Config.LatexOptions.MACROS_SOURCE_NAME)
 			.SelectMany(s => latex.ExtractSpells(game, s.code, s.source)))
 			yield return s;
 

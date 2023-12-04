@@ -1,4 +1,4 @@
-using Util;
+﻿using Util;
 
 public class Program
 {
@@ -57,7 +57,7 @@ public class Program
 			goto usage;
 
 		var games = Config.Parse(await File.ReadAllTextAsync(args.Length > 0 ? args[0] : "config.json")).Values;
-		
+
 		Console.WriteLine($"Processing {games.Count} games with {games.Sum(g => g.Books.Count)} sources...");
 		Directory.CreateDirectory("db");
 		int total = 0;

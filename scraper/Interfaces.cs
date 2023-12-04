@@ -1,3 +1,4 @@
+using Latex;
 using Util;
 
 public interface IGame<out TSpell>
@@ -5,10 +6,10 @@ public interface IGame<out TSpell>
 	Config.Game Conf { get; }
 
 	/// <summary>
-	///  Extract a spell from LATEX code
+	///  Extract a spell from LATEX code segment
 	/// </summary>
-	TSpell ExtractLatexSpell(Latex comp, string source, IEnumerable<Latex.Token> body, string? upcast);
-	
+	TSpell ExtractLatexSpell(Compiler comp, string source, Chain<Token> code);
+
 	ISource<TSpell> Instantiate(Config.Source src);
 }
 
