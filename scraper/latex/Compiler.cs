@@ -258,7 +258,7 @@ public record Compiler(Config.LatexOptions Conf)
 					}
 
 					warned = true;
-					return new Chain<Token>();
+					return CodeSegment.Empty;
 				}
 			}).ToArray();
 

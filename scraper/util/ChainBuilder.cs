@@ -25,6 +25,8 @@ public class ChainBuilder<T>
 
 	public void Append(IEnumerable<ArraySegment<T>> chunks)
 	{
+		ArgumentNullException.ThrowIfNull(chunks);
+
 		foreach (var ch in chunks)
 			Append(ch);
 	}

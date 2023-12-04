@@ -40,7 +40,7 @@ public readonly struct Chain<T>
 		=> Join((IEnumerable<Chain<T>>)chains);
 
 	public static readonly Chain<T> Empty
-		= new(Array.Empty<ArraySegment<T>>(), Array.Empty<int>());
+		= new();
 
 	private readonly ArraySegment<T>[] chunks;
 
@@ -65,8 +65,17 @@ public readonly struct Chain<T>
 		}
 	}
 
+	public Chain() : this(Array.Empty<ArraySegment<T>>(), Array.Empty<int>())
+	{}
+
 	internal Chain(ArraySegment<T>[] chunks, int[] lengths)
 	{
+		ArgumentNullException.ThrowIfNull(chunks);
+		ArgumentNullException.ThrowIfNull(lengths);
+
+		if(chunks.Length != lengths.Length)
+			throw new ArgumentOutOfRangeException(nameof(lengths), $"Array length mismatch {chunks.Length} vs {lengths.Length}");
+
 		this.chunks = chunks;
 		this.lengths = lengths;
 	}
@@ -79,6 +88,7 @@ public readonly struct Chain<T>
 
 	public Chain(IEnumerable<T> items) : this( new ArraySegment<T>(items.ToArray()) )
 	{}
+
 
 	private (int chunk, int off) chunkOffset(int index, int minChunk = 0)
 	{
