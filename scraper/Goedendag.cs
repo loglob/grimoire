@@ -1,7 +1,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-using static Latex;
+using Util;
 
 public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 {

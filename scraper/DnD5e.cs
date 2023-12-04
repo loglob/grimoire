@@ -2,7 +2,8 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 using static System.StringSplitOptions;
-using static Latex;
+using static Util.Extensions;
+using Util;
 
 public class DnD5e : IGame<DnD5e.Spell>
 {
@@ -62,7 +63,7 @@ public class DnD5e : IGame<DnD5e.Spell>
 		{
 			school = Enum.Parse<School>(lvlLine[1], true);
 			var spl = lvlLine[0].Split('-',2);
-			Util.AssertEqual("level", spl[1].ToLower(), "Bad level format");
+			AssertEqual("level", spl[1].ToLower(), "Bad level format");
 			level = int.Parse(spl[0].Substring(0, spl[0].Length - 2));
 		}
 
@@ -74,7 +75,7 @@ public class DnD5e : IGame<DnD5e.Spell>
 		if(str.EndsWith(')'))
 		{
 			var spl = str.Split('(', TrimEntries);
-			Util.AssertEqual(2, spl.Length, "Too many '('");
+			AssertEqual(2, spl.Length, "Too many '('");
 
 			return (spl[0], spl[1].Substring(0,spl[1].Length - 1));
 		}
@@ -90,7 +91,7 @@ public class DnD5e : IGame<DnD5e.Spell>
 		if(conc) // don't trust the page's native whitespace
 		{
 			var spl = str.Split(null as char[], 4, RemoveEmptyEntries | TrimEntries);
-			Util.AssertEqual("concentration, up to",
+			AssertEqual("concentration, up to",
 				string.Join(' ', spl.Take(3).Select(s => s.ToLower())).ToLower(),
 				"Bad duration format");
 
@@ -111,17 +112,17 @@ public class DnD5e : IGame<DnD5e.Spell>
 			switch(comp.ToLower())
 			{
 				case "v":
-					Util.AssertEqual(false, verbal, $"Component {comp} is redundant");
+					AssertEqual(false, verbal, $"Component {comp} is redundant");
 					verbal = true;
 				break;
 
 				case "s":
-					Util.AssertEqual(false, somatic, $"Component {comp} is redundant");
+					AssertEqual(false, somatic, $"Component {comp} is redundant");
 					somatic = true;
 				break;
 
 				case "m":
-					Util.AssertEqual(false, mat, $"Component {comp} is redundant");
+					AssertEqual(false, mat, $"Component {comp} is redundant");
 					mat = true;
 				break;
 
@@ -131,7 +132,7 @@ public class DnD5e : IGame<DnD5e.Spell>
 		}
 
 		if(!mat)
-			Util.AssertEqual(null, materials, "Got materials despite no 'M' in components");
+			AssertEqual(null, materials, "Got materials despite no 'M' in components");
 		else if(materials is null)
 			throw new FormatException("Expected materials due to 'M' in components");
 

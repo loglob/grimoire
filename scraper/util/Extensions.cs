@@ -1,9 +1,12 @@
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-internal static class Util
+namespace Util;
+
+internal static class Extensions
 {
 	/// <summary>
 	/// Loads an JSON formatted object from a file
@@ -139,7 +142,7 @@ internal static class Util
 		{
 			try
 			{
-				return Util.LoadJson<T>(cache);
+				return LoadJson<T>(cache);
 			} catch(Exception)
 			{}
 
@@ -174,7 +177,7 @@ internal static class Util
 		{
 			try
 			{
-				dict = Util.LoadJson<Dictionary<Tkey, Tval>>(cache);
+				dict = LoadJson<Dictionary<Tkey, Tval>>(cache);
 			} catch(Exception)
 			{
 				Console.Error.WriteLine("[WARN] Invalid cache");
@@ -183,7 +186,7 @@ internal static class Util
 
 		int count = keys.Count();
 		int i = 0;
-		int nlen = 0;
+		int nLen = 0;
 
 		foreach(var k in keys)
 		{
@@ -191,10 +194,10 @@ internal static class Util
 			{
 				string name = progress(k);
 				Console.Write($"{++i}/{count}: {name}");
-				if(name.Length < nlen)
-					Console.Write(new string(' ', nlen - name.Length));
+				if(name.Length < nLen)
+					Console.Write(new string(' ', nLen - name.Length));
 				else
-					nlen = name.Length;
+					nLen = name.Length;
 				Console.CursorLeft = 0;
 			}
 
@@ -219,207 +222,6 @@ internal static class Util
 
 		if(Directory.Exists(Path.GetDirectoryName(cache)))
 			dict.StoreJson(cache);
-	}
-
-	/// <summary>
-	/// Extracts every span of lines that is started by s and ended by another occurrence of s or end of file.
-	/// s may also appear within a line
-	/// </summary>
-	public static IEnumerable<string[]> Spans(this IEnumerable<string> lines, string s)
-	{
-		List<string>? cur = null;
-
-		foreach (var l in lines)
-		{
-			int i = l.IndexOf(s);
-
-			if(i >= 0)
-			{
-				if(cur == null)
-					cur = new List<string>();
-				else
-				{
-					yield return cur.ToArray();
-					cur.Clear();
-				}
-
-				cur.Add(l.Substring(i + s.Length));
-			}
-			else if(cur != null)
-				cur.Add(l);
-		}
-
-		if(cur != null)
-			yield return cur.ToArray();
-	}
-
-	/// <summary>
-	/// Associates each value with its index
-	/// </summary>
-	public static IEnumerable<(T value, int index)> Indexed<T>(this IEnumerable<T> values)
-		=> values.Select((x,i) => (x,i));
-
-	/// <summary>
-	/// Encapsulates two enumerators one after another
-	/// </summary>
-	private class ConcatEnumerator<T> : IEnumerator<T>
-	{
-		private readonly IEnumerator<T> first, second;
-		bool inSecond = false;
-
-		public ConcatEnumerator(IEnumerator<T> f, IEnumerator<T> s)
-		{
-			this.first = f;
-			this.second = s;
-		}
-
-		public T Current
-			=> inSecond ? second.Current : first.Current;
-
-		object IEnumerator.Current
-		#pragma warning disable CS8603
-			=> this.Current;
-		#pragma warning restore CS8603
-
-		public bool MoveNext()
-		{
-			if(!inSecond && first.MoveNext())
-				return true;
-			else
-			{
-				inSecond = true;
-				return second.MoveNext();
-			}
-		}
-
-		public void Reset()
-		{
-			inSecond = false;
-			first.Reset();
-			second.Reset();
-		}
-
-		void IDisposable.Dispose()
-		{
-			first.Dispose();
-			second.Dispose();
-		}
-	}
-
-	/// <summary>
-	/// Concatenation with an enumerator
-	/// </summary>
-	public static IEnumerator<T> FollowedBy<T>(this IEnumerable<T> ls, IEnumerator<T> after)
-		=> new ConcatEnumerator<T>(ls.GetEnumerator(), after);
-
-	/// <summary>
-	/// Looks for a deliminator in the enumerable.
-	/// If that deliminator is found, all text after it is yielded.
-	/// The deliminator may be in the middle of a line, and all text of that line after the deliminator is yielded.
-	/// If that deliminator is never found, forward the input enumerable.
-	/// </summary>
-	public static IEnumerable<string> StartedWith(this IEnumerable<string> xs, string delim)
-	{
-		bool got = false;
-
-		foreach (var x in xs)
-		{
-			if(got)
-				yield return x;
-			else
-			{
-				int p = x.IndexOf(delim);
-
-				if(p < 0)
-					continue;
-
-				got = true;
-				var s = x.Substring(p + delim.Length);
-
-				if(!string.IsNullOrWhiteSpace(s))
-					yield return s;
-			}
-		}
-
-		if(!got) foreach (var x in xs)
-			yield return x;
-	}
-
-	/// <summary>
-	/// Complement of StartedWith().
-	/// Forwards the input enumerable until the given deliminator is found in any part of a line.
-	/// Also yields preceding parts of the ending line if they aren't empty or whitespace.
-	/// </summary>
-	public static IEnumerable<string> EndedBy(this IEnumerable<string> xs, string delim)
-	{
-		foreach (var x in xs)
-		{
-			int p = x.IndexOf(delim);
-
-			if(p < 0)
-				yield return x;
-			else
-			{
-				var s = x.Substring(0, p);
-
-				if(!string.IsNullOrWhiteSpace(s))
-					yield return s;
-
-				yield break;
-			}
-		}
-	}
-
-	/// <summary>
-	/// Splits by deliminator over multiple lines, preserving line separators.
-	/// Trims around deliminator.
-	/// </summary>
-	public static IEnumerable<string[]> Split(this IEnumerable<string> xs, string delim)
-	{
-		var cur = new List<string>();
-
-		foreach (var x in xs)
-		{
-			var spl = x.Split(delim, 2, StringSplitOptions.TrimEntries);
-
-			if(spl.Length < 2)
-				cur.Add(x);
-			else
-			{
-				if (spl[0].Length > 0)
-					cur.Add(spl[0]);
-
-				yield return cur.ToArray();
-				cur.Clear();
-
-				if (spl[1].Length > 0)
-					cur.Add(spl[1]);
-			}
-		}
-
-		yield return cur.ToArray();
-	}
-
-	/// <summary>
-	/// Trims an array from the left and the right
-	/// </summary>
-	/// <param name="arr"> The array to segment </param>
-	/// <param name="pred"> Whether to trim an element </param>
-	public static ArraySegment<T> Trim<T>(this T[] arr, Func<T,bool> pred)
-	{
-		int l;
-
-		for (l = 0; l < arr.Length && pred(arr[l]); l++);
-
-		if(l >= arr.Length)
-			return new ArraySegment<T>();
-
-		// assert !pred(arr[l])
-		int r;
-
-		for (r = arr.Length - 1; r > l && pred(arr[r]); r--);
-
-		return new ArraySegment<T>(arr, l, r - l + 1);
 	}
 
 	/// <summary>
@@ -486,6 +288,25 @@ internal static class Util
 		return sb.ToString();
 	}
 
+	public static string Show(this string[] arr)
+	{
+		var sb = new StringBuilder("[");
+		bool first = true;
+
+		foreach (var item in arr)
+		{
+			sb.Append(first ? " " : ", ");
+			sb.Append('\'');
+			sb.Append(item);
+			sb.Append('\'');
+			first = false;
+		}
+
+		sb.Append(" ]");
+
+		return sb.ToString();
+	}
+
 	public static (string left, string? right) MaybeSplitOn(string str, string sep)
 	{
 		var spl = str.Split(sep, 2, StringSplitOptions.TrimEntries);
@@ -496,82 +317,112 @@ internal static class Util
 			return (spl[0], null);
 	}
 
-	public static List<T> FromHere<T>(this IEnumerator<T> iter)
+	public static int FirstIndexOf<T>(this IEnumerable<T> xs, Func<T, bool> cond)
 	{
-		var buf = new List<T>();
+		int i = 0;
 
-		while(iter.MoveNext())
-			buf.Add(iter.Current);
-		
-		return buf;
-	}
-
-	public static List<T> TakeWhile<T>(this IEnumerator<T> iter, Func<T, bool> pred)
-	{
-		var buf = new List<T>();
-
-		while(iter.MoveNext() && pred(iter.Current))
-			buf.Add(iter.Current);
-
-		return buf;
-	}
-
-	public static IEnumerable<ArraySegment<T>> SplitBy<T>(this ArraySegment<T> arr, Func<T, bool> pred)
-	{
-		int l = 0;
-
-		for (int i = 0; i < arr.Count; ++i)
+		foreach (var x in xs)
 		{
-			if(pred(arr[i]))
+			if(cond(x))
+				return i;
+
+			++i;
+		}
+
+		return -1;
+	}
+
+	private static int[] kpmHelperArray<T>(T[] needle, Func<T,T,bool> eq)
+	{
+		int[] ret = new int[needle.Length];
+		int curLen = 0;
+
+		ret[0] = 0;
+
+		for(int i = 1; i < needle.Length;)
+		{
+			if(eq(needle[i], needle[curLen]))
 			{
-				yield return arr.Slice(l, i - l);
-				l = i + 1;
+				ret[i] = ++curLen;
+				++i;
+			}
+			else if(curLen > 0)
+				curLen = ret[curLen - 1];
+			else
+			{
+				ret[i] = 0;
+				++i;
 			}
 		}
 
-		yield return arr.Slice(l, arr.Count - l);
+		return ret;
 	}
 
-	/// <summary>
-	///  Splits into exactly n (possibly empty) arrays
-	/// </summary>
-	public static ArraySegment<T>[] SplitBy<T>(this ArraySegment<T> arr, Func<T, bool> pred, int n)
+	public static IEnumerable<int> FindIndices<T>(this IEnumerable<T> haystack, T[] needle, Func<T,T,bool> eq, bool overlapping = true)
 	{
-		ArraySegment<T>[] buf = new ArraySegment<T>[n];
-		Array.Fill(buf, ArraySegment<T>.Empty);
-		int l = 0;
-		int o = 0;
+		int[] rewind = kpmHelperArray(needle, eq);
+		int m = 0;
+		int i = 0;
 
-		for (int i = 0; i < arr.Count && o < n - 1; ++i)
+
+		foreach (var x in haystack)
 		{
-			if(pred(arr[i]))
+			rescan:
+
+			if(eq(x, needle[m]))
 			{
-				buf[o++] = arr.Slice(l, i - l);
-				l = i + 1;
+				if(m + 1 == needle.Length)
+				{
+					yield return i - m;
+					m = overlapping ? rewind[m] : 0;
+				}
+				else
+					++m;
 			}
+			else if(m != 0)
+			{
+				m = rewind[m - 1];
+				goto rescan;
+			}
+
+			++i;
+		}
+	}
+
+	public static IEnumerable<(T cur, T? next)> Pairs<T>(this IEnumerable<T> xs) where T : struct
+	{
+		bool gotLast = false;
+		T last = default;
+
+		foreach (var x in xs)
+		{
+			if(gotLast)
+				yield return (last, x);
+
+			gotLast = true;
+			last = x;
 		}
 
-		buf[n - 1] = arr.Slice(l, arr.Count - l);
-		return buf;
+		if(gotLast)
+			yield return (last, null);
 	}
 
-	public static B[] ArraySelect<A,B>(this A[] arr, Func<A,B> f)
+	public static B WithValue<A,B>(this A? a, Func<A,B> f, B fallback) where A : struct 
+		=> a.HasValue ? f(a.Value) : fallback;
+
+	public static string Quote(this string str)
+		=> str.Any(char.IsWhiteSpace) ? $"'{str}'" : str;
+
+	public static IEnumerable<int> FindIndices<T>(this IEnumerable<T> xs, Func<T, bool> cond)
 	{
-		var res = new B[arr.Length];
+		int i = 0;
 
-		for (int i = 0; i < arr.Length; ++i)
-			res[i] = f(arr[i]);
+		foreach (var x in xs)
+		{
+			if(cond(x))
+				yield return i;
 
-		return res;
-	}
-
-	public static IEnumerable<T> SkipLastIf<T>(this IEnumerable<T> xs, Func<T, bool> pred)
-	{
-		var cache = xs.ToList();
-		bool drop = cache.Count > 0 && pred(cache[cache.Count - 1]);
-		int len = drop ? cache.Count - 1 : cache.Count;
-
-		for (int i = 0; i < len; ++i)
-			yield return cache[i];
+			++i;
+		}
 	}
 }

@@ -1,4 +1,6 @@
-﻿public class Program
+using Util;
+
+public class Program
 {
 	private record class GameIndex(string fullName, Dictionary<string, string> books);
 

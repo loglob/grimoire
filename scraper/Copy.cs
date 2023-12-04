@@ -1,3 +1,4 @@
+using static Util.Extensions;
 
 public class Copy<TSpell> : ISource<TSpell>
 {
@@ -14,7 +15,7 @@ public class Copy<TSpell> : ISource<TSpell>
 
 		foreach (var f in files)
 		{
-			foreach (var spell in Util.LoadJson<List<TSpell>>(f))
+			foreach (var spell in LoadJson<List<TSpell>>(f))
 			{
 				yield return spell;
 				cp++;

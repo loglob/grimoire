@@ -1,3 +1,5 @@
+using Util;
+
 public interface IGame<out TSpell>
 {
 	Config.Game Conf { get; }

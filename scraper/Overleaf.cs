@@ -1,4 +1,6 @@
 using Olspy;
+using static Util.Extensions;
+using Util;
 
 public class Overleaf<TSpell> : ISource<TSpell>
 {
@@ -45,7 +47,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 	public async IAsyncEnumerable<TSpell> Spells()
 	{
-		var docs = await Util.Cached($"cache/{game.Conf.Shorthand}_overleaf_documents", async() => {
+		var docs = await Cached($"cache/{game.Conf.Shorthand}_overleaf_documents_{project.ID}", async() => {
 			if(!await overleaf.Available)
 				throw new Exception($"Overleaf instance at {overleaf.Host} isn't ready");
 

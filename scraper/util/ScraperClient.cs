@@ -1,4 +1,9 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using HtmlAgilityPack;
+
+namespace Util;
 
 public class ScraperClient
 {
@@ -54,19 +59,25 @@ public class ScraperClient
 	{
 		if(Directory.Exists(CACHE))
 		{
-			var cacheFile = CACHE + "/" + Uri.EscapeDataString(uri);
+			var cacheFile = Path.Combine(CACHE, Uri.EscapeDataString(client.BaseAddress + "+" + uri));
 
 			if(!File.Exists(cacheFile))
 			{
-				using(var f = File.Create(cacheFile))
-				using(var data = await getWebStreamAsync(uri))
-					await data.CopyToAsync(f);
+				using var f = File.Create(cacheFile);
+				using var data = await getWebStreamAsync(uri);
+				await data.CopyToAsync(f);
 			}
 
 			return File.OpenRead(cacheFile);
 		}
 		else
 			return await getWebStreamAsync(uri);
+	}
+
+	public async Task<JsonDocument> GetJsonAsync(string uri)
+	{
+		using var s = await GetStreamAsync(uri);
+		return await JsonDocument.ParseAsync(s);
 	}
 
 	/// <summary>

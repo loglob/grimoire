@@ -1,14 +1,16 @@
 using HtmlAgilityPack;
 
 using static System.StringSplitOptions;
+using Util;
 using static DnD5e;
+using static Util.Extensions;
 
 public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<Spell>
 {
 	private readonly ScraperClient client = new("http://dnd5e.wikidot.com", Cfg.RateLimit);
 
 	public Task<string[]> SpellNames()
-		=> Util.Cached("cache/wikidot_names", async () =>
+		=> Cached("cache/wikidot_names", async () =>
 		{
 			var doc = await client.GetHtmlAsync("/spells");
 
@@ -32,15 +34,15 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 		var content = doc.GetElementbyId("page-content");
 		content.Clean();
 
-		Util.AssertEqual("div p p p p", string.Join(' ', content.ChildNodes.Take(5).Select(c => c.Name)),
+		AssertEqual("div p p p p", string.Join(' ', content.ChildNodes.Take(5).Select(c => c.Name)),
 			"bad page-content makeup");
-		Util.AssertEqual("div", content.ChildNodes.Last().Name, "bad page-content makeup");
+		AssertEqual("div", content.ChildNodes.Last().Name, "bad page-content makeup");
 
 
 		string source;
 		{
 			string[] ctl = content.ChildNodes[1].InnerText.Split(':', 2, TrimEntries);
-			Util.AssertEqual("Source", ctl[0], "Bad source format");
+			AssertEqual("Source", ctl[0], "Bad source format");
 			source = Books.FindSource(ctl[1].Split('/')[0]).Shorthand;
 		}
 
@@ -59,11 +61,11 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 
 		Func<HtmlNode[], string, string> chkProb = (pr, f) =>
 		{
-			Util.AssertEqual(f.ToLower() + ":", pr[0].InnerText.ToLower(), $"Bad {f} format");
+			AssertEqual(f.ToLower() + ":", pr[0].InnerText.ToLower(), $"Bad {f} format");
 			return string.Join(' ', pr.Skip(1).Select(x => x.InnerText.Trim()));
 		};
 
-		(string cTime, string? reaction) = Util.MaybeSplitOn(chkProb(props[0], "casting time"), ",");
+		(string cTime, string? reaction) = MaybeSplitOn(chkProb(props[0], "casting time"), ",");
 		string range = ParseParen(chkProb(props[1], "range")).Item1;
 		(bool verbal, bool somatic, string? materials) = ParseComponents(chkProb(props[2], "components"));
 		(bool concentration, string duration) = ParseDuration(chkProb(props[3], "duration"));
@@ -84,8 +86,8 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 		{
 			var cs = rest.Last();
 			var csTxt = cs.InnerText;
-			Util.AssertEqual("p", cs.Name, "Expected class list to be a paragraph");
-			Util.AssertEqual("spell lists", csTxt.Substring(0, 11).ToLower(), "Expected class list");
+			AssertEqual("p", cs.Name, "Expected class list to be a paragraph");
+			AssertEqual("spell lists", csTxt.Substring(0, 11).ToLower(), "Expected class list");
 
 			rest.Remove(cs);
 			classes = csTxt.Substring(12).Split(new[]{' ', ','}, RemoveEmptyEntries).ToArray();
@@ -100,7 +102,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 				{
 					x.Clean();
 					string ahl = x.ChildNodes[0].InnerText.Trim().ToLower();
-					Util.AssertEqual("at higher levels", ahl.Length < 16 ? ahl : ahl.Substring(0, 16), "Bad upcast format");
+					AssertEqual("at higher levels", ahl.Length < 16 ? ahl : ahl.Substring(0, 16), "Bad upcast format");
 					x.ChildNodes.RemoveAt(0);
 				}
 				return x;
@@ -119,7 +121,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 	}
 
 	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
-		=> Util.PartiallyCached("cache/wikidot_spells", names, async (string n) => await details(n), x => x);
+		=> PartiallyCached("cache/wikidot_spells", names, async (string n) => await details(n), x => x);
 
 	public async IAsyncEnumerable<Spell> Spells()
 	{
