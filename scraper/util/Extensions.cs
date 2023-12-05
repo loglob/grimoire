@@ -12,7 +12,7 @@ internal static class Extensions
 	public static T LoadJson<T>(string filename)
 	{
 		using(var f = File.OpenText(filename))
-        using(var j = new JsonTextReader(f))
+		using(var j = new JsonTextReader(f))
 		{
 			var res = new JsonSerializer().Deserialize<T>(j);
 

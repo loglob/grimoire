@@ -37,10 +37,10 @@ namespace Games.DnD5e
 			child(div, "hr");
 			child(div, "h3").innerText = spell.name;
 			child(div, "p").innerText = spell.school;
-		
+
 			{
 				const properties = child(div, "p");
-	
+
 				properties.append(
 					"Level: ",
 					bold( spell.level ? spell.level.toString() : "Cantrip" ),
@@ -61,33 +61,33 @@ namespace Games.DnD5e
 					bold( spell.duration )
 				);
 			}
-	
+
 			child(div, "p").innerHTML = spell.description;
-	
+
 			if(spell.upcast)
 			{
 				child(div, "h4").innerText = "At higher levels";
 				child(div, "p").innerHTML = spell.upcast;
 			}
-	
+
 			if(spell.statBlock)
 			{
 				child(div, "p").innerHTML = spell.statBlock;
 				child(div, "hr", "subtle")
 			}
-	
+
 			child(div, "p", "subtle from").innerText = spell.hint ? `${book} (${spell.hint})` : book;
-	
+
 			return div;
 		}
 
 		spellMatchesTerm(term: string, s: Spell): boolean
-		{		
+		{
 			const term1 = term.substring(1);
 			const lim = (term[0] === 'l')
 				? term1.split('-').map(x => Number.parseInt(x))
 				: [];
-			
+
 			return  s.name.toLowerCase().includes(term)
 				|| [ s.school, s.castingTime, s.duration, ...s.classes ].some(x => term.toLowerCase() === x)
 				|| Util.fieldTermMatch(s, term, "verbal", "somatic", "ritual", "concentration", "upcast")

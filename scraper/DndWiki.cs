@@ -1,7 +1,7 @@
 using HtmlAgilityPack;
+using Util;
 
 using static System.StringSplitOptions;
-using Util;
 using static DnD5e;
 using static Util.Extensions;
 

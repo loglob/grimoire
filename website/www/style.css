@@ -48,42 +48,42 @@
 
 #spells a
 {
-    text-decoration: none;
-    color: inherit;
+	text-decoration: none;
+	color: inherit;
 }
 
 h1
 {
-    margin-bottom: 0;
+	margin-bottom: 0;
 }
 
 p
 {
-    margin-top: 0;
+	margin-top: 0;
 }
 
 #search-field
 {
-    width: 50%;
+	width: 50%;
 }
 
 .code
 {
 	background-color: #ddd;
 	padding: .25em;
-    font-family: monospace;
+	font-family: monospace;
 }
 
 .subtle
 {
-    color: #555;
-    font-style: italic;
+	color: #555;
+	font-style: italic;
 }
 
 ul
 {
-    margin-top: 4px;
-    margin-bottom: 4px;
+	margin-top: 4px;
+	margin-bottom: 4px;
 }
 
 #spell-count

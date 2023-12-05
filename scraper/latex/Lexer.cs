@@ -6,7 +6,7 @@ namespace Latex;
 
 public static class Lexer
 {
-    private static Token? lex(string input, int row, string filename, ref int off, bool lastWS)
+	private static Token? lex(string input, int row, string filename, ref int off, bool lastWS)
 	{
 		redo:
 		if(off >= input.Length)

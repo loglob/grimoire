@@ -1,7 +1,8 @@
-using Olspy;
-using static Util.Extensions;
 using Latex;
+using Olspy;
 using Util;
+
+using static Util.Extensions;
 
 public class Overleaf<TSpell> : ISource<TSpell>
 {

@@ -16,7 +16,7 @@ namespace UI
 		readonly name : string
 		/** The query that produces the spell list's basis */
 		private query : Data.Query
-		
+
 		isPrepared(s : TSpell) : boolean
 		{
 			return this.preparedSet.has(s.name);
@@ -29,8 +29,8 @@ namespace UI
 		}
 
 		/**
-		 * @param game 
-		 * @param sl 
+		 * @param game
+		 * @param sl
 		 * @param allSpells Every spell in the selected sources
 		 */
 		constructor(game : IGame<TSpell>, sl : Data.NamedSpellList, allSpells : TSpell[])
@@ -41,7 +41,7 @@ namespace UI
 			this.allSpells = allSpells
 			this.name = sl.name;
 			this.query = sl.query;
-			
+
 			// TODO: select all button
 			this.table = new Table(game, null, s => {
 				const inp = document.createElement("input")
@@ -59,15 +59,15 @@ namespace UI
 						this.preparedSet.add(s.name);
 						inp.checked = true;
 					}
-	
+
 					console.log(this.preparedSet);
 					// eager write-back for now
 					this.store();
 				}
-	
+
 				const td = document.createElement("td");
 				td.appendChild(inp);
-	
+
 				return [td];
 			});
 
@@ -125,7 +125,7 @@ namespace UI
 				prepared : Array.from(this.preparedSet),
 				game : this.game.shorthand
 			}
-	
+
 			window.localStorage.setItem(this.name, JSON.stringify(newList))
 		}
 	}

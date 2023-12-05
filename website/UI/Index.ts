@@ -9,7 +9,7 @@ namespace UI
 		private readonly game : IGame<TSpell>;
 		private readonly table : Table<TSpell>;
 		private readonly books : Data.BookIndex
-		
+
 		/** Initializes an the page UI */
 		static async init<TSpell extends Data.ISpell>(game : IGame<TSpell>) : Promise<Index<TSpell>>
 		{
@@ -20,7 +20,7 @@ namespace UI
 
 			return ind;
 		}
-		
+
 		/** Handles setting up UI callbacks and creation the source selectors */
 		private constructor(game : IGame<TSpell>, table : Table<TSpell>, books : Data.BookIndex)
 		{

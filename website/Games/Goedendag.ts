@@ -74,7 +74,7 @@ namespace Games.Goedendag
 
 		getSource(_: Spell): string
 		{
-			return "GD";	
+			return "GD";
 		}
 
 		spellCard(spell: Spell, _book: string): HTMLDivElement
@@ -87,7 +87,7 @@ namespace Games.Goedendag
 
 			const p = child(div, "p");
 			var fst = true;
-			
+
 			for (const kvp of fmtFields(spell)) {
 				if(! fst)
 					child(p, "br");
@@ -121,9 +121,9 @@ namespace Games.Goedendag
 		}
 
 		spellMatchesTerm(term: string, s: Spell): boolean
-		{		
+		{
 			const term1 = term.substring(1);
-			
+
 			return  s.name.toLowerCase().includes(term)
 				|| [ s.arcanum, s.powerLevel, s.distance, s.duration, s.castingTime ].some(x => x.toLowerCase() === term)
 				|| [ "combat", "reaction" ].some(x => s[x as keyof Spell] && term === x)

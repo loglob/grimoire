@@ -16,14 +16,14 @@ namespace UI
 
 		await withGame(async function(g) {
 			const book = (await g.getBooks())[from]
-			
+
 			if(! book)
 			{
 				alert(`No source '${g.shorthand}/${from}' exists!`);
 				window.location.href = "index.html";
 				return;
 			}
-			
+
 			const sp = (await g.fetchSource(from)).find(s => s.name.toLowerCase() === spell.toLowerCase());
 
 			if(!sp)

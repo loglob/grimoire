@@ -1,6 +1,6 @@
 
 namespace UI
-{	
+{
 	import IGame = Games.IGame
 	import ISpell = Data.ISpell
 

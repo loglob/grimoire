@@ -34,7 +34,7 @@ namespace UI
 			this.table = document.getElementById("spells") as HTMLTableElement;
 			this.customRowElements = customRowElements;
 
-			// the <tr> containing the headers 
+			// the <tr> containing the headers
 			const tr = document.getElementById("spell-headers");
 
 			for (const h of game.tableHeaders.concat(["name"]) )

@@ -27,7 +27,7 @@ namespace Games
 			this.shorthand = shorthand;
 			this.fullName = fullName;
 		}
-		
+
 		abstract getSource(s : TSpell) : string;
 
 		/** Checks whether a spell matches a single search term
@@ -37,7 +37,7 @@ namespace Games
 		 * @returns true iff the spell is selected by the term
 		 */
 		abstract spellMatchesTerm(term : string, spell : TSpell) : boolean;
-	
+
 		spellMatchesQuery(query : Data.Query, s : TSpell) : boolean
 		{
 			return query
@@ -80,7 +80,7 @@ namespace Games
 		{
 			if(this.books === null)
 				this.books = await (await fetch(`db/${this.shorthand}/index.json`)).json();
-			
+
 			return this.books;
 		}
 	};

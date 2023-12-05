@@ -1,38 +1,38 @@
 namespace Latex;
 
-using CodeSegment = Util.Chain<Token>;
-
 using System.Collections;
 using System.Diagnostics;
 using Util;
 
+using CodeSegment = Util.Chain<Token>;
+
 public static class Extensions
 {
-    private record ListWrapper<T>(Chain<T> Chain) : IReadOnlyList<T>
-    {
-        T IReadOnlyList<T>.this[int index] => Chain[index];
+	private record ListWrapper<T>(Chain<T> Chain) : IReadOnlyList<T>
+	{
+		T IReadOnlyList<T>.this[int index] => Chain[index];
 
-        int IReadOnlyCollection<T>.Count => Chain.Length;
+		int IReadOnlyCollection<T>.Count => Chain.Length;
 
-        IEnumerator<T> IEnumerable<T>.GetEnumerator()
+		IEnumerator<T> IEnumerable<T>.GetEnumerator()
 			=> Chain.Items().GetEnumerator();
 
-        IEnumerator IEnumerable.GetEnumerator()
+		IEnumerator IEnumerable.GetEnumerator()
 			=> Chain.Items().GetEnumerator();
-    }
+	}
 
 	public static IReadOnlyList<T> AsList<T>(this Chain<T> chain)
 		=> new ListWrapper<T>(chain);
 
-    /// <summary>
-    ///  Counts the amount of tokens until a token on the same level matches the given predicate.
-    ///  Stops prematurely when a free-standing closing brace is reached, i.e. the positioned scope is closed.
-    /// </summary>
-    /// <returns>
-    ///  That number, or -1 if the enumeration ended before the predicate was satisfied.
-    ///  Doesn't count the accepting token itself.
-    /// </returns>
-    public static int FindOnSameLevel(this IEnumerable<Token> tks, Func<Token, bool> accept)
+	/// <summary>
+	///  Counts the amount of tokens until a token on the same level matches the given predicate.
+	///  Stops prematurely when a free-standing closing brace is reached, i.e. the positioned scope is closed.
+	/// </summary>
+	/// <returns>
+	///  That number, or -1 if the enumeration ended before the predicate was satisfied.
+	///  Doesn't count the accepting token itself.
+	/// </returns>
+	public static int FindOnSameLevel(this IEnumerable<Token> tks, Func<Token, bool> accept)
 	{
 		int level = 0;
 		int count = 0;

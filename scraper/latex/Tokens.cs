@@ -31,7 +31,7 @@ public sealed record MacroName(string Macro, Position Pos) : Token(Pos)
 	public override string ToString() => $"\\{Macro}";
 	public override string Display() => "";
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is MacroName m && m.Macro == Macro;
 }
 
@@ -44,7 +44,7 @@ public sealed record Character(char Char, Position Pos) : Token(Pos)
 
 	public override string Display() => Char.ToString();
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is Character c && c.Char == Char;
 }
 
@@ -58,7 +58,7 @@ public sealed record CloseBrace(Position Pos) : Token(Pos)
 
 	public override string Display() => "";
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is CloseBrace;
 }
 
@@ -71,7 +71,7 @@ public sealed record OpenBrace(Position Pos) : Token(Pos)
 	public override string ToString() => "{";
 	public override string Display() => "";
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is OpenBrace;
 }
 
@@ -83,7 +83,7 @@ public sealed record WhiteSpace(Position Pos) : Token(Pos)
 	public override string ToString() => " ";
 	public override string Display() => " ";
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is WhiteSpace;
 }
 
@@ -95,7 +95,7 @@ public sealed record ArgumentRef(int Number, Position Pos) : Token(Pos)
 	public override string ToString() => $"#{Number}";
 	public override string Display() => "";
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is ArgumentRef a && a.Number == Number;
 }
 
@@ -107,7 +107,7 @@ public sealed record HtmlChunk(string Data, Position Pos) : Token(Pos)
 	public override string ToString() => $"\\<{Data}\\>";
 	public override string Display() => Data;
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is HtmlChunk h && h.Data == Data;
 }
 
@@ -119,7 +119,7 @@ public sealed record BackBack(Position Pos) : Token(Pos)
 	public override string ToString() => "\\\\";
 	public override string Display() => "\n";
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is BackBack;
 }
 
@@ -132,7 +132,7 @@ public sealed record BeginEnv(string Env, Position Pos) : EnvToken(Env, Pos)
 	public override string ToString() => $"\\begin{{{Env}}}";
 	public override string Display() => "";
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is BeginEnv b && b.Env == Env;
 }
 
@@ -142,7 +142,7 @@ public sealed record EndEnv(string Env, Position Pos) : EnvToken(Env, Pos)
 	public override string Display() => "";
 
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is EndEnv e && e.Env == Env;
 }
 
@@ -152,6 +152,6 @@ public sealed record AlignTab(Position Pos) : Token(Pos)
 	public override string Display() => "";
 
 
-    public override bool IsSame(Token other)
+	public override bool IsSame(Token other)
 		=> other is AlignTab;
 }

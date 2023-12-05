@@ -15,9 +15,9 @@ public static class Config
 				o["sources"]!.AsArray().Select(n => Source.Parse(n!)).ToArray()
 			);
 
-        public override string ToString()
+		public override string ToString()
 			=> $"Game( Shorthand = {Shorthand}, Books = {Books.Show()}, Sources = {Sources.Show()} )";
-    }
+	}
 
 	public record Book(string Shorthand, string FullName, string[] Alts)
 	{

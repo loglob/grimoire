@@ -1,10 +1,10 @@
+using Latex;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Util;
 
 using static System.StringSplitOptions;
-using Latex;
 using static Util.Extensions;
-using Util;
 
 public class DnD5e : IGame<DnD5e.Spell>
 {
@@ -21,30 +21,30 @@ public class DnD5e : IGame<DnD5e.Spell>
 		Transmutation
 	}
 
-    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public readonly record struct Spell(
-        string name, string source,
-        School school, int level,
-        string castingTime, string? reaction, bool ritual,
-        string range,
-        bool verbal, bool somatic, string? materials,
-        bool concentration, string duration,
-        string description, string? upcast,
-        string[] classes,
-        string? statBlock,
-        string? hint
-    ) : ISpell
-    {
-        string ISpell.Source => source;
-    }
+	[JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
+	public readonly record struct Spell(
+		string name, string source,
+		School school, int level,
+		string castingTime, string? reaction, bool ritual,
+		string range,
+		bool verbal, bool somatic, string? materials,
+		bool concentration, string duration,
+		string description, string? upcast,
+		string[] classes,
+		string? statBlock,
+		string? hint
+	) : ISpell
+	{
+		string ISpell.Source => source;
+	}
 
-    /// <summary>
-    /// Parse one of
-    /// 	[school] cantrip
-    /// 	[level]th-level [school]
-    /// possibly followed by '(ritual)'
-    /// </summary>
-    public static (int level, School school, bool ritual) ParseLevel(string input)
+	/// <summary>
+	/// Parse one of
+	/// 	[school] cantrip
+	/// 	[level]th-level [school]
+	/// possibly followed by '(ritual)'
+	/// </summary>
+	public static (int level, School school, bool ritual) ParseLevel(string input)
 	{
 		var lvlLine = input.Split(null as char[], RemoveEmptyEntries);
 
@@ -142,7 +142,7 @@ public class DnD5e : IGame<DnD5e.Spell>
 
 	public Config.Game Conf { get; }
 
-    public DnD5e(Config.Game c)
+	public DnD5e(Config.Game c)
 		=> Conf = c;
 
 	public Spell ExtractLatexSpell(Compiler comp, string source, Chain<Token> body)

@@ -1,7 +1,6 @@
+using Latex;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-
-using Latex;
 using Util;
 
 public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
@@ -26,9 +25,9 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		Greater
 	}
 
-    [JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
-    public readonly record struct Spell(
-        string name,
+	[JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
+	public readonly record struct Spell(
+		string name,
 		Arcanum arcanum,
 		PowerLevel powerLevel,
 		bool combat,
@@ -42,10 +41,10 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string critSuccess,
 		string critFail,
 		string? extra
-    ) : ISpell
-    {
-        string ISpell.Source => "GD";
-    }
+	) : ISpell
+	{
+		string ISpell.Source => "GD";
+	}
 
 
 	private static (Chain<Token> left, string[][] table, Chain<Token> rest) takeTable(Compiler comp, Chain<Token> code, string name = "spells")
@@ -77,8 +76,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		return (left, table.ToArray(), rest);
 	}
 
-    public Spell ExtractLatexSpell(Compiler comp, string source, Chain<Token> body)
-    {
+	public Spell ExtractLatexSpell(Compiler comp, string source, Chain<Token> body)
+	{
 		if(body.SplitOn(x => x is MacroName mn && mn.Macro == "label") is not var (_name, _, _label))
 			throw new FormatException("Bad spell format");
 
@@ -177,10 +176,10 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			: null;
 
 		return new(name, arcanum, powerLevel, combat, reaction, distance, duration, castingTime, components, brief, effect, crit, fail, extra);
-    }
+	}
 
-    public ISource<Spell> Instantiate(Config.Source src)
-    {
+	public ISource<Spell> Instantiate(Config.Source src)
+	{
 		return src switch
 		{
 			Config.CopySource s => new Copy<Spell>(s.From),
@@ -189,5 +188,5 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			Config.DndWikiSource => throw new ArgumentException("The DnDWiki doesn't have any Goedendag spells"),
 			_ => throw new ArgumentException($"Invalid source for Goedendag: {src}")
 		};
-    }
+	}
 }
