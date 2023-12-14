@@ -9,8 +9,15 @@ using CodeSegment = Util.Chain<Token>;
 
 public record Compiler(Config.LatexOptions Conf, Log Log)
 {
-	/** A regular macro. */
-	internal sealed record Macro(int argc, ArraySegment<Token>? opt, ArraySegment<Token> replacement);
+	/// <summary>
+	///  A regular macro
+	/// </summary>
+	/// <param name="argc"> Total number of arguments (including the optional arg) </param>
+	/// <param name="opt"> A default value for the first argument, if present </param>
+	/// <param name="replacement"> The code to insert on expansion </param>
+	/// <param name="force"> If true, this macro cannot be overwritten with \renewcommand </param>
+	/// <returns></returns>
+	internal sealed record Macro(int argc, ArraySegment<Token>? opt, ArraySegment<Token> replacement, bool force = false);
 
 	public enum KnownEnvironments
 	{
@@ -93,7 +100,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	///  Extracts a macro definition
 	/// </summary>
 	/// <param name="offset"> The index of the initial \(re)newcommand </param>
-	private (string? name, Macro? m, int e) extractMacro(ArraySegment<Token> chain, int offset)
+	private (string? name, Macro? m, int e) extractMacro(ArraySegment<Token> chain, int offset, bool pin)
 	{
 		var tk0 = chain[offset];
 
@@ -147,7 +154,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 			return (null, null, ee);
 		}
 
-		return (name.Macro, new Macro(arity, opt, chain.Slice(args[2].index, args[2].len)), ee);
+		return (name.Macro, new Macro(arity, opt, chain.Slice(args[2].index, args[2].len), pin), ee);
 	}
 
 	private static void putTrace(Stack<MacroName> trace)
@@ -291,17 +298,23 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	{
 		for (int i = 0; i < code.Count;)
 		{
-			if(code[i] is MacroName mn && mn.Macro is "newcommand" or "renewcommand")
+			if(code[i] is MacroName mn && mn.Macro is "newcommand" or "renewcommand" or "forcenewcommand")
 			{
-				var (n, m, e) = extractMacro(code, i);
+				var (n, m, e) = extractMacro(code, i, mn.Macro is "forcenewcommand");
 				i = e;
 
 				if(n is null || m is null)
 					continue;
 
-				if(macros.TryGetValue(n, out var old) && mn.Macro is not "renewcommand")
-					Log.Warn($"Overwriting definition for {n} without using \\renewcommand at {mn.Pos}"
-						+ (old.replacement.FirstOrDefault() is Token tk ? $", previous definition at {tk.Pos}" : ""));
+				if(macros.TryGetValue(n, out var old))
+				{
+					if(old.force)
+						continue;
+
+					if(mn.Macro is "newcommand")
+						Log.Warn($"Overwriting definition for {n} without using \\renewcommand at {mn.Pos}"
+								+ (old.replacement.FirstOrDefault() is Token tk ? $", previous definition at {tk.Pos}" : ""));
+				}
 
 				macros[n] = m;
 			}
