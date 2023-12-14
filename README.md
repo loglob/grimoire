@@ -30,8 +30,9 @@ The possible `type` values are:
 #### dnd-wiki
 Copies all spells found on the [dnd-wiki](http://http://dnd5e.wikidot.com/).
 
-Optionally an object with the field
+Optionally an object with the fields
 - `rateLimit`: A number of milliseconds between HTTP requests to the wiki. 250ms by default. 
+- `cacheLifetime`: The maximum age for a cache webpage in seconds.
 
 #### latex
 Processes local LaTeX files.
@@ -52,6 +53,7 @@ Optional, `%% grimoire include` by default.
 - `host`: Optional hostname for the overleaf instance.
 	If omitted, attempt to connect to a local docker instance.
 - `latex`: A separate object containing latex options as described above.
+- `cacheLifetime`: The maximum age for a cached project in seconds.
 
 #### copy
 An object with the fields:

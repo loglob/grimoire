@@ -134,17 +134,22 @@ internal static class Extensions
 	/// </summary>
 	/// <param name="cache"> The file to load from. Read/Stored as JSON. </param>
 	/// <param name="task"> How to compute a result if the cache doesn't exist or is invalid. </param>
-	public static async Task<T> Cached<T>(string cache, Func<Task<T>> task)
+	public static async Task<T> Cached<T>(string cache, float lifetime, Func<Task<T>> task)
 	{
 		if(File.Exists(cache))
 		{
+			var age = DateTime.Now.Subtract(File.GetLastWriteTime(cache));
+
 			try
 			{
-				return LoadJson<T>(cache);
+				if(age.TotalSeconds < lifetime)
+					return LoadJson<T>(cache);
+				else
+					Console.Error.WriteLine($"[INFO] Refreshed {Math.Round(age.TotalSeconds)}s old cached file '{Path.GetFileName(cache)}'");
 			} catch(Exception)
-			{}
-
-			Console.Error.WriteLine("[WARN] Invalid cache");
+			{
+				Console.Error.WriteLine("[WARN] Invalid cache");
+			}
 		}
 
 		var ret = await task();

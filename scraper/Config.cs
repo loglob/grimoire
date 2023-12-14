@@ -53,7 +53,7 @@ public static class Config
 			=> $"Book( Shorthand = {Shorthand}, FullName = {FullName}, Alts = {Alts.Show()} )";
 	}
 
-	public abstract record Source
+	public abstract record Source(float CacheLifetime)
 	{
 		public static Source Parse(JsonNode n)
 			=> (n is JsonObject o ? (string)o["type"]! : (string)n!) switch {
@@ -65,18 +65,22 @@ public static class Config
 			};
 	}
 
-	public sealed record DndWikiSource(TimeSpan? RateLimit = default) : Source
+	public sealed record DndWikiSource(TimeSpan? RateLimit, float CacheLifetime)
+		: Source(CacheLifetime)
 	{
 		public override string ToString()
 			=> $"DndWikiSource";
 
 		new internal static DndWikiSource Parse(JsonNode n)
-			=> new(
-				(n is JsonObject o && o["rateLimit"] is JsonValue v)
+		{
+			var o = n as JsonObject;
+			return new(
+				(o is not null && o["rateLimit"] is JsonValue v)
 					? TimeSpan.FromMilliseconds((int)v)
-					: null
+					: null ,
+				(float?)o?["cacheLifetime"] ?? float.PositiveInfinity
 			);
-
+		}
 	}
 
 	/// <summary>
@@ -92,7 +96,8 @@ public static class Config
 	///  Default is <c>%% grimoire include</c>
 	/// </param>
 	/// <param name="Latex"> The latex configuration to use.</param>
-	public sealed record OverleafSource(string ProjectID, string Password, string? User, string? Host, string IncludeAnchor, string[] localMacros, LatexOptions Latex) : Source
+	public sealed record OverleafSource(string ProjectID, string Password, string? User, string? Host, string IncludeAnchor, string[] localMacros, LatexOptions Latex, float CacheLifetime)
+		: Source(CacheLifetime)
 	{
 		public const string DEFAULT_INCLUDE_ANCHOR = "%% grimoire include";
 
@@ -104,14 +109,16 @@ public static class Config
 				(string?)o["host"],
 				(string?)o["includeAnchor"] ?? DEFAULT_INCLUDE_ANCHOR,
 				o["localMacros"]?.AsArray()?.Select(x => (string)x!)?.ToArray() ?? Array.Empty<string>(),
-				LatexOptions.Parse(o["latex"]!.AsObject())
+				LatexOptions.Parse(o["latex"]!.AsObject()),
+				((float?)o["cacheLifetime"]) ?? float.PositiveInfinity
 			);
 
 		public override string ToString()
 			=> $"OverleafSource( ProjectID = {ProjectID}, Password = {Password}, User = {User}, Host = {Host}, Latex = {Latex} )";
 	}
 
-	public sealed record LatexSource(LatexOptions Options, string[] MacroFiles, Dictionary<string, string[]> Files) : Source
+	public sealed record LatexSource(LatexOptions Options, string[] MacroFiles, Dictionary<string, string[]> Files, float CacheLifetime)
+		: Source(CacheLifetime)
 	{
 		private static Dictionary<string, string[]> parseFiles(JsonObject o)
 		{
@@ -132,22 +139,23 @@ public static class Config
 
 		internal static LatexSource Parse(JsonObject o)
 			=> new(
-				LatexOptions.Parse(o),
-				strArray(o["macroFiles"]),
-				parseFiles(o["files"]!.AsObject())
+				LatexOptions.Parse(o) ,
+				strArray(o["macroFiles"]) ,
+				parseFiles(o["files"]!.AsObject()) ,
+				((float?)o["CacheLifetime"]) ?? float.PositiveInfinity
 			);
 
 		public override string ToString()
-			=> $"LatexSource( Options = {Options}, MacroFiles = {MacroFiles.Show()}, Files = {Files.Show()} )";
+			=> $"LatexSource( {nameof(Options)} = {Options}, {nameof(MacroFiles)} = {MacroFiles.Show()}, {nameof(Files)} = {Files.Show()}, {nameof(CacheLifetime)} = {CacheLifetime}s )";
 	}
 
-	public sealed record CopySource(string[] From) : Source
+	public sealed record CopySource(string[] From) : Source(0.0f)
 	{
 		internal static CopySource Parse(JsonObject o)
 			=> new( strArray(o["from"]) );
 
 		public override string ToString()
-			=> $"CopySource( From = {From.Show()} )";
+			=> $"CopySource( {nameof(From)} = {From.Show()} )";
 	}
 
 	/// <param name="SpellAnchor"> A latex command that initializes a spell description </param>

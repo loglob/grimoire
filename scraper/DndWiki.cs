@@ -10,7 +10,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 	private readonly ScraperClient client = new("http://dnd5e.wikidot.com", Cfg.RateLimit);
 
 	public Task<string[]> SpellNames()
-		=> Cached("cache/wikidot_names", async () =>
+		=> Cached("cache/wikidot_names", Cfg.CacheLifetime, async() =>
 		{
 			var doc = await client.GetHtmlAsync("/spells");
 

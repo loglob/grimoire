@@ -10,7 +10,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 	private readonly Olspy.Project project;
 	private readonly Compiler latex;
 	private readonly IGame<TSpell> game;
-	private readonly string includeAnchor;
+	private readonly Config.OverleafSource config;
 
 	public Overleaf(IGame<TSpell> game, Config.OverleafSource config)
 	{
@@ -21,7 +21,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 		this.project = this.overleaf.Open(config.ProjectID);
 		this.latex = new(config.Latex);
-		this.includeAnchor = config.IncludeAnchor;
+		this.config = config;
 
 		if(config.User is string u)
 			this.overleaf.SetCredentials(config.Password, u);
@@ -39,8 +39,8 @@ public class Overleaf<TSpell> : ISource<TSpell>
 	internal IEnumerable<(string source, ArraySegment<Token> code)> GetCodeSegments(IEnumerable<Document> docs)
 		=> docs.SelectWith(d => d.Lines
 				.Take(10)
-				.FirstOrDefault(x => x.StartsWith(includeAnchor))
-				?.Substring(includeAnchor.Length)
+				.FirstOrDefault(x => x.StartsWith(config.IncludeAnchor))
+				?.Substring(config.IncludeAnchor.Length)
 				?.Trim())
 			.Where(x => x.Item2 is not null)
 			.Select(x => (source: x.Item2!, doc: new ArraySegment<Token>(Lexer.Tokenize(x.Item1.Lines, x.Item1.ID ?? "<unknown overleaf file>"))))
@@ -48,7 +48,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 	public async IAsyncEnumerable<TSpell> Spells()
 	{
-		var docs = await Cached($"cache/{game.Conf.Shorthand}_overleaf_documents_{project.ID}", async() => {
+		var docs = await Cached($"cache/{game.Conf.Shorthand}_overleaf_documents_{project.ID}", config.CacheLifetime, async() => {
 			if(!await overleaf.Available)
 				throw new Exception($"Overleaf instance at {overleaf.Host} isn't ready");
 
