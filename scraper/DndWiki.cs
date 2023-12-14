@@ -8,9 +8,10 @@ using static Util.Extensions;
 public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<Spell>
 {
 	private readonly ScraperClient client = new("http://dnd5e.wikidot.com", Cfg.RateLimit);
+	private static readonly Log log = Log.DEFAULT.AddTags("dndwiki");
 
 	public Task<string[]> SpellNames()
-		=> Cached("cache/wikidot_names", Cfg.CacheLifetime, async() =>
+		=> Cached("cache/wikidot_names", Cfg.CacheLifetime, log, async() =>
 		{
 			var doc = await client.GetHtmlAsync("/spells");
 
@@ -121,7 +122,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 	}
 
 	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
-		=> PartiallyCached("cache/wikidot_spells", names, async (string n) => await details(n), x => x);
+		=> PartiallyCached("cache/wikidot_spells", names, log, async (string n) => await details(n), x => x);
 
 	public async IAsyncEnumerable<Spell> Spells()
 	{

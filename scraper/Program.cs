@@ -17,7 +17,7 @@ public class Program
 			if(spellsByBook.TryGetValue(sp.Source, out var spells))
 				spells.Add(sp);
 			else if(warnedAbout.Add(sp.Source))
-				Console.Error.WriteLine($"[WARN] Discarding unknown source '{sp.Source}'");
+				Console.Error.WriteLine($"[WARN] Discarding unknown source '{game.Conf.Shorthand}/{sp.Source}'");
 		}
 
 		Directory.CreateDirectory($"db/{game.Conf.Shorthand}");

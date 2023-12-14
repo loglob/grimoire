@@ -11,16 +11,18 @@ public class Overleaf<TSpell> : ISource<TSpell>
 	private readonly Compiler latex;
 	private readonly IGame<TSpell> game;
 	private readonly Config.OverleafSource config;
+	private readonly Log log;
 
 	public Overleaf(IGame<TSpell> game, Config.OverleafSource config)
 	{
 		this.game = game;
+		this.log = Log.DEFAULT.AddTags(game.Conf.Shorthand, "overleaf");
 		this.overleaf = (config.Host is string s) ?
 			this.overleaf = new Olspy.Overleaf(s) :
 			Olspy.Overleaf.RunningInstance;
 
 		this.project = this.overleaf.Open(config.ProjectID);
-		this.latex = new(config.Latex);
+		this.latex = new(config.Latex, log);
 		this.config = config;
 
 		if(config.User is string u)
@@ -43,12 +45,12 @@ public class Overleaf<TSpell> : ISource<TSpell>
 				?.Substring(config.IncludeAnchor.Length)
 				?.Trim())
 			.Where(x => x.Item2 is not null)
-			.Select(x => (source: x.Item2!, doc: new ArraySegment<Token>(Lexer.Tokenize(x.Item1.Lines, x.Item1.ID ?? "<unknown overleaf file>"))))
+			.Select(x => (source: x.Item2!, doc: new ArraySegment<Token>(new Lexer(log).Tokenize(x.Item1.Lines, x.Item1.ID ?? "<unknown overleaf file>"))))
 			.Select(x => (x.source, x.doc.DocumentContents() ?? x.doc) );
 
 	public async IAsyncEnumerable<TSpell> Spells()
 	{
-		var docs = await Cached($"cache/{game.Conf.Shorthand}_overleaf_documents_{project.ID}", config.CacheLifetime, async() => {
+		var docs = await Cached($"cache/{game.Conf.Shorthand}_overleaf_documents_{project.ID}", config.CacheLifetime, log, async() => {
 			if(!await overleaf.Available)
 				throw new Exception($"Overleaf instance at {overleaf.Host} isn't ready");
 

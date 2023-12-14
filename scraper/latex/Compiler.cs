@@ -7,7 +7,7 @@ namespace Latex;
 
 using CodeSegment = Util.Chain<Token>;
 
-public record Compiler(Config.LatexOptions Conf)
+public record Compiler(Config.LatexOptions Conf, Log Log)
 {
 	/** A regular macro. */
 	internal sealed record Macro(int argc, ArraySegment<Token>? opt, ArraySegment<Token> replacement);
@@ -62,8 +62,8 @@ public record Compiler(Config.LatexOptions Conf)
 		{ "rowstyle", discard() }
 	};
 
-	internal readonly Token[]? upcastAnchor = Conf.UpcastAnchor is string ua ? Lexer.TokenizeUnchecked(new[]{ ua }, "builtin/upcast anchor") : null;
-	internal readonly Token[] spellAnchor = Lexer.TokenizeUnchecked(new[]{ Conf.SpellAnchor }, "builtin/spell anchor");
+	internal readonly Token[]? upcastAnchor = Conf.UpcastAnchor is string ua ? new Lexer(Log).TokenizeUnchecked(new[]{ ua }, "builtin/upcast anchor") : null;
+	internal readonly Token[] spellAnchor = new Lexer(Log).TokenizeUnchecked(new[]{ Conf.SpellAnchor }, "builtin/spell anchor");
 
 	/// <summary>
 	///  If true, record stack traces on latex errors and include line markers in HTML output.
@@ -84,7 +84,7 @@ public record Compiler(Config.LatexOptions Conf)
 			case "div": return KnownEnvironments.Div;
 
 			default:
-				Console.Error.WriteLine($"[WARN] Unknown environment '{env}' referenced by {tk.At}");
+				Log.Warn($"Unknown environment '{env}' referenced by {tk.At}");
 			return KnownEnvironments.Div;
 		}
 	}
@@ -93,7 +93,7 @@ public record Compiler(Config.LatexOptions Conf)
 	///  Extracts a macro definition
 	/// </summary>
 	/// <param name="offset"> The index of the initial \(re)newcommand </param>
-	private static (string? name, Macro? m, int e) extractMacro(ArraySegment<Token> chain, int offset)
+	private (string? name, Macro? m, int e) extractMacro(ArraySegment<Token> chain, int offset)
 	{
 		var tk0 = chain[offset];
 
@@ -102,7 +102,7 @@ public record Compiler(Config.LatexOptions Conf)
 
 		if(s < 0)
 		{
-			Console.Error.WriteLine($"[WARN] No macro name after {tk0.At}, ignoring it");
+			Log.Warn($"No macro name after {tk0.At}, ignoring it");
 			return (null, null, offset + 1);
 		}
 
@@ -110,7 +110,7 @@ public record Compiler(Config.LatexOptions Conf)
 
 		if(nameTk.Count(x => x is not WhiteSpace) != 1 || nameTk.FirstOrDefault(x => x is not WhiteSpace, null) is not MacroName name)
 		{
-			Console.Error.WriteLine($"[WARN] Invalid macro name '{Lexer.Untokenize(nameTk)}' at {tk0.Pos}, ignoring this definition");
+			Log.Warn($"Invalid macro name '{Lexer.Untokenize(nameTk)}' at {tk0.Pos}, ignoring this definition");
 			return (null, null, e);
 		}
 
@@ -126,7 +126,7 @@ public record Compiler(Config.LatexOptions Conf)
 			if(! int.TryParse(str, out arity) || arity < 0)
 			{
 				arity = 0;
-				Console.Error.WriteLine($"[WARN] Ignoring invalid arity spec '{str}' at {tk0.Pos}");
+				Log.Warn($"Ignoring invalid arity spec '{str}' at {tk0.Pos}");
 			}
 		}
 
@@ -137,13 +137,13 @@ public record Compiler(Config.LatexOptions Conf)
 			if(arity == 0)
 			{
 				arity = 1;
-				Console.Error.WriteLine($"[WARN] Optional argument with incorrect arity at {tk0.Pos}");
+				Log.Warn($"Optional argument with incorrect arity at {tk0.Pos}");
 			}
 		}
 
 		if(args[2].index < 0)
 		{
-			Console.Error.WriteLine($"[WARN] Macro definition for {name} without body at {tk0.Pos}, ignoring it");
+			Log.Warn($"Macro definition for {name} without body at {tk0.Pos}, ignoring it");
 			return (null, null, ee);
 		}
 
@@ -167,13 +167,13 @@ public record Compiler(Config.LatexOptions Conf)
 			if(ar.Number > 0 && ar.Number <= argv.Length)
 			{
 				if(Debug)
-					Console.WriteLine($"[TRACE] Expanding {ar.At} to '{Lexer.Untokenize(argv[ar.Number - 1])}'");
+					Console.Error.WriteLine($"[TRACE] Expanding {ar.At} to '{Lexer.Untokenize(argv[ar.Number - 1])}'");
 
 				builder.Append(argv[ar.Number - 1]);
 			}
 			else
 			{
-				Console.Error.WriteLine($"[WARN] Discarding out-of-bounds argument specifier {ar.At} (current expansion has only {argv.Length} arguments)");
+				Log.Warn($"Discarding out-of-bounds argument specifier {ar.At} (current expansion has only {argv.Length} arguments)");
 				putTrace(trace);
 			}
 
@@ -197,7 +197,7 @@ public record Compiler(Config.LatexOptions Conf)
 		{
 			if(inp[i] is ArgumentRef)
 			{
-				Console.WriteLine($"[WARN] Unexpanded argument ref {inp[i].At}");
+				Log.Warn($"Unexpanded argument ref {inp[i].At}");
 				putTrace(trace!);
 			}
 
@@ -218,7 +218,7 @@ public record Compiler(Config.LatexOptions Conf)
 
 				if(s < 0)
 				{
-					Console.Error.WriteLine($"[WARN] Discarding invalid {m.At}");
+					Log.Warn($"Discarding invalid {m.At}");
 					continue;
 				}
 
@@ -226,7 +226,7 @@ public record Compiler(Config.LatexOptions Conf)
 
 				if(Conf.Images is null || !(Conf.Images.TryGetValue(file, out var replace) || Conf.Images.TryGetValue(Path.GetFileName(file), out replace)))
 				{
-					Console.Error.WriteLine($"[WARN] Discarding use of unknown image '{file}' at {m.Pos}");
+					Log.Warn($"Discarding use of unknown image '{file}' at {m.Pos}");
 					continue;
 				}
 
@@ -235,7 +235,7 @@ public record Compiler(Config.LatexOptions Conf)
 			}
 			if(! macros.TryGetValue(m.Macro, out var def))
 			{
-				Console.Error.WriteLine($"[WARN] Unknown macro {m.At}, discarding it");
+				Log.Warn($"Unknown macro {m.At}, discarding it");
 				++w;
 				++i;
 				continue;
@@ -252,7 +252,7 @@ public record Compiler(Config.LatexOptions Conf)
 				{
 					if(! warned)
 					{
-						Console.Error.WriteLine($"[WARN] Partial call to {m.At} missing argument #{j+1}.");
+						Log.Warn($"Partial call to {m.At} missing argument #{j+1}.");
 						putTrace(trace!);
 					}
 
@@ -263,11 +263,11 @@ public record Compiler(Config.LatexOptions Conf)
 
 			if(Debug)
 			{
-				Console.WriteLine($"[TRACE] Expanding '{Lexer.Untokenize(inp.Items().Take(e).Skip(i))}' at {m.Pos} to '{Lexer.Untokenize(def.replacement)}'");
+				Console.Error.WriteLine($"[TRACE] Expanding '{Lexer.Untokenize(inp.Items().Take(e).Skip(i))}' at {m.Pos} to '{Lexer.Untokenize(def.replacement)}'");
 				int j = 0;
 
 				foreach (var x in argVals)
-					Console.WriteLine($"[TRACE]     Argument #{++j}: {Lexer.Untokenize(x)}");
+					Console.Error.WriteLine($"[TRACE]     Argument #{++j}: {Lexer.Untokenize(x)}");
 			}
 
 			trace?.Push(m);
@@ -285,7 +285,7 @@ public record Compiler(Config.LatexOptions Conf)
 	///  Loads macros from the given text into the active context
 	/// </summary>
 	public void LearnMacrosFrom(IEnumerable<string> lines, string filename)
-		=> LearnMacrosFrom(Lexer.Tokenize(lines, filename ?? "<unknown>"));
+		=> LearnMacrosFrom(new Lexer(Log).Tokenize(lines, filename ?? "<unknown>"));
 
 	public void LearnMacrosFrom(ArraySegment<Token> code)
 	{
@@ -299,8 +299,9 @@ public record Compiler(Config.LatexOptions Conf)
 				if(n is null || m is null)
 					continue;
 
-				if(macros.ContainsKey(n) && mn.Macro is not "renewcommand")
-					Console.Error.WriteLine($"[WARN] Overwriting definition for {n} without using \\renewcommand at {mn.Pos}");
+				if(macros.TryGetValue(n, out var old) && mn.Macro is not "renewcommand")
+					Log.Warn($"Overwriting definition for {n} without using \\renewcommand at {mn.Pos}"
+						+ (old.replacement.FirstOrDefault() is Token tk ? $", previous definition at {tk.Pos}" : ""));
 
 				macros[n] = m;
 			}
@@ -359,7 +360,7 @@ public record Compiler(Config.LatexOptions Conf)
 			}
 
 			if(tk is MacroName)
-				Console.Error.WriteLine($"[WARN] Discarding unexpanded macro {tk.At}");
+				Log.Warn($"Discarding unexpanded macro {tk.At}");
 			else if(tk is Character c)
 			{
 				// silently drop math mode
@@ -410,7 +411,7 @@ public record Compiler(Config.LatexOptions Conf)
 				if(envs.TryPeek(out var x) && x == KnownEnvironments.Tabular)
 					doc.Append("</td> <td>");
 				else
-					Console.Error.WriteLine($"[WARN] Dropping superfluous alignment tab at {tk.Pos}");
+					Log.Warn($"Dropping superfluous alignment tab at {tk.Pos}");
 			}
 			else
 				throw new UnreachableException($"Incomplete pattern match: {tk}");

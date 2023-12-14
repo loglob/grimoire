@@ -41,7 +41,7 @@ internal static class Extensions
 	public static void AssertEqual<T>(T a, T b, string message)
 	{
 		if(! EqualityComparer<T>.Default.Equals(a, b))
-			throw new Exception($"{message}: Expected {a}, got {b}");
+			throw new Exception($"{message}: Expected '{a}', got '{b}'");
 	}
 
 	/// <summary>
@@ -134,7 +134,7 @@ internal static class Extensions
 	/// </summary>
 	/// <param name="cache"> The file to load from. Read/Stored as JSON. </param>
 	/// <param name="task"> How to compute a result if the cache doesn't exist or is invalid. </param>
-	public static async Task<T> Cached<T>(string cache, float lifetime, Func<Task<T>> task)
+	public static async Task<T> Cached<T>(string cache, float lifetime, Log log, Func<Task<T>> task)
 	{
 		if(File.Exists(cache))
 		{
@@ -145,10 +145,11 @@ internal static class Extensions
 				if(age.TotalSeconds < lifetime)
 					return LoadJson<T>(cache);
 				else
-					Console.Error.WriteLine($"[INFO] Refreshed {Math.Round(age.TotalSeconds)}s old cached file '{Path.GetFileName(cache)}'");
-			} catch(Exception)
+					log.Info($"Refreshed {Math.Round(age.TotalSeconds)}s old cached file '{Path.GetFileName(cache)}'");
+			}
+			catch(Exception)
 			{
-				Console.Error.WriteLine("[WARN] Invalid cache");
+				log.Warn($"Invalid cache at '{Path.GetFileName(cache)}'");
 			}
 		}
 
@@ -171,7 +172,7 @@ internal static class Extensions
 	/// 	Returns a name to print as progress report.
 	/// </param>
 	public static async IAsyncEnumerable<Tval> PartiallyCached<Tkey, Tval>(
-		string cache, IEnumerable<Tkey> keys, Func<Tkey, Task<Tval>> task, Func<Tkey, string>? progress = null)
+		string cache, IEnumerable<Tkey> keys, Log log, Func<Tkey, Task<Tval>> task, Func<Tkey, string>? progress = null)
 		where Tkey : notnull
 	{
 		Dictionary<Tkey, Tval> dict = new Dictionary<Tkey, Tval>();
@@ -181,9 +182,10 @@ internal static class Extensions
 			try
 			{
 				dict = LoadJson<Dictionary<Tkey, Tval>>(cache);
-			} catch(Exception)
+			}
+			catch(Exception)
 			{
-				Console.Error.WriteLine("[WARN] Invalid cache");
+				log.Warn($"Invalid cache at '{Path.GetFileName(cache)}'");
 			}
 		}
 
@@ -211,11 +213,13 @@ internal static class Extensions
 				try
 				{
 					dict[k] = await task(k);
-				} catch(Exception ex)
+				}
+				catch(Exception ex)
 				{
 					if(progress != null)
 						Console.WriteLine();
-					Console.Error.WriteLine(ex.Message);
+
+					log.Warn($"In '{k}': " + ex.Message);
 				}
 
 				if(dict.TryGetValue(k, out var y))
@@ -425,4 +429,7 @@ internal static class Extensions
 			++i;
 		}
 	}
+
+	public static string Brace(this string? str)
+		=> $"[{str}]";
 }

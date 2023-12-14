@@ -4,9 +4,9 @@ using Util;
 
 namespace Latex;
 
-public static class Lexer
+public readonly record struct Lexer(Log Log)
 {
-	private static Token? lex(string input, int row, string filename, ref int off, bool lastWS)
+	private Token? lex(string input, int row, string filename, ref int off, bool lastWS)
 	{
 		redo:
 		if(off >= input.Length)
@@ -26,7 +26,7 @@ public static class Lexer
 				if(off + 1 >= input.Length)
 				{
 					++off;
-					Console.Error.WriteLine($"[WARN] trailing, unmatched, unescaped '\\' at {pos}");
+					Log.Warn($"Trailing, unmatched, unescaped '\\' at {pos}");
 					return new Character('\\', pos);
 				}
 				else if(len == 1 && input[off + 1] == '<')
@@ -37,7 +37,7 @@ public static class Lexer
 					if(matching == -1)
 					{
 						// swallow the illegal symbol and continue
-						Console.Error.WriteLine("[WARN] Unmatched HTML chunk start. Multiline chunks not allowed.");
+						Log.Warn("Unmatched HTML chunk start. Multiline chunks not allowed.");
 						off += 2;
 						goto redo;
 					}
@@ -83,7 +83,7 @@ public static class Lexer
 
 				if(len == 0)
 				{
-					Console.Error.WriteLine("[WARN] orphaned, unescaped '#'");
+					Log.Warn("Orphaned, unescaped '#'");
 					return new Character('#', pos);
 				}
 				else
@@ -120,7 +120,7 @@ public static class Lexer
 	/// <summary>
 	///  Post-processes a token list to recognize environments
 	/// </summary>
-	private static void postLex(List<Token> tokens)
+	private void postLex(List<Token> tokens)
 	{
 		var stack = new Stack<int>();
 
@@ -137,7 +137,7 @@ public static class Lexer
 
 				if(index < 0)
 				{
-					Console.Error.WriteLine($"[WARN] Expected an environment name after {m}, discarding it");
+					Log.Warn($"Expected an environment name after {m}, discarding it");
 					// discard the macro
 					tokens.RemoveAt(i);
 					--i; // undo ++i
@@ -148,7 +148,7 @@ public static class Lexer
 				var str = Untokenize(slice).Trim();
 
 				if(slice.Any(t => t is not WhiteSpace && t is not Character) || !slice.Any())
-					Console.Error.WriteLine($"[WARN] Suspicious environment name '{str}' at {m.Pos}");
+					Log.Warn($"Suspicious environment name '{str}' at {m.Pos}");
 
 				Token envTk = m.Macro switch {
 					"begin" => new BeginEnv(str, m.Pos) ,
@@ -168,7 +168,7 @@ public static class Lexer
 					stack.Pop();
 				else
 				{
-					Console.WriteLine($"[WARN] {e} has no matching \\begin, discarding it");
+					Log.Warn($"{e} has no matching \\begin, discarding it");
 					tokens.RemoveAt(i);
 					--i; // undoes following ++i
 				}
@@ -178,7 +178,7 @@ public static class Lexer
 		foreach (var i in stack)
 		{
 			var o = (BeginEnv)tokens[i];
-			Console.WriteLine($"[WARN] {o} has no matching \\end, discarding it");
+			Log.Warn($"{o} has no matching \\end, discarding it");
 			tokens.RemoveAt(i);
 		}
 	}
@@ -186,7 +186,7 @@ public static class Lexer
 	/// <summary>
 	///  Lexes a latex program. Ensures that OpenBrace and CloseBrace perfectly balance another.
 	/// </summary>
-	public static Token[] Tokenize(IEnumerable<string> lines, string filename)
+	public Token[] Tokenize(IEnumerable<string> lines, string filename)
 	{
 		var tks = new List<Token>();
 		int row = 1;
@@ -212,7 +212,7 @@ public static class Lexer
 					stack.Push(tks.Count);
 				else if(tk is CloseBrace && !stack.TryPop(out var _))
 				{
-					Console.Error.WriteLine($"Orphaned '}}' at {tk.Pos}");
+					Log.Warn($"Orphaned '}}' at {tk.Pos}");
 					tk = new Character('}', tk.Pos);
 				}
 
@@ -226,7 +226,7 @@ public static class Lexer
 		foreach(var l in stack.Reverse())
 		{
 			var tk = tks[l];
-			Console.WriteLine($"[WARN] unmatched and unescaped '{{' at {tk.Pos}");
+			Log.Warn($"Unmatched and unescaped '{{' at {tk.Pos}");
 			tks[l] = new Character('{', tk.Pos);
 		}
 
@@ -240,7 +240,7 @@ public static class Lexer
 	///  In particular, no BeginEnv or EndEnv are emitted,
 	///     and all braces are given via Open- or CloseBrace
 	/// </summary>
-	public static Token[] TokenizeUnchecked(IEnumerable<string> lines, string filename)
+	public Token[] TokenizeUnchecked(IEnumerable<string> lines, string filename)
 	{
 		var tks = new List<Token>();
 		int row = 1;

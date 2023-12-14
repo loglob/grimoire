@@ -119,8 +119,7 @@ public static class Extensions
 	/// </returns>
 	public static ((int index, int len)[] args, int end) LocateArgs(this IReadOnlyList<Token> chain, int offset, int optionalArity, int arity)
 	{
-		if(arity < optionalArity)
-			throw new ArgumentOutOfRangeException(nameof(optionalArity));
+		ArgumentOutOfRangeException.ThrowIfLessThan(arity, optionalArity);
 
 		List<(int, int)> ret = new();
 
