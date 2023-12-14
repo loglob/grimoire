@@ -6,7 +6,7 @@ Contains two components, a **scraper** that compiles a spell database and a **we
 Compiles spells from various sources.
 
 The supported sources are:
-- The [dnd-wiki](http://http://dnd5e.wikidot.com/)
+- The [dnd-wiki](http://dnd5e.wikidot.com/)
 - A local latex project
 - An overleaf instance
 
@@ -28,7 +28,7 @@ A list of source items, which are either objects with a `type` field, or just a 
 The possible `type` values are:
 
 #### dnd-wiki
-Copies all spells found on the [dnd-wiki](http://http://dnd5e.wikidot.com/).
+Copies all spells found on the [dnd-wiki](http:/dnd5e.wikidot.com/).
 
 Optionally an object with the fields
 - `rateLimit`: A number of milliseconds between HTTP requests to the wiki. 250ms by default. 
