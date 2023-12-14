@@ -61,7 +61,7 @@ public static class Config
 				"overleaf" => OverleafSource.Parse(n.AsObject()!),
 				"latex" => LatexSource.Parse(n.AsObject()!),
 				"copy" => CopySource.Parse(n.AsObject()!),
-				var x => throw new FormatException($"Invalid source type '{x}'")
+				var x => throw new FormatException($"Invalid source type {x.Show()}")
 			};
 	}
 

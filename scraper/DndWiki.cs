@@ -58,7 +58,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 		var props =  content.ChildNodes[3].ChildNodes.SplitBy(n => n.Name == "br").ToArray();
 
 		if(props.Count() != 4 || props.Any(p => p.Count() < 2))
-			throw new FormatException($"Expected 4 lines with at least 2 fields each; Got [{string.Join(' ', props.Select(l => l.Length.ToString()))}]");
+			throw new FormatException($"Expected 4 lines with at least 2 fields each; Got {props.Select(l => l.Length).Show()}");
 
 		Func<HtmlNode[], string, string> chkProb = (pr, f) =>
 		{

@@ -49,9 +49,9 @@ public class DnD5e : IGame<DnD5e.Spell>
 		var lvlLine = input.Split(null as char[], RemoveEmptyEntries);
 
 		if(lvlLine.Length < 2 || lvlLine.Skip(2).Any(x => x[0] != '('))
-			throw new FormatException($"Invalid school/level format: got '{input.Trim()}'");
+			throw new FormatException($"Invalid school/level format: got {input.Show()}");
 
-		bool ritual = lvlLine.Length >= 3 && lvlLine[2].ToLower() == "(ritual)";
+		bool ritual = lvlLine.Length >= 3 && lvlLine[2].Equals("(ritual)", StringComparison.CurrentCultureIgnoreCase);
 		int level;
 		School school;
 

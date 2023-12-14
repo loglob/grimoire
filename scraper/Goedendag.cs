@@ -121,7 +121,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				[_, "charm",  _] => Arcanum.Charms,
 				[_, "divine",  _] => Arcanum.Divine,
 				[_, "conj", _] => Arcanum.Conjuration,
-				_ => throw new FormatException($"Unexpected hyperref format '{link}'")
+				_ => throw new FormatException($"Unexpected hyperref format {link.Show()}")
 			};
 		}
 
@@ -147,7 +147,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		var (discard, details, afterDetails) = takeTable(comp, afterProps);
 
 		if(discard.Items().Any(x => x is not WhiteSpace))
-			throw new FormatException($"Unexpected tokens between spell tables: '{Lexer.Untokenize(discard)}'");
+			throw new FormatException($"Unexpected tokens between spell tables: {Lexer.Untokenize(discard)}");
 
 		var dtDim = (x: details.Length, y: details.Min(x => x.Length));
 

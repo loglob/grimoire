@@ -1,5 +1,6 @@
 using HtmlAgilityPack;
 using Newtonsoft.Json;
+using System.Collections;
 using System.Text;
 
 namespace Util;
@@ -11,16 +12,14 @@ internal static class Extensions
 	/// </summary>
 	public static T LoadJson<T>(string filename)
 	{
-		using(var f = File.OpenText(filename))
-		using(var j = new JsonTextReader(f))
-		{
-			var res = new JsonSerializer().Deserialize<T>(j);
+		using var f = File.OpenText(filename);
+		using var j = new JsonTextReader(f);
+		var res = new JsonSerializer().Deserialize<T>(j);
 
-			if(res is null)
-				throw new FormatException($"Failed parsing JSON of {typeof(T).Name}");
-			else
-				return res;
-		}
+		if(res is null)
+			throw new FormatException($"Failed parsing JSON of {typeof(T).Name}");
+		else
+			return res;
 	}
 
 	/// <summary>
@@ -28,8 +27,8 @@ internal static class Extensions
 	/// </summary>
 	public static void StoreJson<T>(this T obj, string filename)
 	{
-		using(var f = File.CreateText(filename))
-			new JsonSerializer().Serialize(f, obj);
+		using var f = File.CreateText(filename);
+		new JsonSerializer().Serialize(f, obj);
 	}
 
 	/// <summary>
@@ -41,7 +40,7 @@ internal static class Extensions
 	public static void AssertEqual<T>(T a, T b, string message)
 	{
 		if(! EqualityComparer<T>.Default.Equals(a, b))
-			throw new Exception($"{message}: Expected '{a}', got '{b}'");
+			throw new Exception($"{message}: Expected {Show(a)}, got {Show(b)}");
 	}
 
 	/// <summary>
@@ -65,7 +64,7 @@ internal static class Extensions
 				cur.Add(x);
 		}
 
-		if(cur.Any())
+		if(cur.Count != 0)
 			yield return cur.ToArray();
 	}
 
@@ -175,7 +174,7 @@ internal static class Extensions
 		string cache, IEnumerable<Tkey> keys, Log log, Func<Tkey, Task<Tval>> task, Func<Tkey, string>? progress = null)
 		where Tkey : notnull
 	{
-		Dictionary<Tkey, Tval> dict = new Dictionary<Tkey, Tval>();
+		Dictionary<Tkey, Tval> dict = [];
 
 		if(File.Exists(cache))
 		{
@@ -219,7 +218,7 @@ internal static class Extensions
 					if(progress != null)
 						Console.WriteLine();
 
-					log.Warn($"In '{k}': " + ex.Message);
+					log.Warn($"In {Show(k)}: " + ex.Message);
 				}
 
 				if(dict.TryGetValue(k, out var y))
@@ -239,9 +238,9 @@ internal static class Extensions
 		var b = books.Where(b => b.Matches(source)).ToArray();
 
 		if(b.Length == 0)
-			throw new Exception($"Unknown source: '{source}'");
+			throw new Exception($"Unknown source: {Show(source)}");
 		else if(b.Length > 1)
-			throw new Exception($"Unknown source: '{source}': Ambigous between {b.Show()}");
+			throw new Exception($"Unknown source: {Show(source)}: Ambiguous between {b.Show()}");
 		else
 			return b[0];
 	}
@@ -252,64 +251,42 @@ internal static class Extensions
 	public static IEnumerable<(A,B)> SelectWith<A,B>(this IEnumerable<A> ls, Func<A,B> f)
 		=> ls.Select(x => (x, f(x)));
 
-	public static string Show<A,B>(this Dictionary<A,B[]> dict) where A : notnull
-		=> dict.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Show()).Show();
-
-	public static string Show<A,B>(this Dictionary<A,B> dict) where A : notnull
+	private static IEnumerable<object> unpack(IEnumerable xs)
 	{
-		var sb = new StringBuilder("{");
-		bool first = true;
-
-		foreach (var item in dict)
-		{
-			if(!first)
-				sb.Append(',');
-
-			sb.Append($" {item.Key}: {item.Value}");
-			first = false;
-		}
-
-		sb.Append(" }");
-
-		return sb.ToString();
+		foreach(var x in xs)
+			yield return x;
 	}
 
-
-	public static string Show<T>(this T[] arr)
+	public static string Show(string s)
 	{
-		var sb = new StringBuilder("[");
-		bool first = true;
+		var b = new StringBuilder();
+		b.Append('"');
 
-		foreach (var item in arr)
+		foreach (var c in s)
 		{
-			sb.Append(first ? " " : ", ");
-			sb.Append(item);
-			first = false;
+			if(c == '"')
+				b.Append("\\\"");
+			else if(c == '\n')
+				b.Append("\\n");
+			else if(c == '\\')
+				b.Append("\\\\");
+			else
+				b.Append(c);
 		}
 
-		sb.Append(" ]");
-
-		return sb.ToString();
+		b.Append('"');
+		return b.ToString();
 	}
 
-	public static string Show(this string[] arr)
-	{
-		var sb = new StringBuilder("[");
-		bool first = true;
-
-		foreach (var item in arr)
-		{
-			sb.Append(first ? " " : ", ");
-			sb.Append('\'');
-			sb.Append(item);
-			sb.Append('\'');
-			first = false;
-		}
-
-		sb.Append(" ]");
-
-		return sb.ToString();
-	}
+	public static string Show(this object? any)
+		=> any switch {
+			null => "null" ,
+			char c => $"'{c}'" ,
+			string s => Show(s) ,
+			IDictionary d => "{ " + string.Join(", ", unpack(d.Values).Select(x => Show(x) + " -> " + Show(d[x]))) + " }" ,
+			IEnumerable l => "[ " + string.Join(", ", unpack(l).Select(Show)) + " ]",
+			_ => any.ToString()!
+		};
 
 	public static (string left, string? right) MaybeSplitOn(string str, string sep)
 	{
@@ -415,7 +392,7 @@ internal static class Extensions
 		=> a.HasValue ? f(a.Value) : fallback;
 
 	public static string Quote(this string str)
-		=> str.Any(char.IsWhiteSpace) ? $"'{str}'" : str;
+		=> str.Any(char.IsWhiteSpace) ? str.Show() : str;
 
 	public static IEnumerable<int> FindIndices<T>(this IEnumerable<T> xs, Func<T, bool> cond)
 	{
@@ -429,7 +406,4 @@ internal static class Extensions
 			++i;
 		}
 	}
-
-	public static string Brace(this string? str)
-		=> $"[{str}]";
 }
