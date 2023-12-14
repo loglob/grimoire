@@ -78,6 +78,11 @@ Otherwise, the file contents between `\begin{document}` and `\end{document}` are
 The compiler permits the escape sequence `\< ... \>` for inserting literal HTML code.
 Such a sequence may not span over multiple lines, and is copied verbatim, without checking for syntactical correctness.
 
+The latex dialect understood by Grimoire has a few quirks:
+- Incomplete invocations in macros are expanded eagerly
+	- i.e. `\newcommand{\I}{\textit}` would not work as a shorthand
+- The `\forcenewcommand` variant of `\newcommand`, which ignores any following `\renewcommand` for the same macro name
+- Math mode, most advanced formatting, `\let`, `\def` and most advanced parsing features (i.e. catcodes) aren't supported
 
 # Website
 To compile the frontend, run `tsc` in the `website` directory.
