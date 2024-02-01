@@ -40,20 +40,21 @@ Expects an object with the fields:
 - `macroFiles`: A list of filenames to extract macros from.
 	No spells are extracted from these and macros from other files are not parsed.
 - `files`: A map from book IDs to one or more filenames. The same key may be supplied multiple times to concatenate the given filenames.
+- `localManifest`: A path to a JSON file that contains additional values for the `macroFiles` and `files` fields 
 - The latex options described below, embedded directly into the object
 
 #### overleaf
 Processes files from an overleaf server.
 
-- `projectID`: The overleaf project ID to scrape
-- `password`: The overleaf web API password (see [olspy documentation](https://github.com/loglob/olspy) for more details)
-- `includeAnchor`: Every file marked with this string within the first 10 lines, is included and parsed like a regular latex file.
-After the anchor, a book ID may be given.
-Optional, `%% grimoire include` by default.
-- `host`: Optional hostname for the overleaf instance.
-	If omitted, attempt to connect to a local docker instance.
-- `latex`: A separate object containing latex options as described above.
+- `latex`: A latex object as described above. Paths are relative to the project root.
+- `localMacros`: A list of local files to import macros from
 - `cacheLifetime`: The maximum age for a cached project in seconds.
+- `auth` Either a string which is a latex share link for the project, or an object containing:
+	- `host`: The overleaf instance's base URL
+	- `ID`: The project ID to access
+	- `email`: A user registered on the overleaf with access to the project
+	- `password`: The password for the user
+
 
 #### copy
 An object with the fields:

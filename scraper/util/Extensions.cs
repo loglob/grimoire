@@ -132,6 +132,7 @@ internal static class Extensions
 	/// Writes a cache entry if the directory below cache exists.
 	/// </summary>
 	/// <param name="cache"> The file to load from. Read/Stored as JSON. </param>
+	/// <param name="lifetime"> Time-span in seconds until entry is considered stale </param>
 	/// <param name="task"> How to compute a result if the cache doesn't exist or is invalid. </param>
 	public static async Task<T> Cached<T>(string cache, float lifetime, Log log, Func<Task<T>> task)
 	{
@@ -170,7 +171,7 @@ internal static class Extensions
 	/// 	A callback that is issued after every processed element.
 	/// 	Returns a name to print as progress report.
 	/// </param>
-	public static async IAsyncEnumerable<Tval> PartiallyCached<Tkey, Tval>(
+	public static async IAsyncEnumerable<(Tkey key, Tval val)> PartiallyCached<Tkey, Tval>(
 		string cache, IEnumerable<Tkey> keys, Log log, Func<Tkey, Task<Tval>> task, Func<Tkey, string>? progress = null)
 		where Tkey : notnull
 	{
@@ -206,7 +207,7 @@ internal static class Extensions
 			}
 
 			if(dict.TryGetValue(k, out var v))
-				yield return v;
+				yield return (k, v);
 			else
 			{
 				try
@@ -222,7 +223,7 @@ internal static class Extensions
 				}
 
 				if(dict.TryGetValue(k, out var y))
-					yield return y;
+					yield return (k, y);
 			}
 		}
 
@@ -404,6 +405,23 @@ internal static class Extensions
 				yield return i;
 
 			++i;
+		}
+	}
+
+	public static void AddRange<T>(this ISet<T> set, IEnumerable<T> items)
+	{
+		foreach (var x in items)
+			set.Add(x);
+	}
+
+	public static void UnionAll<K, V, Vs>(this IDictionary<K, HashSet<V>> dictA, IDictionary<K, Vs> dictB) where Vs : IEnumerable<V>
+	{
+		foreach (var kvp in dictB)
+		{
+			if(dictA.TryGetValue(kvp.Key, out var vs))
+				vs.AddRange(kvp.Value);
+			else
+				dictA.Add(kvp.Key, kvp.Value.ToHashSet());
 		}
 	}
 }

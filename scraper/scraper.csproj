@@ -9,9 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.57" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
-    <ProjectReference Include="../olspy/olspy.csproj" />
+    <PackageReference Include="olspy" Version="2.0.0" />
   </ItemGroup>
 
 </Project>

@@ -1,13 +1,12 @@
 using Latex;
 using Olspy;
+using System.Text.Json;
 using Util;
 
 using static Util.Extensions;
 
 public class Overleaf<TSpell> : ISource<TSpell>
 {
-	private readonly Olspy.Overleaf overleaf;
-	private readonly Olspy.Project project;
 	private readonly Compiler latex;
 	private readonly IGame<TSpell> game;
 	private readonly Config.OverleafSource config;
@@ -17,55 +16,98 @@ public class Overleaf<TSpell> : ISource<TSpell>
 	{
 		this.game = game;
 		this.log = Log.DEFAULT.AddTags(game.Conf.Shorthand, "overleaf");
-		this.overleaf = (config.Host is string s) ?
-			this.overleaf = new Olspy.Overleaf(s) :
-			Olspy.Overleaf.RunningInstance;
 
-		this.project = this.overleaf.Open(config.ProjectID);
-		this.latex = new(config.Latex, log);
+		this.latex = new(config.Latex.Options, log);
 		this.config = config;
 
-		if(config.User is string u)
-			this.overleaf.SetCredentials(config.Password, u);
-		else
-			this.overleaf.SetCredentials(config.Password);
-
-		foreach (var f in config.localMacros)
+		foreach (var f in config.LocalMacros)
 			latex.LearnMacrosFrom(File.ReadLines(f), f);
 	}
 
-	/// <summary>
-	/// Retrieves all code segments from multiple documents.
-	/// Filters out documents without an INCLUDE_ANCHOR
-	/// </summary>
-	internal IEnumerable<(string source, ArraySegment<Token> code)> GetCodeSegments(IEnumerable<Document> docs)
-		=> docs.SelectWith(d => d.Lines
-				.Take(10)
-				.FirstOrDefault(x => x.StartsWith(config.IncludeAnchor))
-				?.Substring(config.IncludeAnchor.Length)
-				?.Trim())
-			.Where(x => x.Item2 is not null)
-			.Select(x => (source: x.Item2!, doc: new ArraySegment<Token>(new Lexer(log).Tokenize(x.Item1.Lines, x.Item1.ID ?? "<unknown overleaf file>"))))
-			.Select(x => (x.source, x.doc.DocumentContents() ?? x.doc) );
+	private async Task<(Project project, ProjectSession session, Protocol.FolderInfo root)> open()
+	{
+		var project = await config.Auth.Instantiate()!;
+		var session = await project.Join()!;
+		var root = (await session.GetProjectInfo()).Project.RootFolder[0]!;
+		return (project, session, root);
+	}
 
 	public async IAsyncEnumerable<TSpell> Spells()
 	{
-		var docs = await Cached($"cache/{game.Conf.Shorthand}_overleaf_documents_{project.ID}", config.CacheLifetime, log, async() => {
-			if(!await overleaf.Available)
-				throw new Exception($"Overleaf instance at {overleaf.Host} isn't ready");
+		Project? project;
+		ProjectSession? session = null;
+		Protocol.FolderInfo? root = null;
+		var lex = new Lexer(log);
 
-			return await project.GetDocuments();
-		});
+		var macroFiles = config.Latex.MacroFiles.ToHashSet();
+		var files = config.Latex.Files.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToHashSet());
 
-		var snippets = GetCodeSegments(docs).ToList();
+		// manifest has to be loaded eagerly
+		if(config.Latex.LocalManifest is string p)
+		{
+			(project, session, root) = await open();
 
-		foreach (var (_, code) in snippets.Where(s => s.source == Config.LatexOptions.MACROS_SOURCE_NAME))
-			latex.LearnMacrosFrom(code);
+			var mf = root.Lookup(p);
 
-		foreach(var s in snippets
-			.Where(s => s.source != Config.LatexOptions.MACROS_SOURCE_NAME)
-			.SelectMany(s => latex.ExtractSpells(game, s.code, s.source)))
-			yield return s;
+			if(mf is null)
+				log.Warn("Cannot open manifest path");
+			else
+			{
+				var manifest = JsonSerializer.Deserialize<Config.LatexManifest>(string.Join(' ', await session.GetDocumentByID(mf.ID)), Config.JsonOpt)!;
 
+				if(manifest.MacroFiles is not null)
+					macroFiles.AddRange(manifest.MacroFiles);
+
+				if(manifest.Files is not null)
+					files.UnionAll(manifest.Files);
+			}
+		}
+
+		var byPath = await PartiallyCached(
+				$"cache/{game.Conf.Shorthand}_overleaf_root_{config.Auth.CacheID}",
+				files.Values.SelectMany(x => x)
+					.Concat(macroFiles),
+				log,
+				async path => {
+					if(root is null || session is null)
+						(project, session, root) = await open();
+
+					var f = root.Lookup(path) ?? throw new ArgumentException($"Path doesn't exist: {path}");
+
+					return await session.GetDocumentByID(f.ID);
+				}
+			).Select(kvp => (kvp.key, val: new ArraySegment<Token>(lex.Tokenize(kvp.val, kvp.key))))
+			.Select(kvp => (kvp.key, val: kvp.val.DocumentContents() ?? kvp.val))
+			.ToDictionaryAsync(kvp => kvp.key, kvp => kvp.val);
+
+		List<string> missing = [];
+
+		foreach (var f in macroFiles)
+		{
+			if(byPath.TryGetValue(f, out var content))
+				latex.LearnMacrosFrom(content);
+			else
+				missing.Add(f);
+		}
+
+		foreach (var kvp in files)
+		{
+			foreach (var f in kvp.Value)
+			{
+				if(byPath.TryGetValue(f, out var tks))
+				{
+					foreach (var spell in latex.ExtractSpells(game, tks, kvp.Key))
+						yield return spell;
+				}
+				else
+					missing.Add(f);
+			}
+		}
+
+		if(session is not null)
+			await session.DisposeAsync();
+
+		if(missing.Count > 0)
+			log.Warn($"{missing.Count} referenced files were not found: {string.Join(", ", missing)}");
 	}
 }

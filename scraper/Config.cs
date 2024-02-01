@@ -1,10 +1,16 @@
 using System.Text.Json.Nodes;
 using Util;
+using Olspy;
+using System.Text.Json;
 
 public static class Config
 {
 	private static string[] strArray(JsonNode? n)
 		=> n!.AsArray().Select(x => (string)x!).ToArray();
+
+	public static readonly JsonSerializerOptions JsonOpt = new() {
+		PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+	};
 
 	public record Game(string Shorthand, Dictionary<string, Book> Books, Source[] Sources)
 	{
@@ -83,41 +89,67 @@ public static class Config
 		}
 	}
 
+	public abstract record OverleafAuth()
+	{
+		/// <summary>
+		///  A string that identifies a project for cache matching
+		/// </summary>
+		public abstract string CacheID { get; }
+
+		public abstract Task<Project> Instantiate();
+
+		public static OverleafAuth Parse(JsonNode o)
+			=> (o is JsonValue v)
+				? new OverleafLinkAuth(((string?)v.AsValue())!)
+				: o.AsObject().Deserialize<OverleafUserAuth>(JsonOpt)!;
+	}
+
+	public record OverleafLinkAuth(string Link) : OverleafAuth()
+	{
+		public override string CacheID
+		{
+			get
+			{
+				var spl = Link.Split('/');
+
+				return spl[^1].Length == 0 ? spl[^2] : spl[^1];
+			}
+		}
+
+		public override Task<Project> Instantiate()
+			=> Project.Open(new Uri(Link));
+	}
+
+	public record OverleafUserAuth(string Host, string ID, string Email, string Password) : OverleafAuth()
+	{
+		public override string CacheID
+			=> ID;
+
+		public override Task<Project> Instantiate()
+			=> Project.Open(new Uri(Host), ID, Email, Password);
+	}
+
 	/// <summary>
 	/// The configuration for the overleaf scraper
 	/// </summary>
-	/// <param name="ProjectID"> The project ID to scrape for spells. Mandatory </param>
-	/// <param name="Password"> The password to connect to overleaf with. See olspy's documentation for details.</param>
-	/// <param name="User"> The username to connect to overleaf with. See olspy's documentation for details.</param>
-	/// <param name="Host">The hostname of the overleaf server. If blank, determined automatically</param>
-	/// <param name="IncludeAnchor">
- 	///  When encountered in the first 10 lines of an overleaf document, scrapes that file for spells.
-	///  Optionally followed by a source name.
-	///  Default is <c>%% grimoire include</c>
-	/// </param>
+	/// <param name="Auth"> How to connect to the overleaf instance </param>
+	/// <param name="LocalMacros"> List of local file paths to load macros from </param>
 	/// <param name="Latex"> The latex configuration to use.</param>
-	public sealed record OverleafSource(string ProjectID, string Password, string? User, string? Host, string IncludeAnchor, string[] localMacros, LatexOptions Latex, float CacheLifetime)
+	public sealed record OverleafSource(OverleafAuth Auth, float CacheLifetime, string[] LocalMacros, LatexSource Latex)
 		: Source(CacheLifetime)
 	{
-		public const string DEFAULT_INCLUDE_ANCHOR = "%% grimoire include";
-
 		internal static OverleafSource Parse(JsonObject o)
 			=> new(
-				(string)o["projectID"]!,
-				(string)o["password"]!,
-				(string?)o["user"],
-				(string?)o["host"],
-				(string?)o["includeAnchor"] ?? DEFAULT_INCLUDE_ANCHOR,
+				OverleafAuth.Parse(o["auth"]!),
+				((float?)o["cacheLifetime"]) ?? float.PositiveInfinity,
 				o["localMacros"]?.AsArray()?.Select(x => (string)x!)?.ToArray() ?? Array.Empty<string>(),
-				LatexOptions.Parse(o["latex"]!.AsObject()),
-				((float?)o["cacheLifetime"]) ?? float.PositiveInfinity
+				LatexSource.Parse(o["latex"]!.AsObject())
 			);
-
-		public override string ToString()
-			=> $"OverleafSource( ProjectID = {ProjectID}, Password = {Password}, User = {User}, Host = {Host}, Latex = {Latex} )";
 	}
 
-	public sealed record LatexSource(LatexOptions Options, string[] MacroFiles, Dictionary<string, string[]> Files, float CacheLifetime)
+	public sealed record LatexManifest(string[]? MacroFiles = null, Dictionary<string, string[]>? Files = null);
+
+	public sealed record LatexSource(LatexOptions Options, string[] MacroFiles, Dictionary<string, string[]> Files, float CacheLifetime, string? LocalManifest = null)
 		: Source(CacheLifetime)
 	{
 		private static Dictionary<string, string[]> parseFiles(JsonObject o)
@@ -142,11 +174,12 @@ public static class Config
 				LatexOptions.Parse(o) ,
 				strArray(o["macroFiles"]) ,
 				parseFiles(o["files"]!.AsObject()) ,
-				((float?)o["CacheLifetime"]) ?? float.PositiveInfinity
+				((float?)o["cacheLifetime"]) ?? float.PositiveInfinity ,
+				(string?)o["localManifest"]
 			);
 
 		public override string ToString()
-			=> $"LatexSource( {nameof(Options)} = {Options}, {nameof(MacroFiles)} = {MacroFiles.Show()}, {nameof(Files)} = {Files.Show()}, {nameof(CacheLifetime)} = {CacheLifetime}s )";
+			=> $"LatexSource( {nameof(Options)} = {Options}, {nameof(MacroFiles)} = {MacroFiles.Show()}, {nameof(Files)} = {Files.Show()}, {nameof(CacheLifetime)} = {CacheLifetime}s, {nameof(LocalManifest)} = {LocalManifest.Show()} )";
 	}
 
 	public sealed record CopySource(string[] From) : Source(0.0f)

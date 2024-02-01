@@ -35,14 +35,19 @@
 			"dndwiki",
 			{
 				"type": "overleaf",
-				"projectID": "--PROJECT ID HERE--",
-				"password": "--PASSWORD HERE (see olspy docs)--",
+				"link": "--SHARE LINK HERE--",
 				"latex": {
 					"spellAnchor": "\\spell",
 					"upcastAnchor": "At higher levels",
 					"environments": {
 						"DndTable": "tabular"
-					}
+					},
+					"files": {
+						"SP": "spells.tex"
+					},
+					"macroFiles": [
+						"macros.tex"
+					]
 				}
 			},
 			{

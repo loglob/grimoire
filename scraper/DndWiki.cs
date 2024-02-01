@@ -26,7 +26,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 
 	private async Task<Spell> details(string name)
 	{
-		string cName = new string(string.Join('-', name.Split(new[]{ ' ', '/', ':' }))
+		string cName = new string(string.Join('-', name.Split([ ' ', '/', ':' ]))
 			.Where(c => c < 0x7F && c != '\'')
 			.Select(Char.ToLower)
 			.ToArray());
@@ -113,7 +113,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 				throw new FormatException("Empty description");
 
 			desc = string.Join('\n', d.Select(x => x.OuterHtml));
-			upcast = u.Any() ? string.Join('\n', u.Select(s => s.OuterHtml)) : null;
+			upcast = u.Count == 0 ? null : string.Join('\n', u.Select(s => s.OuterHtml));
 		}
 
 		return new Spell(name, source, school, level, cTime, reaction, ritual, range,
@@ -122,7 +122,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 	}
 
 	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
-		=> PartiallyCached("cache/wikidot_spells", names, log, async (string n) => await details(n), x => x);
+		=> PartiallyCached("cache/wikidot_spells", names, log, details, x => x).Select(kvp => kvp.val);
 
 	public async IAsyncEnumerable<Spell> Spells()
 	{
