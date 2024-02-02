@@ -16,7 +16,7 @@ namespace UI
 			const p = new URLSearchParams(window.location.search);
 			const ind = new Index(game, new Table(game, p.get("q")), await game.getBooks());
 
-			await ind.makeSourceSelector(p.getAll("from"))
+			await ind.makeSourceSelector(p.has("from") ? p.getAll("from") : null)
 
 			return ind;
 		}
@@ -68,19 +68,24 @@ namespace UI
 
 
 		/** Creates the source selector
-		 * @param preload A list of book IDs to import immediately
+		 * @param preload A list of book IDs to import immediately, if any
 		*/
-		private async makeSourceSelector(preload : string[])
+		private async makeSourceSelector(preload : string[] | null)
 		{
 			let elem = document.getElementById("source-selector");
 			document.getElementById("source-selector-placeholder")?.remove();
 
+			// if there is only one source, load it and hide the selector
 			if(Object.keys(this.books).length == 1)
 			{
 				const id = Object.keys(this.books)[0];
 				this.table.insert(await this.game.fetchSource(id));
 				return;
 			}
+
+			// without any "from" parameters, preload the first book listed in the index
+			if(preload === null)
+				preload = [ Object.keys(this.books)[0] ]
 
 			for (const id in this.books)
 			{
