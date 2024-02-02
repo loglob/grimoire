@@ -6,7 +6,7 @@ using System.Text.Json;
 public static class Config
 {
 	private static string[] strArray(JsonNode? n)
-		=> n!.AsArray().Select(x => (string)x!).ToArray();
+		=> n?.AsArray()?.Select(x => (string)x!)?.ToArray() ?? [];
 
 	public static readonly JsonSerializerOptions JsonOpt = new() {
 		PropertyNamingPolicy = JsonNamingPolicy.CamelCase
