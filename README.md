@@ -36,6 +36,7 @@ Optionally an object with the fields
 
 #### latex
 Processes local LaTeX files.
+For dnd5e, this expects [the rpgtex template](https://github.com/rpgtex/DND-5e-LaTeX-Template) format for spells.
 Expects an object with the fields:
 - `macroFiles`: A list of filenames to extract macros from.
 	No spells are extracted from these and macros from other files are not parsed.
