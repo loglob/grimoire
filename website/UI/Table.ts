@@ -113,7 +113,7 @@ namespace UI
 			{
 				let cell = document.createElement("td");
 				let link = document.createElement("a");
-				link.href=`details.html?game=${this.game.shorthand}&from=${encodeURIComponent(this.game.getSource(spell))}&spell=${encodeURIComponent(spell.name)}`;
+				link.href=`details.html?game=${this.game.shorthand}&from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`;
 				link.innerText = spell.name;
 				cell.appendChild(link);
 				cell.classList.add("left");

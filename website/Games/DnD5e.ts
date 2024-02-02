@@ -26,11 +26,6 @@ namespace Games.DnD5e
 
 		customComparers = {}
 
-		getSource(s: Spell)
-		{
-			return s.source;
-		}
-
 		spellCard(spell: Spell, book: string): HTMLDivElement
 		{
 			const div = document.createElement("div");

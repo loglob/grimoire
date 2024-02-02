@@ -8,12 +8,13 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 	[JsonConverter(typeof(StringEnumConverter))]
 	public enum Arcanum
 	{
-		General,
-		Nature,
-		Elementalism,
 		Charms,
 		Conjuration,
-		Divine
+		Divine,
+		Elementalism,
+		General,
+		Nature,
+		Wytch
 	}
 
 	[JsonConverter(typeof(StringEnumConverter))]
@@ -40,11 +41,10 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string effect,
 		string critSuccess,
 		string critFail,
-		string? extra
-	) : ISpell
-	{
-		string ISpell.Source => "GD";
-	}
+		string? extra,
+		[property: JsonProperty("source")]
+		string Source
+	) : ISpell;
 
 
 	private static (Chain<Token> left, string[][] table, Chain<Token> rest) takeTable(Compiler comp, Chain<Token> code, string name = "spells")
@@ -121,6 +121,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				[_, "charm",  _] => Arcanum.Charms,
 				[_, "divine",  _] => Arcanum.Divine,
 				[_, "conj", _] => Arcanum.Conjuration,
+				[_, "wytch", _] => Arcanum.Wytch,
 				_ => throw new FormatException($"Unexpected hyperref format {link.Show()}")
 			};
 		}
@@ -175,7 +176,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			? comp.ToHTML(afterDetails)
 			: null;
 
-		return new(name, arcanum, powerLevel, combat, reaction, distance, duration, castingTime, components, brief, effect, crit, fail, extra);
+		return new(name, arcanum, powerLevel, combat, reaction, distance, duration, castingTime, components, brief, effect, crit, fail, extra, source);
 	}
 
 	public ISource<Spell> Instantiate(Config.Source src)

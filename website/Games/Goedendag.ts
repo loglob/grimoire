@@ -34,7 +34,8 @@ namespace Games.Goedendag
 		effect : string,
 		critSuccess : string,
 		critFail : string,
-		extra : string | undefined
+		extra : string | undefined,
+		source : string
 	}
 
 	function cmpPowerLevel(a : Spell, b : Spell) : number
@@ -61,8 +62,6 @@ namespace Games.Goedendag
 
 	export class Game extends IGame<Spell>
 	{
-		readonly fallbackSource : string  = "GD"
-
 		tableHeaders: (keyof Spell)[] = [
 			"powerLevel", "arcanum", "castingTime", "distance", "combat", "reaction"
 		]
@@ -70,11 +69,6 @@ namespace Games.Goedendag
 		customComparers = {
 			"powerLevel": cmpPowerLevel,
 			"arcanum": cmpArcana
-		}
-
-		getSource(_: Spell): string
-		{
-			return "GD";
 		}
 
 		spellCard(spell: Spell, _book: string): HTMLDivElement

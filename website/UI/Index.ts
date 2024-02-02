@@ -103,7 +103,7 @@ namespace UI
 						setHidden(l, true);
 					}
 					else
-						this.table.deleteIf(s => this.game.getSource(s) === id);
+						this.table.deleteIf(s => s.source === id);
 				}
 
 				container.appendChild(select);

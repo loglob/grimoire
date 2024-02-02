@@ -28,8 +28,6 @@ namespace Games
 			this.fullName = fullName;
 		}
 
-		abstract getSource(s : TSpell) : string;
-
 		/** Checks whether a spell matches a single search term
 		 * @param term A single search term, without joining operators or the negation operator
 		 * @param spell A spell to check against
