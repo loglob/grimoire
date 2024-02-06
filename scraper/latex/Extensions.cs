@@ -195,4 +195,18 @@ public static class Extensions
 	public static IEnumerable<CodeSegment> SplitBy(this CodeSegment code, Func<Token, bool> sep, bool sameLevel)
 		=> code.SplitBy(sameLevel ? checkLevel(sep) : sep);
 
+	/// <summary>
+	///  Formats the coordinate range of a code segment
+	/// </summary>
+	public static string PosRange(this IReadOnlyList<Token> seg)
+	{
+		if(seg.Count == 0)
+			return "<empty>";
+
+		var l = seg[0].Pos;
+		var r = seg[^1].Pos;
+
+		return l.ToString() + (l.File == r.File
+			? $"..{r.Row}:{r.Col}" : $" .. {r}");
+	}
 }

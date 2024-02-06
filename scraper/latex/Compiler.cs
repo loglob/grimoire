@@ -345,8 +345,23 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		{
 			var cc = c + spellAnchor.Length;
 			var seg = n.HasValue ? code.Slice(cc, n.Value - cc) : code.Slice(cc);
+			TSpell spell;
 
-			yield return game.ExtractLatexSpell(this, source, new(seg));
+			try
+			{
+				spell = game.ExtractLatexSpell(this, source, new(seg));
+			}
+			catch(NotASpellException)
+			{
+				continue;
+			}
+			catch(Exception ex)
+			{
+				Log.Warn($"In {seg.PosRange()}: {ex.Message}");
+				continue;
+			}
+
+			yield return spell;
 		}
 	}
 
