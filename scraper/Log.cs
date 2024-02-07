@@ -26,7 +26,7 @@ public abstract class Log
 		}
 
 		override protected void write(string prefix, string message)
-			=> write(prefix + message);
+			=> write(prefix + (prefix.Length > 0 ? " " : "") + message);
 
 		override public void Pin(string message)
 		{

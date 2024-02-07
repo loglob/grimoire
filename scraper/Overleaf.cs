@@ -13,17 +13,20 @@ public class Overleaf<TSpell> : ISource<TSpell>
 	private readonly IGame<TSpell> game;
 	private readonly Config.OverleafSource config;
 	private readonly Log log;
+	private readonly Cache cache;
 
 	public Overleaf(IGame<TSpell> game, Config.OverleafSource config)
 	{
 		this.game = game;
 		this.log = game.Log.AddTags(config.Discriminate("overleaf"));
+		this.cache = new(config.CacheLifetime, log, game.Conf.Shorthand, "overleaf", config.Auth.CacheID);
 
 		this.latex = new(config.Latex.Options, log);
 		this.config = config;
 
 		foreach (var f in config.LocalMacros)
 			latex.LearnMacrosFrom(File.ReadLines(f), f);
+
 	}
 
 	private async Task<(Project project, ProjectSession session, Protocol.FolderInfo root)> open()
@@ -65,11 +68,10 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			}
 		}
 
-		var byPath = await PartiallyCached(
-				$"cache/{game.Conf.Shorthand}_overleaf_root_{config.Auth.CacheID}",
+		var byPath = await cache.CacheMany(
+				"files",
 				files.Values.SelectMany(x => x)
 					.Concat(macroFiles),
-				log,
 				async path => {
 					if(root is null || session is null)
 						(project, session, root) = await open();

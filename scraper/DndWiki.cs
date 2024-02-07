@@ -11,9 +11,10 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 {
 	private readonly ScraperClient client = new("http://dnd5e.wikidot.com", Cfg.RateLimit);
 	private static readonly Log log = Log.DEFAULT.AddTags("dndwiki");
+	private readonly Cache cache = new(Cfg.CacheLifetime, log, "dndwiki");
 
-	public Task<string[]> SpellNames()
-		=> Cached("cache/wikidot_names", Cfg.CacheLifetime, log, async() =>
+	public ValueTask<string[]> SpellNames()
+		=> cache.CacheFunc("names", async() =>
 		{
 			var doc = await client.GetHtmlAsync("/spells");
 
@@ -28,7 +29,8 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 
 	private async Task<Spell> details(string name)
 	{
-		string cName = new string(string.Join('-', name.Split([ ' ', '/', ':' ]))
+		string cName = new(string
+			.Join('-', name.Split([ ' ', '/', ':' ]))
 			.Where(c => c < 0x7F && c != '\'')
 			.Select(Char.ToLower)
 			.ToArray());
@@ -124,7 +126,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 	}
 
 	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
-		=> PartiallyCached("cache/wikidot_spells", names, log, details, x => x).Select(kvp => kvp.val);
+		=> cache.CacheMany("spells", names, details, true).Select(kvp => kvp.val);
 
 	public async IAsyncEnumerable<Spell> Spells()
 	{
