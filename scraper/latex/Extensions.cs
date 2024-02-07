@@ -96,8 +96,8 @@ public static class Extensions
 		{
 			int l = chain.Skip(offset + 1).FindOnSameLevel(t => t is Character c && c.Char == ']');
 
-			if(l < 0)
-				Console.Error.WriteLine($"[WARN] Optional argument started at {c.Pos} never terminated");
+			if(l < 0) // TODO: get a proper log instance here
+				Log.DEFAULT.Warn($"Optional argument started at {c.Pos} never terminated");
 			else
 				return (offset + 1, l, offset + 2 + l);
 		}

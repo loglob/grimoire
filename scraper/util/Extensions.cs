@@ -191,19 +191,13 @@ internal static class Extensions
 
 		int count = keys.Count();
 		int i = 0;
-		int nLen = 0;
 
 		foreach(var k in keys)
 		{
 			if(progress != null)
 			{
 				string name = progress(k);
-				Console.Write($"{++i}/{count}: {name}");
-				if(name.Length < nLen)
-					Console.Write(new string(' ', nLen - name.Length));
-				else
-					nLen = name.Length;
-				Console.CursorLeft = 0;
+				log.Pin($"{++i}/{count}: {name}");
 			}
 
 			if(dict.TryGetValue(k, out var v))
@@ -216,9 +210,6 @@ internal static class Extensions
 				}
 				catch(Exception ex)
 				{
-					if(progress != null)
-						Console.WriteLine();
-
 					log.Warn($"In {Show(k)}: " + ex.Message);
 				}
 
