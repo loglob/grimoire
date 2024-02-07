@@ -7,9 +7,10 @@ using Util;
 /// </summary>
 public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : ISource<TSpell>
 {
+	readonly Log log = Game.Log.AddTags(Conf.Discriminate("local"));
+
 	public IAsyncEnumerable<TSpell> Spells()
 	{
-		var log = Log.DEFAULT.AddTags(Game.Conf.Shorthand, "local files");
 		var comp = new Compiler(Conf.Options, log);
 		var lex = new Lexer(log);
 

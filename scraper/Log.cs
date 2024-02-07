@@ -1,7 +1,3 @@
-
-using Newtonsoft.Json.Linq;
-using System.Text;
-
 public class Log
 {
 	private readonly string tags;
@@ -12,7 +8,7 @@ public class Log
 		=> this.tags = tags;
 
 	private void write(string prefix, string message)
-		=> Console.Error.WriteLine(prefix + tags + " " + message);
+		=> Console.Error.WriteLine(prefix + tags + (prefix.Length + tags.Length > 0 ? " " : "") + message);
 
 
 	public void Warn(string message)
@@ -21,6 +17,12 @@ public class Log
 	public void Info(string message)
 		=> write("[INFO]", message);
 
+	/// <summary>
+	///  Writes a log entry without any prefix
+	/// </summary>
+	public void Emit(string message)
+		=> write("", message);
+
 	public Log AddTags(params string[] tags)
-		=> new Log(this.tags + string.Join("", tags.Select(x => "[" + x + "]")));
+		=> new(this.tags + string.Join("", tags.Select(x => "[" + x + "]")));
 }

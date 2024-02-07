@@ -6,7 +6,7 @@ using Util;
 using static System.StringSplitOptions;
 using static Util.Extensions;
 
-public class DnD5e : IGame<DnD5e.Spell>
+public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 {
 	[JsonConverter(typeof(StringEnumConverter))]
 	public enum School
@@ -140,10 +140,7 @@ public class DnD5e : IGame<DnD5e.Spell>
 		return (verbal, somatic, materials);
 	}
 
-	public Config.Game Conf { get; }
-
-	public DnD5e(Config.Game c)
-		=> Conf = c;
+	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
 
 	public Spell ExtractLatexSpell(Compiler comp, string source, Chain<Token> body)
 	{
@@ -189,7 +186,7 @@ public class DnD5e : IGame<DnD5e.Spell>
 
 	public ISource<Spell> Instantiate(Config.Source src)
 		=> src switch {
-			Config.CopySource c => new Copy<Spell>(c.From),
+			Config.CopySource c => new Copy<Spell>(this, c),
 			Config.DndWikiSource w => new DndWiki(Conf.Books.Values.ToArray(), w),
 			Config.LatexSource l => new LatexFiles<Spell>(this, l),
 			Config.OverleafSource o => new Overleaf<Spell>(this, o),

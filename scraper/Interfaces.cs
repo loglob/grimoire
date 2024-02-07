@@ -5,6 +5,8 @@ public interface IGame<out TSpell>
 {
 	Config.Game Conf { get; }
 
+	public Log Log { get; }
+
 	/// <summary>
 	///  Extract a spell from LATEX code segment
 	/// </summary>

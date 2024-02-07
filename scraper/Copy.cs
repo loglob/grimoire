@@ -3,14 +3,18 @@ using static Util.Extensions;
 public class Copy<TSpell> : ISource<TSpell>
 {
 	readonly string[] files;
+	readonly Log log;
 
-	public Copy(IEnumerable<string> files)
-		=> this.files = files.ToArray();
+	public Copy(IGame<TSpell> game, Config.CopySource conf)
+	{
+		this.log = game.Log.AddTags(conf.Discriminate("copy"));
+		this.files = conf.From.ToArray();
+	}
 
 #pragma warning disable CS1998
 	public async IAsyncEnumerable<TSpell> Spells()
 	{
-		Console.WriteLine($"Copying from {files.Length} file(s)...");
+		log.Info($"Copying from {files.Length} file(s)...");
 		int cp = 0;
 
 		foreach (var f in files)
@@ -22,7 +26,7 @@ public class Copy<TSpell> : ISource<TSpell>
 			}
 		}
 
-		Console.WriteLine($"Copied {cp} spell(s).");
+		log.Info($"Copied {cp} spell(s).");
 	}
 #pragma warning restore CS1998
 }

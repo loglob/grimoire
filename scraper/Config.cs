@@ -14,12 +14,30 @@ public static class Config
 
 	public record Game(string Shorthand, Dictionary<string, Book> Books, Source[] Sources)
 	{
+		private void trackSourceDiscriminators()
+		{
+			foreach(var g in Sources.GroupBy(s => s.GetType()))
+			{
+				int i = 1;
+
+				if(g.Count() > 1) foreach(var x in g)
+				{
+					x.Discriminator = i++;
+				}
+			}
+		}
+
 		public static Game Parse(string shorthand, JsonObject o)
-			=> new(
+		{
+			var x = new Game(
 				shorthand,
 				o["books"]!.AsObject().ToDictionary(kvp => kvp.Key, kvp => Book.Parse(kvp.Key, kvp.Value!)),
 				o["sources"]!.AsArray().Select(n => Source.Parse(n!)).ToArray()
 			);
+			x.trackSourceDiscriminators();
+			return x;
+		}
+
 
 		public override string ToString()
 			=> $"Game( Shorthand = {Shorthand}, Books = {Books.Show()}, Sources = {Sources.Show()} )";
@@ -61,6 +79,16 @@ public static class Config
 
 	public abstract record Source(float CacheLifetime)
 	{
+		/// <summary>
+		///  If there are multiple sources of the same type for the same game,
+		///   overwritten with a 1-based index identifying this source.
+		/// 0 overwise.
+		/// </summary>
+		public int Discriminator = 0;
+
+		public string Discriminate(string root)
+			=> Discriminator > 0 ? root + "#" + Discriminator : root;
+
 		public static Source Parse(JsonNode n)
 			=> (n is JsonObject o ? (string)o["type"]! : (string)n!) switch {
 				"dndwiki" => DndWikiSource.Parse(n),
@@ -154,11 +182,11 @@ public static class Config
 	{
 		private static Dictionary<string, string[]> parseFiles(JsonObject o)
 		{
-			Dictionary<string, List<string>> acc = new();
+			Dictionary<string, List<string>> acc = [];
 
 			foreach (var kvp in o)
 			{
-				var fs = kvp.Value is JsonValue f ? new[]{ (string)f! } : strArray(kvp.Value);
+				var fs = kvp.Value is JsonValue f ? [(string)f!] : strArray(kvp.Value);
 
 				if(acc.TryGetValue(kvp.Key, out var v))
 					v.AddRange(fs);

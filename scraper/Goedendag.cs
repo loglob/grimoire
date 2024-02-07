@@ -26,6 +26,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		Greater
 	}
 
+	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
+
 	[JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
 	public readonly record struct Spell(
 		string name,
@@ -132,7 +134,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 	{
 		return src switch
 		{
-			Config.CopySource s => new Copy<Spell>(s.From),
+			Config.CopySource s => new Copy<Spell>(this, s),
 			Config.LatexSource l => new LatexFiles<Spell>(this, l),
 			Config.OverleafSource o => new Overleaf<Spell>(this, o),
 			Config.DndWikiSource => throw new ArgumentException("The DnDWiki doesn't have any Goedendag spells"),

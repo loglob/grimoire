@@ -127,7 +127,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 	public async IAsyncEnumerable<Spell> Spells()
 	{
 		var names = await this.SpellNames();
-		Console.WriteLine($"Processing {names.Length} spells from DnDWiki...");
+		log.Info($"Processing {names.Length} spells from DnDWiki...");
 
 		await foreach(var s in Spells(names))
 			yield return s;

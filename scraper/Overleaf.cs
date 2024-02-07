@@ -15,7 +15,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 	public Overleaf(IGame<TSpell> game, Config.OverleafSource config)
 	{
 		this.game = game;
-		this.log = Log.DEFAULT.AddTags(game.Conf.Shorthand, "overleaf");
+		this.log = game.Log.AddTags(config.Discriminate("overleaf"));
 
 		this.latex = new(config.Latex.Options, log);
 		this.config = config;

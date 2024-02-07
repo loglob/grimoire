@@ -17,7 +17,7 @@ public class Program
 			if(spellsByBook.TryGetValue(sp.Source, out var spells))
 				spells.Add(sp);
 			else if(warnedAbout.Add(sp.Source))
-				Console.Error.WriteLine($"[WARN] Discarding unknown source '{game.Conf.Shorthand}/{sp.Source}'");
+				Log.DEFAULT.Warn($"Discarding unknown source '{game.Conf.Shorthand}/{sp.Source}'");
 		}
 
 		Directory.CreateDirectory($"db/{game.Conf.Shorthand}");
@@ -31,7 +31,7 @@ public class Program
 			if(kvp.Value.Any())
 				kvp.Value.StoreJson($"db/{game.Conf.Shorthand}/{kvp.Key}.json");
 			else
-				Console.Error.WriteLine($"[Warn] No spells for source '{game.Conf.Shorthand}/{kvp.Key}'");
+				Log.DEFAULT.Warn($"No spells for source '{game.Conf.Shorthand}/{kvp.Key}'");
 		}
 
 		game.Conf.Books.Values
@@ -39,7 +39,7 @@ public class Program
 			.ToDictionary(b => b.Shorthand, b => b.FullName)
 			.StoreJson($"db/{game.Conf.Shorthand}/index.json");
 
-		Console.WriteLine($"Parsed {total} spells for {game.Conf.Shorthand}.");
+		Log.DEFAULT.Emit($"Parsed {total} spells for {game.Conf.Shorthand}.");
 		return (game.Conf, total);
 	}
 
@@ -58,19 +58,19 @@ public class Program
 
 		var games = Config.Parse(await File.ReadAllTextAsync(args.Length > 0 ? args[0] : "config.json")).Values;
 
-		Console.WriteLine($"Processing {games.Count} games with {games.Sum(g => g.Books.Count)} sources...");
+		Log.DEFAULT.Emit($"Processing {games.Count} games with {games.Sum(g => g.Books.Count)} sources...");
 		Directory.CreateDirectory("db");
 		int total = 0;
 
 		foreach(var (game, count) in await Task.WhenAll(games.Select(processGame)))
 		{
 			if(count == 0)
-				Console.WriteLine($"[WARN] No spells for game '{game.Shorthand}'");
+				Log.DEFAULT.Warn($"No spells for game '{game.Shorthand}'");
 
 			total += count;
 		}
 
-		Console.WriteLine($"Done processing {total} spells.");
+		Log.DEFAULT.Emit($"Done processing {total} spells.");
 		return 0;
 
 		usage:
