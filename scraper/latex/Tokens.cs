@@ -1,6 +1,6 @@
-using Util;
+using Grimoire.Util;
 
-namespace Latex;
+namespace Grimoire.Latex;
 
 public readonly record struct Position(string File, int Row, int Col)
 {

@@ -1,6 +1,8 @@
-using Latex;
+using Grimoire.Latex;
+using Grimoire.Util;
 using System.Text.Json;
-using Util;
+
+namespace Grimoire;
 
 /// <summary>
 /// Scraper for processing LaTeX files

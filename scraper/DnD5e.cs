@@ -1,10 +1,12 @@
-using Latex;
+using Grimoire.Latex;
+using Grimoire.Util;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Util;
 
 using static System.StringSplitOptions;
-using static Util.Extensions;
+using static Grimoire.Util.Extensions;
+
+namespace Grimoire;
 
 public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 {

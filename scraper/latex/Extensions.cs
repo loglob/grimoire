@@ -1,10 +1,10 @@
-namespace Latex;
-
+using Grimoire.Util;
 using System.Collections;
 using System.Diagnostics;
-using Util;
 
-using CodeSegment = Util.Chain<Token>;
+using CodeSegment = Grimoire.Util.Chain<Grimoire.Latex.Token>;
+
+namespace Grimoire.Latex;
 
 public static class Extensions
 {

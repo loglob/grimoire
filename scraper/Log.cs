@@ -1,3 +1,6 @@
+
+namespace Grimoire;
+
 public class Log
 {
 	private readonly string tags;

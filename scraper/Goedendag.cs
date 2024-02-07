@@ -1,7 +1,9 @@
-using Latex;
+using Grimoire.Latex;
+using Grimoire.Util;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Util;
+
+namespace Grimoire;
 
 public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 {

@@ -1,9 +1,11 @@
 using HtmlAgilityPack;
-using Util;
+using Grimoire.Util;
 
 using static System.StringSplitOptions;
-using static DnD5e;
-using static Util.Extensions;
+using static Grimoire.DnD5e;
+using static Grimoire.Util.Extensions;
+
+namespace Grimoire;
 
 public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<Spell>
 {

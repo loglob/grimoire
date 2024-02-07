@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using System.Collections;
 using System.Text;
 
-namespace Util;
+namespace Grimoire.Util;
 
 internal static class Extensions
 {

@@ -1,4 +1,6 @@
-﻿using Util;
+﻿using Grimoire.Util;
+
+namespace Grimoire;
 
 public class Program
 {

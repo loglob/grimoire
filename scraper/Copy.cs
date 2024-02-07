@@ -1,4 +1,6 @@
-using static Util.Extensions;
+using static Grimoire.Util.Extensions;
+
+namespace Grimoire;
 
 public class Copy<TSpell> : ISource<TSpell>
 {

@@ -1,5 +1,7 @@
-using Latex;
-using Util;
+using Grimoire.Latex;
+using Grimoire.Util;
+
+namespace Grimoire;
 
 public interface IGame<out TSpell>
 {

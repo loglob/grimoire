@@ -1,7 +1,9 @@
-using System.Text.Json.Nodes;
-using Util;
+using Grimoire.Util;
 using Olspy;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+
+namespace Grimoire;
 
 public static class Config
 {

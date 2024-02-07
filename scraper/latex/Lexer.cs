@@ -1,8 +1,8 @@
+using Grimoire.Util;
 using System.Diagnostics;
 using System.Text;
-using Util;
 
-namespace Latex;
+namespace Grimoire.Latex;
 
 public readonly record struct Lexer(Log Log)
 {

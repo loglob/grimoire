@@ -1,4 +1,4 @@
-namespace Util;
+namespace Grimoire.Util;
 
 public readonly struct Chain<T>
 {

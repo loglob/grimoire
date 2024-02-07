@@ -1,4 +1,4 @@
-namespace Util;
+namespace Grimoire.Util;
 
 public class ChainBuilder<T>
 {

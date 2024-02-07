@@ -1,11 +1,11 @@
+using Grimoire.Util;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
-using Util;
 
-namespace Latex;
+namespace Grimoire.Latex;
 
-using CodeSegment = Util.Chain<Token>;
+using CodeSegment = Chain<Token>;
 
 public record Compiler(Config.LatexOptions Conf, Log Log)
 {

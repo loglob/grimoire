@@ -1,7 +1,7 @@
 using HtmlAgilityPack;
 using System.Text.Json;
 
-namespace Util;
+namespace Grimoire.Util;
 
 public class ScraperClient
 {

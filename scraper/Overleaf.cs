@@ -1,9 +1,11 @@
-using Latex;
+using Grimoire.Latex;
+using Grimoire.Util;
 using Olspy;
 using System.Text.Json;
-using Util;
 
-using static Util.Extensions;
+using static Grimoire.Util.Extensions;
+
+namespace Grimoire;
 
 public class Overleaf<TSpell> : ISource<TSpell>
 {
