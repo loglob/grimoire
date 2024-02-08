@@ -42,7 +42,7 @@ public record Cache(float Lifetime, Log Log, params string[] Path)
 
 		try
 		{
-			return await JsonSerializer.DeserializeAsync<T>(c, JsonOptions)!;			
+			return await JsonSerializer.DeserializeAsync<T>(c, JsonOptions)!;
 		}
 		catch(Exception ex)
 		{
@@ -67,7 +67,7 @@ public record Cache(float Lifetime, Log Log, params string[] Path)
 			await using var f = File.Create(p);
 			await JsonSerializer.SerializeAsync(f, y, JsonOptions);
 		}
-		
+
 		return y;
 	}
 
@@ -88,31 +88,30 @@ public record Cache(float Lifetime, Log Log, params string[] Path)
 		bool cacheExisted = data is not null;
 
 		data ??= [];
-		
+
 		var excess = data.Keys.Except(keys);
 
 		if(excess.Any())
 		{
 			Log.Warn($"Cache file {p.Show()} has unused keys: {excess.Show()}");
-			
+
 			foreach(var k in excess)
 				data.Remove(k);
 		}
-		
+
 		var left = new Queue<K>(keys);
 		var total = left.Count;
 
 		while(left.TryDequeue(out var key))
 		{
-			if(logProgress)
-				Log.Pin($"{total - left.Count + 1}/{total}: {key}");
-
 			if(! data.TryGetValue(key, out var v))
 			{
+				if(logProgress)
+					Log.Pin($"{total - left.Count + 1}/{total}: {key}");
+
 				try
 				{
 					v = await compute(key);
-					
 				}
 				catch (Exception ex)
 				{
@@ -125,12 +124,12 @@ public record Cache(float Lifetime, Log Log, params string[] Path)
 
 			yield return (key, v);
 		}
-		
+
 		if(total > 0 && System.IO.Directory.Exists(Directory))
 		{
 			// ensure the creation time corresponds to the oldest entry in the cache
 			var ct = cacheExisted ? File.GetCreationTimeUtc(p) : default;
-			
+
 			await using(var f = File.Create(p))
 				await JsonSerializer.SerializeAsync(f, data, JsonOptions);
 

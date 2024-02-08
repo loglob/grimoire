@@ -1,28 +1,24 @@
 
-using System.Net;
-
 namespace Grimoire;
 
 public abstract class Log
 {
-	private class Endpoint : Log
+	private class Endpoint(TextWriter dest) : Log
 	{
 		private ( bool onPin, int width ) pinState = (false, 0);
-		private readonly TextWriter dest;
-
-		public Endpoint(TextWriter dest)
-			=> this.dest = dest;
 
 		public void write(string message)
 		{
-			if(pinState.onPin)
+			lock(this)
 			{
-				dest.WriteLine();
-				pinState.onPin = false;
+				if(pinState.onPin)
+				{
+					dest.WriteLine();
+					pinState.onPin = false;
+				}
+
+				dest.WriteLine(message);
 			}
-
-			dest.WriteLine(message);
-
 		}
 
 		override protected void write(string prefix, string message)
@@ -30,15 +26,18 @@ public abstract class Log
 
 		override public void Pin(string message)
 		{
-			if(pinState.onPin)
-				dest.Write('\r');
-			
-			dest.Write(message);
+			lock(this)
+			{
+				if(pinState.onPin)
+					dest.Write('\r');
+				
+				dest.Write(message);
 
-			if(pinState.onPin && message.Length < pinState.width)
-				dest.Write(new string(' ', pinState.width - message.Length));
-			
-			pinState = (true, message.Length);
+				if(pinState.onPin && message.Length < pinState.width)
+					dest.Write(new string(' ', pinState.width - message.Length));
+				
+				pinState = (true, message.Length);
+			}
 		}
 	}
 
