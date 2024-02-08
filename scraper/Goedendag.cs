@@ -1,13 +1,10 @@
 using Grimoire.Latex;
 using Grimoire.Util;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Grimoire;
 
 public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 {
-	[JsonConverter(typeof(StringEnumConverter))]
 	public enum Arcanum
 	{
 		Charms,
@@ -19,7 +16,6 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		Wytch
 	}
 
-	[JsonConverter(typeof(StringEnumConverter))]
 	public enum PowerLevel
 	{
 		Generalist,
@@ -30,7 +26,6 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
 
-	[JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
 	public readonly record struct Spell(
 		string name,
 		Arcanum arcanum,
@@ -46,7 +41,6 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string critSuccess,
 		string critFail,
 		string? extra,
-		[property: JsonProperty("source")]
 		string Source
 	) : ISpell;
 

@@ -1,4 +1,7 @@
 ﻿using Grimoire.Util;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Grimoire;
 
@@ -7,6 +10,21 @@ public class Program
 	private record class GameIndex(string fullName, Dictionary<string, string> books);
 
 	public const string USAGE = @"USAGE: {0} [<config.json>]";
+
+	public static readonly JsonSerializerOptions JsonOptions = new() {
+		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+		Converters = {
+			new JsonStringEnumConverter()
+		},
+		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+		Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+	};
+
+	private static async Task store<T>(string path, T value)
+	{
+		await using var f = File.Create(path);
+		await JsonSerializer.SerializeAsync(f, value, JsonOptions);
+	}
 
 	private static async Task<(Config.Game game, int count)> processGame<TSpell>(IGame<TSpell> game) where TSpell : ISpell
 	{
@@ -31,15 +49,15 @@ public class Program
 			total += kvp.Value.Count;
 
 			if(kvp.Value.Count != 0)
-				kvp.Value.StoreJson($"db/{game.Conf.Shorthand}/{kvp.Key}.json");
+				await store($"db/{game.Conf.Shorthand}/{kvp.Key}.json", kvp.Value);
 			else
 				Log.DEFAULT.Warn($"No spells for source '{game.Conf.Shorthand}/{kvp.Key}'");
 		}
 
-		game.Conf.Books.Values
-			.Where(b => spellsByBook.TryGetValue(b.Shorthand, out var found) && found.Count != 0)
-			.ToDictionary(b => b.Shorthand, b => b.FullName)
-			.StoreJson($"db/{game.Conf.Shorthand}/index.json");
+		await store($"db/{game.Conf.Shorthand}/index.json",
+			game.Conf.Books.Values
+				.Where(b => spellsByBook.TryGetValue(b.Shorthand, out var found) && found.Count != 0)
+				.ToDictionary(b => b.Shorthand, b => b.FullName));
 
 		Log.DEFAULT.Emit($"Parsed {total} spells for {game.Conf.Shorthand}.");
 		return (game.Conf, total);

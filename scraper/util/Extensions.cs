@@ -1,5 +1,4 @@
 using HtmlAgilityPack;
-using Newtonsoft.Json;
 using System.Collections;
 using System.Text;
 
@@ -7,30 +6,6 @@ namespace Grimoire.Util;
 
 internal static class Extensions
 {
-	/// <summary>
-	/// Loads an JSON formatted object from a file
-	/// </summary>
-	public static T LoadJson<T>(string filename)
-	{
-		using var f = File.OpenText(filename);
-		using var j = new JsonTextReader(f);
-		var res = new JsonSerializer().Deserialize<T>(j);
-
-		if(res is null)
-			throw new FormatException($"Failed parsing JSON of {typeof(T).Name}");
-		else
-			return res;
-	}
-
-	/// <summary>
-	/// Stores an object as JSON in a file
-	/// </summary>
-	public static void StoreJson<T>(this T obj, string filename)
-	{
-		using var f = File.CreateText(filename);
-		new JsonSerializer().Serialize(f, obj);
-	}
-
 	/// <summary>
 	/// Asserts that two values are equal. Throws if that is now the case.
 	/// </summary>

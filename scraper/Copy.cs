@@ -1,3 +1,4 @@
+using System.Text.Json;
 using static Grimoire.Util.Extensions;
 
 namespace Grimoire;
@@ -13,7 +14,6 @@ public class Copy<TSpell> : ISource<TSpell>
 		this.files = conf.From.ToArray();
 	}
 
-#pragma warning disable CS1998
 	public async IAsyncEnumerable<TSpell> Spells()
 	{
 		log.Info($"Copying from {files.Length} file(s)...");
@@ -21,14 +21,27 @@ public class Copy<TSpell> : ISource<TSpell>
 
 		foreach (var f in files)
 		{
-			foreach (var spell in LoadJson<List<TSpell>>(f))
+			await using var o = File.OpenRead(f);
+			bool warnedNull = false;
+			
+			await foreach (var spell in JsonSerializer.DeserializeAsyncEnumerable<TSpell>(o, Program.JsonOptions))
 			{
+				if(spell is null)
+				{
+					if(! warnedNull)
+					{
+						log.AddTags(f).Warn("null value in copy input");
+						warnedNull = true;
+					}
+
+					continue;
+				}
+
 				yield return spell;
-				cp++;
+				++cp;
 			}
 		}
 
 		log.Info($"Copied {cp} spell(s).");
 	}
-#pragma warning restore CS1998
 }

@@ -1,7 +1,5 @@
 using Grimoire.Latex;
 using Grimoire.Util;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 using static System.StringSplitOptions;
 using static Grimoire.Util.Extensions;
@@ -10,7 +8,6 @@ namespace Grimoire;
 
 public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 {
-	[JsonConverter(typeof(StringEnumConverter))]
 	public enum School
 	{
 		Abjuration,
@@ -23,7 +20,6 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 		Transmutation
 	}
 
-	[JsonObject(ItemNullValueHandling = NullValueHandling.Ignore)]
 	public readonly record struct Spell(
 		string name, string source,
 		School school, int level,
