@@ -54,12 +54,14 @@ public static class Config
 
 		public bool Matches(string src)
 		{
-			var stripped = (string x) => x.Where(c => char.IsWhiteSpace(c) || char.IsLetter(c));
-			var spaced = (string x) => x.Select(c => char.IsLetter(c) ? c : ' ').Squeeze();
+			static IEnumerable<char> stripped(string x)
+				=> x.Where(c => char.IsWhiteSpace(c) || char.IsLetter(c));
+			static IEnumerable<char> spaced(string x)
+				=> x.Select(c => char.IsLetter(c) ? c : ' ').Squeeze();
 
 			src = src.ToLower();
 
-			if(src == Shorthand.ToLower())
+			if(src.Equals(Shorthand, StringComparison.CurrentCultureIgnoreCase))
 				return true;
 
 			foreach(var name in (Alts ?? Enumerable.Empty<string>()).Prepend(FullName))
@@ -172,7 +174,7 @@ public static class Config
 			=> new(
 				OverleafAuth.Parse(o["auth"]!),
 				((float?)o["cacheLifetime"]) ?? float.PositiveInfinity,
-				o["localMacros"]?.AsArray()?.Select(x => (string)x!)?.ToArray() ?? Array.Empty<string>(),
+				o["localMacros"]?.AsArray()?.Select(x => (string)x!)?.ToArray() ?? [],
 				LatexSource.Parse(o["latex"]!.AsObject())
 			);
 	}
@@ -241,8 +243,8 @@ public static class Config
 			=> new(
 				(string)o["spellAnchor"]!,
 				(string?)o["upcastAnchor"],
-				o["environments"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? new(),
-				o["images"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? new() ,
+				o["environments"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? [],
+				o["images"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? [] ,
 				((int?)o["maximumExpansions"]) ?? DEFAULT_MAXIMUM_EXPANSIONS
 			);
 

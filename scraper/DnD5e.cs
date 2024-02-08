@@ -89,7 +89,7 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 	public static (bool concentration, string duration) ParseDuration(string str)
 	{
 		str = str.Trim();
-		bool conc = str.ToLower().StartsWith("concentration");
+		bool conc = str.StartsWith("concentration", StringComparison.CurrentCultureIgnoreCase);
 
 		if(conc) // don't trust the page's native whitespace
 		{
@@ -163,7 +163,7 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 		var range = props[3];
 		var (verbal, somatic, material) = ParseComponents(props[4]);
 		var (concentration, duration) = ParseDuration(props[5]);
-		var classes = props[6].Split(new[]{' ', '\t', ','}, StringSplitOptions.RemoveEmptyEntries).ToArray();
+		var classes = props[6].Split((char[])[ ' ', '\t', ',' ], RemoveEmptyEntries).ToArray();
 
 		var (_desc, _upcast) = comp.upcastAnchor is Token[] ua && rest.SplitOn(ua, (a,b) => a.IsSame(b)) is var (x,y)
 			? (x, (Chain<Token>?)y)

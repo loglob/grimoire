@@ -30,14 +30,14 @@ public class Program
 		{
 			total += kvp.Value.Count;
 
-			if(kvp.Value.Any())
+			if(kvp.Value.Count != 0)
 				kvp.Value.StoreJson($"db/{game.Conf.Shorthand}/{kvp.Key}.json");
 			else
 				Log.DEFAULT.Warn($"No spells for source '{game.Conf.Shorthand}/{kvp.Key}'");
 		}
 
 		game.Conf.Books.Values
-			.Where(b => spellsByBook.TryGetValue(b.Shorthand, out var found) && found.Any())
+			.Where(b => spellsByBook.TryGetValue(b.Shorthand, out var found) && found.Count != 0)
 			.ToDictionary(b => b.Shorthand, b => b.FullName)
 			.StoreJson($"db/{game.Conf.Shorthand}/index.json");
 

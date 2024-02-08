@@ -59,16 +59,16 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 
 
 		content.ChildNodes[3].Clean();
-		var props =  content.ChildNodes[3].ChildNodes.SplitBy(n => n.Name == "br").ToArray();
+		var props = content.ChildNodes[3].ChildNodes.SplitBy(n => n.Name == "br").ToArray();
 
-		if(props.Count() != 4 || props.Any(p => p.Count() < 2))
+		if(props.Length != 4 || props.Any(p => p.Length < 2))
 			throw new FormatException($"Expected 4 lines with at least 2 fields each; Got {props.Select(l => l.Length).Show()}");
 
-		Func<HtmlNode[], string, string> chkProb = (pr, f) =>
+		static string chkProb(HtmlNode[] pr, string f)
 		{
 			AssertEqual(f.ToLower() + ":", pr[0].InnerText.ToLower(), $"Bad {f} format");
 			return string.Join(' ', pr.Skip(1).Select(x => x.InnerText.Trim()));
-		};
+		}
 
 		(string cTime, string? reaction) = MaybeSplitOn(chkProb(props[0], "casting time"), ",");
 		string range = ParseParen(chkProb(props[1], "range")).Item1;
@@ -95,13 +95,13 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 			AssertEqual("spell lists", csTxt.Substring(0, 11).ToLower(), "Expected class list");
 
 			rest.Remove(cs);
-			classes = csTxt.Substring(12).Split(new[]{' ', ','}, RemoveEmptyEntries).ToArray();
+			classes = csTxt.Substring(12).Split((char[])[ ' ', ',' ], RemoveEmptyEntries).ToArray();
 		}
 
 		string? upcast;
 		string desc = string.Join('\n', rest.Select(x => x.OuterHtml));
 		{
-			var d = rest.TakeWhile(x => !x.InnerText.TrimStart().ToLower().StartsWith("at higher levels")).ToList();
+			var d = rest.TakeWhile(x => !x.InnerText.TrimStart().StartsWith("at higher levels", StringComparison.CurrentCultureIgnoreCase)).ToList();
 			var u = rest.Skip(d.Count).Select((x,i) => {
 				if(i == 0)
 				{
@@ -113,7 +113,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 				return x;
 			}).ToList();
 
-			if(!d.Any())
+			if(d.Count == 0)
 				throw new FormatException("Empty description");
 
 			desc = string.Join('\n', d.Select(x => x.OuterHtml));

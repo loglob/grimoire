@@ -30,12 +30,12 @@ public abstract class Log
 			{
 				if(pinState.onPin)
 					dest.Write('\r');
-				
+
 				dest.Write(message);
 
 				if(pinState.onPin && message.Length < pinState.width)
 					dest.Write(new string(' ', pinState.width - message.Length));
-				
+
 				pinState = (true, message.Length);
 			}
 		}
