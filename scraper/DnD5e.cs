@@ -140,7 +140,7 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 
 	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
 
-	public Spell ExtractLatexSpell(Compiler comp, string source, Chain<Token> body)
+	public Spell ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
 	{
 		var (_props, rest) = body.Args(1, 8);
 
@@ -168,7 +168,7 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 		string desc = comp.ToHTML(_desc);
 
 		return new Spell(
-			name, source,
+			name, book.Shorthand,
 			school, level,
 			left, right, ritual,
 			range,

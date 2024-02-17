@@ -345,11 +345,18 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		{
 			var cc = c + spellAnchor.Length;
 			var seg = n.HasValue ? code.Slice(cc, n.Value - cc) : code.Slice(cc);
+
+			if(! game.Conf.Books.TryGetValue(source, out var book))
+			{
+				Log.Warn($"In {seg.PosRange()}: Got unknown source '{source.Show()}'");
+				continue;
+			}
+
 			TSpell spell;
 
 			try
 			{
-				spell = game.ExtractLatexSpell(this, source, new(seg));
+				spell = game.ExtractLatexSpell(this, book, new(seg));
 			}
 			catch(NotASpellException)
 			{

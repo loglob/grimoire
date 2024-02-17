@@ -44,7 +44,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string Source
 	) : ISpell;
 
-	public Spell ExtractLatexSpell(Compiler comp, string source, Chain<Token> body)
+	public Spell ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
 	{
 		if(body.Args(0, 3) is not ([ var _name, var _tag, var _prop ], var _extra) || _name is null || _tag is null || _prop is null)
 			throw new FormatException("Bad spell format, missing arguments to \\spell");
@@ -72,23 +72,18 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			name = string.Join(' ', nameWords.Take(wLen));
 		}
 
-		Arcanum arcanum;
-
-		{
-			var tag = comp.ToString(_tag.Value);
-
-			arcanum = tag.Split(':') switch {
-				["arc", _] => throw new NotASpellException(),
-				[_, "general",  _] => Arcanum.General,
-				[_, "nature",  _] => Arcanum.Nature,
-				[_, "ele",  _] => Arcanum.Elementalism,
-				[_, "charm",  _] => Arcanum.Charms,
-				[_, "divine",  _] => Arcanum.Divine,
-				[_, "conj", _] => Arcanum.Conjuration,
-				[_, "wytch", _] => Arcanum.Wytch,
-				_ => throw new FormatException($"Unexpected label format {tag.Show()}")
-			};
-		}
+		var tag = comp.ToString(_tag.Value);
+		var arcanum = tag.Split(':') switch {
+			["arc", _] => throw new NotASpellException(),
+			[_, "general",  _] => Arcanum.General,
+			[_, "nature",  _] => Arcanum.Nature,
+			[_, "ele",  _] => Arcanum.Elementalism,
+			[_, "charm",  _] => Arcanum.Charms,
+			[_, "divine",  _] => Arcanum.Divine,
+			[_, "conj", _] => Arcanum.Conjuration,
+			[_, "wytch", _] => Arcanum.Wytch,
+			_ => throw new FormatException($"Unexpected label format {tag.Show()}")
+		};
 
 		HashSet<string> htmlKeys = [ "crit", "effect", "fail" ];
 		HashSet<string> plainKeys = [ "brief", "casting-time", "components", "distance", "duration", "power-level" ];
@@ -123,7 +118,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 		return new(name, arcanum, Enum.Parse<PowerLevel>(prop["power-level"]), combat, reaction,
 			prop["distance"], prop["duration"], prop["casting-time"], prop["components"], prop["brief"],
-			prop["effect"], prop["crit"], prop["fail"], extra, source);
+			prop["effect"], prop["crit"], prop["fail"], extra, book.Shorthand);
 	}
 
 	public ISource<Spell> Instantiate(Config.Source src)

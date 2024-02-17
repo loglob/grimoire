@@ -12,7 +12,7 @@ public interface IGame<out TSpell>
 	/// <summary>
 	///  Extract a spell from LATEX code segment
 	/// </summary>
-	TSpell ExtractLatexSpell(Compiler comp, string source, Chain<Token> code);
+	TSpell ExtractLatexSpell(Compiler comp, Config.Book source, Chain<Token> code);
 
 	ISource<TSpell> Instantiate(Config.Source src);
 }
