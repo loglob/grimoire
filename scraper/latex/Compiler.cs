@@ -377,9 +377,38 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		StringBuilder doc = new();
 		Stack<KnownEnvironments> envs = new();
 		int row = 0;
+		// if true, swallow the next macro argument
+		bool skipNextArg = false;
+		// if skipNextArg is true, tracks how many open braces were processed
+		int skipDepth = 0;
 
-		foreach (var tk in chain)
+		foreach(var tk in chain)
 		{
+			if(skipNextArg)
+			{
+				if(tk is OpenBrace)
+					++skipDepth;
+				else if(tk is CloseBrace)
+				{
+					if(skipDepth == 0)
+					{
+						skipNextArg = false;
+						goto noSkip;
+					}
+					else
+						--skipDepth;
+				}
+				else if(tk is WhiteSpace)
+					continue;
+
+				if(skipDepth == 0)
+					skipNextArg = false;
+				
+				continue;
+			}
+
+			noSkip:
+
 			if(trackRow && tk.Pos.Row > row)
 			{
 				doc.Append($"\n<!-- Row {tk.Pos.Row} -->");
@@ -417,6 +446,12 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 			{
 				var x = envKind(be);
 				envs.Push(x);
+
+				if(x == KnownEnvironments.Tabular)
+				{
+					skipNextArg = true;
+					skipDepth = 0;
+				}
 
 				doc.Append(x switch {
 					KnownEnvironments.Itemize => $"<ul class=\"{WebUtility.HtmlEncode(be.Env)}\"> <li>",
