@@ -64,11 +64,14 @@ public abstract class Log
 	private Log()
 	{}
 
-	public virtual void Warn(string message)
+	public void Warn(string message)
 		=> write("[WARN]", message);
 
-	public virtual void Info(string message)
+	public void Info(string message)
 		=> write("[INFO]", message);
+
+	public void Note(string message)
+		=> write("[NOTE]", message);
 
 	/// <summary>
 	///  Writes a log entry without any prefix

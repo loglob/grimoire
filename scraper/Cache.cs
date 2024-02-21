@@ -28,17 +28,17 @@ public record Cache(float Lifetime, Log Log, params string[] Path)
 		if(!File.Exists(path))
 			return default;
 
-		var age = DateTime.Now.Subtract(File.GetCreationTime(path)).TotalSeconds;
+		var age = DateTime.Now.Subtract(File.GetCreationTime(path));
 
-		if(age > Lifetime)
+		if(age.TotalSeconds > Lifetime)
 		{
-			Log.Info($"Refreshing {age}s old cache file {path.Show()}");
+			Log.Info($"Refreshing {age.Show()} old cache file {path.Show()}");
 			File.Delete(path);
 			return default;
 		}
 
 		using var c = File.OpenRead(path);
-		Log.Info($"Reading {age}s old cache file {path.Show()}");
+		Log.Info($"Reading {age.Show()} old cache file {path.Show()}");
 
 		try
 		{

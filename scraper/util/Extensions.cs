@@ -150,6 +150,15 @@ internal static class Extensions
 		return b.ToString();
 	}
 
+	public static string Show(this TimeSpan dt)
+		=> (dt.TotalHours >= 24)
+			? $"{(int)dt.TotalHours}h"
+			: (dt.TotalHours >= 1)
+				? $"{dt.Hours}h{dt.Minutes}m"
+				: (dt.TotalMinutes >= 1)
+					? $"{dt.Minutes}m{dt.Seconds}s"
+					: $"{dt.TotalSeconds:0.000}s";
+
 	public static string Show(this object? any)
 		=> any switch {
 			null => "null" ,
