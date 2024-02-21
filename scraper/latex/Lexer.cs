@@ -292,9 +292,6 @@ public readonly record struct Lexer(Log Log)
 		return builder.ToString();
 	}
 
-	public static string Display(IEnumerable<Token> tk)
-		=> string.Join("", tk.Select(t => t.Display())).Trim();
-
 	public static string Untokenize(Chain<Token> tk)
 		=> Untokenize(tk.Items());
 }

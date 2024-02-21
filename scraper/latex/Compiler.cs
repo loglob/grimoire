@@ -41,6 +41,26 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	private static Macro discard()
 		=> new(0, null, Array.Empty<Token>());
 
+	private static Macro hyperref(Config.LatexOptions conf)
+	{
+		var p0 = new Position("builtin/hyperref", 0, 0);
+
+		if(conf.Pdf is null)
+			return new(2, [], new([ new ArgumentRef(2, p0) ]));
+
+		return new(2, new([]), new([
+			new ToggleMode(OutputMode.HTML_ONLY, p0),
+			new HtmlChunk("<a href=\"" + conf.Pdf + "#nameddest=", p0),
+			new ArgumentRef(1, p0),
+			new HtmlChunk("\">", p0),
+			new ToggleMode(OutputMode.NORMAL, p0),
+			new ArgumentRef(2, p0),
+			new ToggleMode(OutputMode.HTML_ONLY, p0),
+			new HtmlChunk("</a>", p0),
+			new ToggleMode(OutputMode.NORMAL, p0)
+		]));
+	}
+
 	/// <summary>
 	/// The known macros.
 	/// </summary>
@@ -66,7 +86,8 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		{ "]", translate(']')},
 		{ "item", discard() },
 		{ "newpage", discard() },
-		{ "rowstyle", discard() }
+		{ "rowstyle", discard() },
+		{ "hyperref", hyperref(Conf) }
 	};
 
 	internal readonly Token[]? upcastAnchor = Conf.UpcastAnchor is string ua ? new Lexer(Log).TokenizeUnchecked(new[]{ ua }, "builtin/upcast anchor") : null;
@@ -261,6 +282,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 					{
 						Log.Warn($"Partial call to {m.At} missing argument #{j+1}.");
 						putTrace(trace!);
+						Log.Note($"Macro defined at: {def.replacement.PosRange()}");
 					}
 
 					warned = true;
@@ -410,7 +432,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 				if(skipDepth == 0)
 					skipNextArg = false;
-				
+
 				continue;
 			}
 
@@ -433,7 +455,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 				doc.Append(WebUtility.HtmlEncode(c.Char.ToString()));
 			}
-			else if(tk is OpenBrace or CloseBrace)
+			else if(tk is OpenBrace or CloseBrace or ToggleMode)
 				continue;
 			else if(tk is WhiteSpace)
 				doc.Append(' ');
@@ -516,8 +538,20 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		st.Push( new("compile", new("ToString()", 0, 0)) );
 
 		expand(builder, seg, ref gas, st);
+		var str = new StringBuilder();
+		bool outputState = true;
 
-		return Lexer.Display(builder.Items());
+		foreach(var tk in builder.Items())
+		{
+			if(tk is ToggleMode h)
+				outputState = h.Mode == OutputMode.NORMAL;
+			else if(outputState)
+				str.Append(tk.Display());
+		}
+
+		str.Trim();
+
+		return str.ToString();
 	}
 
 	public string ToString(ArraySegment<Token> seg)

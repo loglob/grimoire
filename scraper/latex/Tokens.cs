@@ -111,12 +111,30 @@ public sealed record HtmlChunk(string Data, Position Pos) : Token(Pos)
 		=> other is HtmlChunk h && h.Data == Data;
 }
 
+public enum OutputMode
+{
+	NORMAL,
+	HTML_ONLY
+}
+
+/// <summary>
+/// Changes the output mode. Used to embed certain text only when HTML is being produced
+/// </summary>
+public sealed record ToggleMode(OutputMode Mode, Position Pos) : Token(Pos)
+{
+	public override string ToString() => $"\\OUTPUT_{Mode}";
+	public override string Display() => "";
+
+	public override bool IsSame(Token other)
+		=> other is ToggleMode t && t.Mode == Mode;
+}
+
 /// <summary>
 ///  Special token for "\\"
 /// </summary>
 public sealed record BackBack(Position Pos) : Token(Pos)
 {
-	public override string ToString() => "\\\\";
+	public override string ToString() => @"\\";
 	public override string Display() => "\n";
 
 	public override bool IsSame(Token other)

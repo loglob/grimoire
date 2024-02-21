@@ -106,9 +106,6 @@ public static class Config
 	public sealed record DndWikiSource(TimeSpan? RateLimit, float CacheLifetime)
 		: Source(CacheLifetime)
 	{
-		public override string ToString()
-			=> $"DndWikiSource";
-
 		new internal static DndWikiSource Parse(JsonNode n)
 		{
 			var o = n as JsonObject;
@@ -233,6 +230,7 @@ public static class Config
 		string? UpcastAnchor,
 		Dictionary<string, string> Environments,
 		Dictionary<string, string> Images,
+		string? Pdf = null,
 		int MaximumExpansions = LatexOptions.DEFAULT_MAXIMUM_EXPANSIONS)
 	{
 		public const int DEFAULT_MAXIMUM_EXPANSIONS = 1_000_000;
@@ -241,10 +239,11 @@ public static class Config
 
 		internal static LatexOptions Parse(JsonObject o)
 			=> new(
-				(string)o["spellAnchor"]!,
-				(string?)o["upcastAnchor"],
-				o["environments"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? [],
+				(string?)o["spellAnchor"] ?? throw new ArgumentNullException("o.spellAnchor") ,
+				(string?)o["upcastAnchor"] ,
+				o["environments"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? [] ,
 				o["images"]?.AsObject()?.ToDictionary(kvp => kvp.Key, kvp => (string)kvp.Value!) ?? [] ,
+				(string?)o["pdf"] ,
 				((int?)o["maximumExpansions"]) ?? DEFAULT_MAXIMUM_EXPANSIONS
 			);
 

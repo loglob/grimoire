@@ -1,7 +1,7 @@
 using Grimoire.Util;
 using System.Collections;
 using System.Diagnostics;
-
+using System.Text;
 using CodeSegment = Grimoire.Util.Chain<Grimoire.Latex.Token>;
 
 namespace Grimoire.Latex;
@@ -208,5 +208,34 @@ public static class Extensions
 
 		return l.ToString() + (l.File == r.File
 			? $"..{r.Row}:{r.Col}" : $" .. {r}");
+	}
+
+	public static void TrimLeft(this StringBuilder sb)
+	{
+		int l;
+
+		for (l = 0; l < sb.Length && char.IsWhiteSpace(sb[l]); ++l)
+		{}
+
+		if(l > 0)
+			sb.Remove(0, l);
+	}
+
+	public static void TrimRight(this StringBuilder sb)
+	{
+		int r;
+
+		for (r = sb.Length; r > 0 && char.IsWhiteSpace(sb[r - 1]); --r)
+		{}
+
+		if(r < sb.Length)
+			sb.Remove(r, sb.Length - r);
+
+	}
+
+	public static void Trim(this StringBuilder sb)
+	{
+		sb.TrimLeft();
+		sb.TrimRight();
 	}
 }
