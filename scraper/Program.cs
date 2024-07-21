@@ -47,17 +47,11 @@ public class Program
 		foreach (var kvp in spellsByBook)
 		{
 			total += kvp.Value.Count;
+			await store($"db/{game.Conf.Shorthand}/{kvp.Key}.json", kvp.Value);
 
-			if(kvp.Value.Count != 0)
-				await store($"db/{game.Conf.Shorthand}/{kvp.Key}.json", kvp.Value);
-			else
+			if(kvp.Value.Count == 0)
 				Log.DEFAULT.Warn($"No spells for source '{game.Conf.Shorthand}/{kvp.Key}'");
 		}
-
-		await store($"db/{game.Conf.Shorthand}/index.json",
-			game.Conf.Books.Values
-				.Where(b => spellsByBook.TryGetValue(b.Shorthand, out var found) && found.Count != 0)
-				.ToDictionary(b => b.Shorthand, b => b.FullName));
 
 		Log.DEFAULT.Emit($"Parsed {total} spells for {game.Conf.Shorthand}.");
 		return (game.Conf, total);
@@ -89,6 +83,13 @@ public class Program
 
 			total += count;
 		}
+
+		await store($"db/index.json",
+			games.ToDictionary(
+				g => g.Shorthand,
+				g => g.Books.Values.ToDictionary(b => b.Shorthand, b => b.FullName)
+			)
+		);
 
 		Log.DEFAULT.Emit($"Done processing {total} spells.");
 		return 0;

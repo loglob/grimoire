@@ -4,32 +4,48 @@ namespace UI
 	import IGame = Games.IGame
 	import ISpell = Data.ISpell
 
+	/** Cache for database index */
+	var gameIndex : Data.GameIndex | null = null
+
 	export const games = {
 		dnd5e: "D&D 5e",
 		gd: "Goedendag"
 	};
 
+	export async function getGameIndex() : Promise<Data.GameIndex>
+	{
+		if(gameIndex === null)
+			gameIndex = await (await fetch(`db/index.json`)).json();
+
+		return gameIndex;
+	}
+
 	export async function withGameNamed<A>(id : string, f : <T extends ISpell>(g : IGame<T>) => Promise<A>) : Promise<A>
 	{
-		switch(id)
+		const books = (await getGameIndex())[id];
+
+		if(books) switch(id)
 		{
 			case "dnd5e":
-				return await f(new Games.DnD5e.Game(id, games[id]));
+				return await f(new Games.DnD5e.Game(id, games[id], books));
 
 			case "gd":
-				return await f(new Games.Goedendag.Game(id, games[id]));
-
-			default:
-				alert(`Invalid game ID: '${id}'. Either the URL is wrong or your browser cache is outdated.`);
-				window.location.href = "/";
-				throw "bad game ID";
+				return await f(new Games.Goedendag.Game(id, games[id], books));
 		}
+
+		alert(`Invalid game ID: '${id}'. Either the URL is wrong or your browser cache is outdated.`);
+		window.location.href = "/";
+		throw "bad game ID";
 	}
 
 	/** Invokes a function that is generic over all games */
 	export async function withGame<A>(f : <T extends ISpell>(g : IGame<T>) => Promise<A>) : Promise<A>
 	{
-		const id = new URLSearchParams(window.location.search).get("game") || "dnd5e";
+		var id = new URLSearchParams(window.location.search).get("game");
+
+		if(! id)
+			id = Object.keys(await getGameIndex())[0]
+
 		return withGameNamed(id, f);
 	}
 
@@ -55,7 +71,7 @@ namespace UI
 			sources: list.sources,
 			prepared : list.prepared,
 			query : q,
-			game : list.game || "dnd5e"
+			game : list.game || "dnd5e" // dnd was the only option on the last version that didn't add game fields
 		}
 	}
 
@@ -104,6 +120,4 @@ namespace UI
 	{
 		element.style.display = hide ? "none" : "initial";
 	}
-
-
 }

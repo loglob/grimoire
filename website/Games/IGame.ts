@@ -11,8 +11,8 @@ namespace Games
 		readonly shorthand : string;
 		/** The full name for this game */
 		readonly fullName : string;
-		/** Cache for the book index */
-		private books : { [id : string] : string } | null = null;
+		/** All sources available for this game. Dynamically read from the DB index. */
+		readonly books : Data.BookIndex;
 
 		/** The fields that are listed in index view */
 		readonly abstract tableHeaders : (keyof TSpell)[];
@@ -22,10 +22,11 @@ namespace Games
 		/** Overwritten by some front-ends with a predicate that checks whether a function is prepared */
 		isPrepared : ((sp : TSpell) => boolean)|null = null
 
-		constructor(shorthand : string, fullName : string)
+		constructor(shorthand : string, fullName : string, books : Data.BookIndex)
 		{
 			this.shorthand = shorthand;
 			this.fullName = fullName;
+			this.books = books;
 		}
 
 		/** Checks whether a spell matches a single search term
@@ -70,16 +71,5 @@ namespace Games
 
 		/** Formats a spell's details and embeds them into the given <div> */
 		abstract details(spell : TSpell, book : string, div : HTMLDivElement) : void;
-
-		/** Loads the source index from the database
-		 * @returns The index showing all known sources
-		 */
-		async getBooks() : Promise<Data.BookIndex>
-		{
-			if(this.books === null)
-				this.books = await (await fetch(`db/${this.shorthand}/index.json`)).json();
-
-			return this.books;
-		}
 	};
 }

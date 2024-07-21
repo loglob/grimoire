@@ -4,13 +4,12 @@ namespace UI
 	import IGame = Games.IGame
 
 	/** Generates spell cards for the given spells */
-	async function spellCards<TSpell extends Data.ISpell>(game : IGame<TSpell>, spells : TSpell[])
+	function spellCards<TSpell extends Data.ISpell>(game : IGame<TSpell>, spells : TSpell[])
 	{
-		const books = await game.getBooks();
 		const div = document.getElementById("spell-cards");
 
 		for (const spell of game.cardOrder(spells))
-			div.appendChild(game.spellCard(spell, books[spell.source]));
+			div.appendChild(game.spellCard(spell, game.books[spell.source]));
 	}
 
 	/** Initialized the spell card UI.
@@ -26,14 +25,14 @@ namespace UI
 			document.title = `Spell cards - ${list.name}`
 
 			await withGameNamed(list.game, async function(g) {
-				return await spellCards(g, (await g.fetchSources(... list.sources)).filter(s => prepared.has(s.name)) );
+				return spellCards(g, (await g.fetchSources(... list.sources)).filter(s => prepared.has(s.name)) );
 			})
 		}
 		else await withGame(async function(g) {
 			const q = new URLSearchParams(window.location.search);
 			const f = Data.parseQuery(q.get("q"));
 
-			return await spellCards(g, (await g.fetchSources(... q.getAll("from"))).filter(s => g.spellMatchesQuery(f, s)) );
+			return spellCards(g, (await g.fetchSources(... q.getAll("from"))).filter(s => g.spellMatchesQuery(f, s)) );
 		})
 	}
 }

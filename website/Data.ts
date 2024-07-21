@@ -3,6 +3,8 @@ namespace Data
 {
 	export type BookIndex = { [id : string] : string };
 
+	export type GameIndex = { [id : string]: BookIndex; };
+
 	export type Query = string[][][];
 
 	export type SpellList =

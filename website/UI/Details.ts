@@ -15,7 +15,7 @@ namespace UI
 		}
 
 		await withGame(async function(g) {
-			const book = (await g.getBooks())[from]
+			const book = g.books[from]
 
 			if(! book)
 			{

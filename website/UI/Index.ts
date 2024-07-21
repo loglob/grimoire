@@ -14,7 +14,7 @@ namespace UI
 		static async init<TSpell extends Data.ISpell>(game : IGame<TSpell>) : Promise<Index<TSpell>>
 		{
 			const p = new URLSearchParams(window.location.search);
-			const ind = new Index(game, new Table(game, p.get("q")), await game.getBooks());
+			const ind = new Index(game, new Table(game, p.get("q")), game.books);
 
 			await ind.makeSourceSelector(p.has("from") ? p.getAll("from") : null)
 
@@ -167,7 +167,7 @@ namespace UI
 		}
 	}
 
-	/** Initializes the index UI. Called from index.html on page load. */
+	/** Initializes the index UI. Called from html on page load. */
 	export function initIndex()
 	{
 		withGame(async function(g) {
