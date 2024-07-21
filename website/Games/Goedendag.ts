@@ -9,14 +9,16 @@ namespace Games.Goedendag
 		Elementalism: 2,
 		Charms: 3,
 		Conjuration: 4,
-		Divine: 5
+		Divine: 5,
+		Ritual: 6
 	};
 
 	export const PowerLevelDCs = {
 		Generalist: 15,
 		Petty: 15,
 		Lesser: 22,
-		Greater: 30
+		Greater: 30,
+		Ritual: 0
 	};
 
 	export type Spell =
@@ -50,9 +52,11 @@ namespace Games.Goedendag
 
 	function fmtFields(spell : Spell) : [string, string][]
 	{
+		const dc = PowerLevelDCs[spell.powerLevel]
+
 		return [
 			[ "Arcanum", spell.arcanum ],
-			[ "Power Level", `${spell.powerLevel} (DV ${PowerLevelDCs[spell.powerLevel]})` + (spell.combat ? " (C)" : "") ],
+			[ "Power Level", spell.powerLevel + (dc > 0 ? ` (DV ${dc})` : "") + (spell.combat ? " (C)" : "") ],
 			[ "Casting Time", spell.castingTime + (spell.reaction ? " (R)" : "") ],
 			[ "Distance", spell.distance ],
 			[ "Duration", spell.duration ],

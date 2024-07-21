@@ -13,7 +13,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		Elementalism,
 		General,
 		Nature,
-		Wytch
+		Wytch,
+		Ritual
 	}
 
 	public enum PowerLevel
@@ -21,7 +22,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		Generalist,
 		Petty,
 		Lesser,
-		Greater
+		Greater,
+		Ritual
 	}
 
 	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
@@ -75,6 +77,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		var tag = comp.ToString(_tag.Value);
 		var arcanum = tag.Split(':') switch {
 			["arc", _] => throw new NotASpellException(),
+			["rit", _] => Arcanum.Ritual,
 			[_, "general",  _] => Arcanum.General,
 			[_, "nature",  _] => Arcanum.Nature,
 			[_, "ele",  _] => Arcanum.Elementalism,
