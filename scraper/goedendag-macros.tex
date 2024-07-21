@@ -1,0 +1,25 @@
+% goedendag-macros.tex: Auxillary file for parsing goedendag source documents
+
+% get rid of formatting
+\renewcommand{\subsubsection}[1]{#1}
+\newcommand{\footnotesize}{}
+\newcommand{\clearpage}{}
+\newcommand{\hyperlink}[2]{#2}
+\newcommand{\text}[1]{#1}
+\newcommand{\xspace}{}
+
+% preserve for programmatic matching
+\newcommand{\geq}{\<\geq\>}
+\newcommand{\leq}{\<\leq\>}
+\newcommand{\C}{\<\C\>}
+\forcenewcommand{\comb}{\<\C\>}
+\forcenewcommand{\Com}{\<\C\>}
+\forcenewcommand{\R}{\<\R\>}
+
+% substitute symbols
+\newcommand{\cdot}{·}
+\newcommand{\leftrightarrow}{⟷}
+\newcommand{\frac}[2]{#1 / #2}
+\newcommand{\nicefrac}[2]{#1 / #2}
+
+\forcenewcommand{\coin}[2]{\<<b class="\>#1\<"/>\>#2\<</b>\>}
