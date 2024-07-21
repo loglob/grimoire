@@ -149,7 +149,7 @@ namespace Games.Goedendag
 			{
 				const r = child(prop, "tr");
 				child(r, "th").innerText = kvp[0];
-				child(r, "td").innerText = kvp[1];
+				child(r, "td").innerHTML = kvp[1];
 			}
 
 			child(div, "hr");

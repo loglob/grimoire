@@ -529,6 +529,8 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 	/// <summary>
 	///  Expands and displays a segment
+	/// 
+	///  (!) DON'T use for DB-stored values, as those should be HTML-safe
 	/// </summary>
 	public string ToString(CodeSegment seg)
 	{
@@ -554,6 +556,12 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 		return str.ToString();
 	}
+
+	/// <summary>
+	///  Same as `ToString()` but escapes any HTML characters
+	/// </summary>	
+	public string ToSafeString(CodeSegment seg)
+		=> WebUtility.HtmlEncode(ToString(seg));
 
 	public string ToString(ArraySegment<Token> seg)
 		=> ToString(new CodeSegment(seg));

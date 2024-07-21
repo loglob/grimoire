@@ -31,7 +31,7 @@ namespace Games.DnD5e
 			const div = document.createElement("div");
 			child(div, "hr");
 			child(div, "h3").innerText = spell.name;
-			child(div, "p").innerText = spell.school;
+			child(div, "p").innerHTML = spell.school;
 
 			{
 				const properties = child(div, "p");
@@ -71,7 +71,7 @@ namespace Games.DnD5e
 				child(div, "hr", "subtle")
 			}
 
-			child(div, "p", "subtle from").innerText = spell.hint ? `${book} (${spell.hint})` : book;
+			child(div, "p", "subtle from").innerHTML = spell.hint ? `${book} (${spell.hint})` : book;
 
 			return div;
 		}
@@ -115,9 +115,9 @@ namespace Games.DnD5e
 			// table of properties
 			const tr = Util.children(child(div, "table"), "tr", 5);
 			child(tr[0], "th").innerText = "Casting Time";
-			child(tr[0], "td").innerText = sp.reaction ? `${sp.castingTime}, ${sp.reaction}` : sp.castingTime;
+			child(tr[0], "td").innerHTML = sp.reaction ? `${sp.castingTime}, ${sp.reaction}` : sp.castingTime;
 			child(tr[1], "th").innerText = "Range";
-			child(tr[1], "td").innerText = sp.range;
+			child(tr[1], "td").innerHTML = sp.range;
 
 			// display components s.t. expensive and consumed materials are highlighted
 			{
@@ -156,10 +156,10 @@ namespace Games.DnD5e
 			}
 
 			child(tr[3], "th").innerText = "Duration";
-			child(tr[3], "td").innerText = (sp.concentration ? "Concentration, up to " : "") + sp.duration;
+			child(tr[3], "td").innerHTML = (sp.concentration ? "Concentration, up to " : "") + sp.duration;
 
 			child(tr[4], "th").innerText = "Classes";
-			child(tr[4], "td").innerText = sp.classes.join(", ");
+			child(tr[4], "td").innerHTML = sp.classes.join(", ");
 
 			child(div, "hr");
 			child(div, "div").innerHTML = sp.description + (sp.statBlock ? sp.statBlock : "");
@@ -168,7 +168,7 @@ namespace Games.DnD5e
 			if(sp.upcast)
 				child(div, "div").innerHTML = "<strong>At higher levels: </strong>" + sp.upcast;
 
-			child(div, "p", "subtle from").innerText = typeof sp.hint === "string" ? `${book} (${sp.hint})` : book;
+			child(div, "p", "subtle from").innerHTML = typeof sp.hint === "string" ? `${book} (${sp.hint})` : book;
 		}
 	}
 }

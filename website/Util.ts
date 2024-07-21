@@ -1,12 +1,12 @@
 namespace Util
 {
 	/**
-	 * @returns A <b> element displaying the given text
+	 * @returns A <b> element displaying the given HTML code
 	 */
-	export function bold(txt : string) : HTMLElement
+	export function bold(html : string) : HTMLElement
 	{
 		const b = document.createElement("b");
-		b.innerText = txt;
+		b.innerHTML = html;
 		return b;
 	}
 

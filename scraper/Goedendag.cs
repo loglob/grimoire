@@ -88,15 +88,22 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			_ => throw new FormatException($"Unexpected label format {tag.Show()}")
 		};
 
-		HashSet<string> htmlKeys = [ "crit", "effect", "fail" ];
-		HashSet<string> plainKeys = [ "brief", "casting-time", "components", "distance", "duration", "power-level" ];
+		HashSet<string> htmlKeys = [ "brief", "components", "crit", "effect", "fail", "duration" ];
+		// these are used for table headers, so we avoid inserting formatting
+		HashSet<string> plainKeys = [ "casting-time", "distance", "power-level" ];
 
 		var prop = _prop.Value.SplitBy(tk => tk is Character c && c.Char == ',', true)
 			.Select(v => v
 				.SplitOn(tk => tk is Character c && c.Char == '=')
 				?? throw new FormatException("properties are not assignment list"))
 			.Select(x => (key: Lexer.Untokenize(x.left).Trim(), val: x.right))
-			.ToDictionary(x => x.key, x => (htmlKeys.Contains(x.key) ? comp.ToHTML(x.val) : comp.ToString(x.val)).Trim());
+			.ToDictionary(
+				x => x.key,
+				x => (htmlKeys.Contains(x.key)
+					? comp.ToHTML(x.val)
+					: comp.ToSafeString(x.val)
+				).Trim()
+			);
 
 		{
 			var missing = htmlKeys.Concat(plainKeys).Where(k => !prop.ContainsKey(k));

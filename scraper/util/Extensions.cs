@@ -304,4 +304,7 @@ internal static class Extensions
 				dictA.Add(kvp.Key, kvp.Value.ToHashSet());
 		}
 	}
+
+	public static T? Just<T>(this T x) where T : struct
+		=> x;
 }

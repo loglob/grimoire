@@ -144,28 +144,35 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 	{
 		var (_props, rest) = body.Args(1, 8);
 
-		string? hint = _props[0].WithValue(comp.ToString, null);
+		string? hint = _props[0].WithValue(comp.ToSafeString, null);
 
-		var props = _props.Skip(1).Select(x => {
-			if(! x.HasValue)
-				throw new FormatException("Partial spell properties");
+		var props = _props.Skip(1)
+			.Select(p => p ?? throw new FormatException("Partial spell properties"))
+			.ToArray();
 
-			return comp.ToString(x.Value);
-		}).ToArray();
+		var name = comp.ToString(props[0]);
+		var (level, school, ritual) = ParseLevel(comp.ToSafeString(props[1]));
+		var spl = props[2].SplitOn(tk => tk is Character c && c.Char == ',');
 
-		var name = props[0];
-		var (level, school, ritual) = ParseLevel(props[1]);
-		var (left, right) = MaybeSplitOn(props[2], ",");
-		var range = props[3];
-		var (verbal, somatic, material) = ParseComponents(props[4]);
-		var (concentration, duration) = ParseDuration(props[5]);
-		var classes = props[6].Split((char[])[ ' ', '\t', ',' ], RemoveEmptyEntries).ToArray();
-
-		var (_desc, _upcast) = comp.upcastAnchor is Token[] ua && rest.SplitOn(ua, (a,b) => a.IsSame(b)) is var (x,y)
-			? (x, (Chain<Token>?)y)
-			: (rest, null);
-
-		string desc = comp.ToHTML(_desc);
+		var (_left, right) = props[2].SplitOn(tk => tk is Character c && c.Char == ',').WithValue(
+			(lr) => (lr.left, comp.ToHTML(lr.right)),
+			(props[2], null)
+		);
+		var left = comp.ToSafeString(_left);
+		
+		var range = comp.ToSafeString(props[3]);
+		var (verbal, somatic, material) = ParseComponents(comp.ToSafeString(props[4]));
+		var (concentration, duration) = ParseDuration(comp.ToSafeString(props[5]));
+		var classes = props[6]
+			.SplitBy(tk => tk is WhiteSpace || (tk is Character c && c.Char == ','))
+			.Where(seg => seg.Length > 0)
+			.Select(comp.ToSafeString)
+			.ToArray();
+			
+		var (_desc, _upcast) = comp.upcastAnchor is Token[] ua
+			&& rest.SplitOn(ua, (a,b) => a.IsSame(b)) is var (x,y)
+				? (x, y.Just())
+				: (rest, null);
 
 		return new Spell(
 			name, book.Shorthand,
@@ -175,7 +182,7 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 			verbal, somatic, material,
 			concentration, duration,
 			comp.ToHTML(_desc),
-			_upcast.WithValue(comp.ToString, null),
+			_upcast.WithValue(comp.ToSafeString, null),
 			classes,
 			null,
 			hint
