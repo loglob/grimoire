@@ -87,7 +87,8 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		{ "item", discard() },
 		{ "newpage", discard() },
 		{ "rowstyle", discard() },
-		{ "hyperref", hyperref(Conf) }
+		{ "hyperref", hyperref(Conf) },
+		{ "newline", new(0, null, new Token[]{ new BackBack(new("builtin/newline", 0, 0)) }) }
 	};
 
 	internal readonly Token[]? upcastAnchor = Conf.UpcastAnchor is string ua ? new Lexer(Log).TokenizeUnchecked(new[]{ ua }, "builtin/upcast anchor") : null;
