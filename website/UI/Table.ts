@@ -122,7 +122,7 @@ namespace UI
 
 			let td = (x : string) => {
 				let c = document.createElement("td");
-				c.innerText = x;
+				c.innerHTML = x;
 				row.appendChild(c);
 			}
 

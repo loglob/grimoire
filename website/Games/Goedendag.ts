@@ -148,7 +148,7 @@ namespace Games.Goedendag
 			for (const kvp of fmtFields(spell))
 			{
 				const r = child(prop, "tr");
-				child(r, "th").innerText = kvp[0];
+				child(r, "th").innerHTML = kvp[0];
 				child(r, "td").innerHTML = kvp[1];
 			}
 
