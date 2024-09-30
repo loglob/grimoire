@@ -1,0 +1,9 @@
+[Unit]
+Description=Refreshes Grimoire DBs
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=yes
+
+[Install]
+WantedBy=timers.target

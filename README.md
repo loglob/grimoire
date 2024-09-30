@@ -14,13 +14,14 @@ The supported sources are:
 Running `dotnet run [<config.json>]` processes all sources configured in the given file and outputs a spell database in the `./db/` directory.
 
 ## Configuration
-An object with the fields `books` and `sources`.
+A single json file containing an object with the fields `books` and `sources`.
 
 ### books
 Gives the recognized source books. A map from (unique) book shorthands onto an object with
 - `fullName`: The full name of the book to display to users
 - `alts`: Optional list of other names for the book. Used when scraping from the dnd wiki
-or just a `fullName` value, with empty `alts`.
+
+or just a string literal, which is used as the `fullName` value, with empty `alts`.
 
 ### sources
 Gives the sources to read from.
@@ -32,7 +33,7 @@ Copies all spells found on the [dnd-wiki](http:/dnd5e.wikidot.com/).
 
 Optionally an object with the fields
 - `rateLimit`: A number of milliseconds between HTTP requests to the wiki. 250ms by default. 
-- `cacheLifetime`: The maximum age for a cache webpage in seconds.
+- `cacheLifetime`: Ignores cached webpages older than this value (in seconds). Infinite by default.
 
 #### latex
 Processes local LaTeX files.

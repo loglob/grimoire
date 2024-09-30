@@ -1,0 +1,11 @@
+[Unit]
+Description=Grimoire DB refresh
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=grimoire
+ExecStart=./refresh-db.sh
+# you need to change this path!
+WorkingDirectory=/srv/grimoire/
