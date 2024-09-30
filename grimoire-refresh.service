@@ -6,6 +6,6 @@ Wants=network.target
 [Service]
 Type=simple
 User=grimoire
-ExecStart=./refresh-db.sh
+ExecStart=bash ./refresh-db.sh
 # you need to change this path!
 WorkingDirectory=/srv/grimoire/
