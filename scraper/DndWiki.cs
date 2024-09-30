@@ -126,7 +126,7 @@ public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<S
 	}
 
 	public IAsyncEnumerable<Spell> Spells(IEnumerable<string> names)
-		=> cache.CacheMany("spells", names, details, true).Select(kvp => kvp.val);
+		=> cache.CacheMany("spells", names, details).Select(kvp => kvp.val);
 
 	public async IAsyncEnumerable<Spell> Spells()
 	{

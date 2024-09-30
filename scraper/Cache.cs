@@ -137,4 +137,11 @@ public record Cache(float Lifetime, Log Log, params string[] Path)
 				File.SetCreationTimeUtc(p, ct);
 		}
 	}
+
+	/// <summary>
+	///  Variant of <see cref="CacheMany"/> that only logs progress if the output is to an interactive terminal
+	/// </summary>
+	public IAsyncEnumerable<(K key, V val)> CacheMany<K,V>(string name, IEnumerable<K> keys, Func<K, Task<V>> compute) where K : notnull
+		=> CacheMany<K,V>(name, keys, compute, Environment.UserInteractive);
+
 }
