@@ -22,6 +22,12 @@ namespace UI
 			return this.preparedSet.has(s.name);
 		}
 
+		/** @returns Whether all *shown* spells are prepared */
+		allPrepared() : boolean
+		{
+			return this.table.getRows().every(s => this.isPrepared(s.spell));
+		}
+
 		static async init<TSpell extends ISpell>(game : IGame<TSpell>, data : Data.NamedSpellList) : Promise<List<TSpell>>
 		{
 			const sp = await game.fetchSources(... data.sources);
@@ -42,7 +48,8 @@ namespace UI
 			this.name = sl.name;
 			this.query = sl.query;
 
-			// TODO: select all button
+			const selAll = document.getElementById("prepare-all") as HTMLInputElement;
+
 			this.table = new Table(game, null, null, s => {
 				const inp = document.createElement("input")
 				inp.type = "checkbox"
@@ -53,14 +60,17 @@ namespace UI
 					{
 						this.preparedSet.delete(s.name);
 						inp.checked = false;
+						// restore invariant
+						selAll.checked = false;
 					}
 					else
 					{
 						this.preparedSet.add(s.name);
 						inp.checked = true;
+						// possibly restore all-quantifier
+						selAll.checked = this.allPrepared();
 					}
 
-					console.log(this.preparedSet);
 					// eager write-back for now
 					this.store();
 				}
@@ -70,6 +80,39 @@ namespace UI
 
 				return [td];
 			});
+
+			{
+				// invariant
+				selAll.checked = this.allPrepared();
+
+				selAll.onclick = ev => {
+					// bool was already flipped by default code
+					const wantState = selAll.checked;
+
+					for (const row of this.table.getRows())
+					{
+						const cb = row.cells.at(0).firstChild as HTMLInputElement
+
+						if(this.isPrepared(row.spell) === wantState)
+							continue;
+
+						if(wantState)
+							this.preparedSet.add(row.spell.name);
+						else
+							this.preparedSet.delete(row.spell.name);
+
+						cb.checked = wantState;
+						ev.stopPropagation()
+					}
+
+					// eager write-back for now
+					this.store();
+				}
+
+				this.table.onDisplayChange = () => {
+					selAll.checked = this.allPrepared();
+				}
+			}
 
 			game.isPrepared = x => this.isPrepared(x);
 

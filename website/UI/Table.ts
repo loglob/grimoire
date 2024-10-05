@@ -12,10 +12,18 @@ namespace UI
 		/** The text input for the current search query */
 		readonly searchField : HTMLInputElement;
 
+		/** Called whenever the set of displayed spells changes */
+		onDisplayChange : () => void = () => {}
+
+		/** The current search filter */
 		query : Query = []
+		/** Spells in exact display order (i.e. already filtered) */
 		private display : TSpell[] = []
+		/** The current sorting of `display` and `table` */
 		private sorting : Sorting<TSpell>
+		/** All known spells, before filtering */
 		private spells : TSpell[] = []
+		/** The HTML table that contains rows corresponding to `display` */
 		private readonly table : HTMLTableElement
 		private readonly customRowElements : (s : TSpell) => HTMLTableCellElement[] = null
 
@@ -85,7 +93,7 @@ namespace UI
 		}
 
 		/** Displays a spell as a row in the spell table. */
-		toRow(spell : TSpell) : HTMLTableRowElement
+		private toRow(spell : TSpell) : HTMLTableRowElement
 		{
 			var row = document.createElement("tr");
 
@@ -123,7 +131,7 @@ namespace UI
 		}
 
 		/** Updates the 'Found ??? spells' text next to the search bar */
-		updateCount()
+		private updateCount()
 		{
 			const sp = document.getElementById("spell-count") as HTMLSpanElement;
 			sp.innerText = `Found ${this.display.length} spells`
@@ -134,17 +142,25 @@ namespace UI
 		 */
 		deleteIf(pred : (spell: TSpell, index: number) => boolean)
 		{
+			var narrowed = false;
+
 			for (let i = this.display.length; i--;)
 			{
 				if(pred(this.display[i], i))
 				{
+					narrowed = true;
 					this.display.splice(i, 1);
 					this.table.removeChild(this.table.children[i + 1]);
 				}
 			}
 
 			this.spells = this.spells.filter((v,i) => !pred(v,i));
-			this.updateCount();
+
+			if(narrowed)
+			{
+				this.updateCount();
+				this.onDisplayChange();
+			}
 		}
 
 		/** Inserts into the table, preserving sortedness and filtering
@@ -162,11 +178,14 @@ namespace UI
 			}
 
 			let off = 0;
+			var widened = false;
 
 			for(const spell of spells)
 			{
 				if(!this.game.spellMatchesQuery(this.query, spell))
 					continue;
+
+				widened = true;
 
 				while(off < this.display.length && Data.cmpSpell(this.game, this.sorting, spell, this.display[off]) > 0)
 					off++;
@@ -188,11 +207,16 @@ namespace UI
 			}
 
 			this.spells.push(...spells);
-			this.updateCount();
+
+			if(widened)
+			{
+				this.updateCount();
+				this.onDisplayChange();
+			}
 		}
 
 		/** Re-sorts and re-filters the table and rebuilds the displayed table from scratch. */
-		reset(resort : boolean = true) : void
+		private reset(resort : boolean = true) : void
 		{
 			if(resort)
 				Data.sortSpells(this.game, this.sorting, this.spells);
@@ -206,6 +230,7 @@ namespace UI
 				this.table.appendChild(this.toRow(s));
 
 			this.updateCount();
+			this.onDisplayChange();
 		}
 
 		/** Returns the current sorting, or null if it's the default sorting */
@@ -222,6 +247,23 @@ namespace UI
 				s = `-${s}`
 
 			return s
+		}
+
+		/** Gets all displayed spells, along with their HTML elements */
+		getRows() : { cells : HTMLTableCellElement[], spell : TSpell }[]
+		{
+			const n = this.display.length;
+			const arr = []
+
+			for(let i = 0; i < n; ++i)
+			{
+				arr.push({
+					cells: Array.from(this.table.rows.item(i + 1).cells),
+					spell : this.display.at(i)
+				});
+			}
+
+			return arr;
 		}
 	}
 }
