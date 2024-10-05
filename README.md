@@ -100,7 +100,7 @@ Then, start any webserver on the `website/www/` directory.
 - Creating printable spell cards from those prepared spells
 
 ## Endpoints
-### /index.html?\[from=source ...]&\[<game=gd>]&\[<q=query>]
+### /index.html?\[from=source ...]&\[<game=gd>]&\[<q=query>]&\[<sort=key>\]
 Displays the spell index, using the sources given as `from` parameters, and filtering with the given query.
 
 ### /list.html#\[list name]
@@ -112,8 +112,8 @@ Displays details on the spell from the given source with the given name.
 ### /cards.html#\[list name]
 Displays spell cards for the local spell list with the given name.
 
-### /cards.html#?\[from=source ...]&\[<game=gd>]&\[<q=query>]
-Displays spell cards for all spells matching the given source and query.
+### /cards.html#?\[from=source ...]&\[<game=gd>]&\[<q=query>]&\[<sort=key>\]
+Displays printable spell cards for all spells matching the given source and query.
 
 ### /search-help.html
 Static page that shows documentation on query syntax.

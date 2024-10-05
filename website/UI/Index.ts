@@ -14,7 +14,7 @@ namespace UI
 		static async init<TSpell extends Data.ISpell>(game : IGame<TSpell>) : Promise<Index<TSpell>>
 		{
 			const p = new URLSearchParams(window.location.search);
-			const ind = new Index(game, new Table(game, p.get("q")), game.books);
+			const ind = new Index(game, new Table(game, p.get("q"), p.get("sort")), game.books);
 
 			await ind.makeSourceSelector(p.has("from") ? p.getAll("from") : null)
 
@@ -126,11 +126,18 @@ namespace UI
 		/** Reproduces a query string (without leading '?') that encodes the current selected sources and query */
 		private urlParams() : string
 		{
-			return this.selectedSources()
+			var par = this.selectedSources()
 				.map(x => `from=${encodeURIComponent(x)}`)
-				.concat(`q=${encodeURIComponent(this.table.searchField.value)}`)
-				.concat(`game=${encodeURIComponent(this.game.shorthand)}`)
-				.join('&');
+				.concat(
+					`q=${encodeURIComponent(this.table.searchField.value)}`,
+					`game=${encodeURIComponent(this.game.shorthand)}`
+				)
+			const s = this.table.getSorting()
+
+			if(s)
+				par.push(`sort=${s}`)
+
+			return par.join('&');
 		}
 
 		/** The sources that are currently selected */

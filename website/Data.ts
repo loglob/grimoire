@@ -9,7 +9,10 @@ namespace Data
 
 	export type Sorting<TSpell extends ISpell> = { key : keyof TSpell, reverse : boolean }
 
-	export const defaultSorting : Sorting<ISpell> = { key: "name", reverse: false }
+	export function defaultSorting() : Sorting<ISpell>
+	{
+		return { key: "name", reverse: true };
+	}
 
 	export type SpellList =
 	{

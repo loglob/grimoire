@@ -1,4 +1,4 @@
-/** Handles the cards.html UI */
+/** Handles the cards.html UI for spellcard print view */
 namespace UI
 {
 	import IGame = Games.IGame
@@ -7,8 +7,15 @@ namespace UI
 	function spellCards<TSpell extends Data.ISpell>(game : IGame<TSpell>, spells : TSpell[])
 	{
 		const div = document.getElementById("spell-cards");
+		const q = new URLSearchParams(window.location.search);
 
-		for (const spell of game.cardOrder(spells))
+		spells = game.cardOrder(spells);
+		const s = q.get("sort");
+
+		if(s)
+			Data.sortSpells(game, Data.parseSorting(s), spells)
+
+		for (const spell of spells)
 			div.appendChild(game.spellCard(spell, game.books[spell.source]));
 	}
 

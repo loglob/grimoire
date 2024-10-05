@@ -43,7 +43,7 @@ namespace UI
 			this.query = sl.query;
 
 			// TODO: select all button
-			this.table = new Table(game, null, s => {
+			this.table = new Table(game, null, null, s => {
 				const inp = document.createElement("input")
 				inp.type = "checkbox"
 				inp.checked = this.isPrepared(s)

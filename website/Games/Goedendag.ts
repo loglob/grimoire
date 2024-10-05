@@ -134,9 +134,7 @@ namespace Games.Goedendag
 		cardOrder(spells: Spell[]): Spell[]
 		{
 			return spells
-				.sort((a,b) => cmpPowerLevel(a,b))
 				.sort((a,b) => a.name > b.name ? +1 : -1)
-				.sort((a,b) => cmpArcana(a,b))
 		}
 
 		details(spell: Spell, _book : string, div: HTMLDivElement): void

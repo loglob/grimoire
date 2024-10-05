@@ -24,13 +24,13 @@ namespace UI
 			@param initial The initial set of spells. Filtered by q.
 			@param customRowElements A callback for prepending custom row elements before each row
 		*/
-		constructor(game : IGame<TSpell>, q : string|null = null, customRowElements : (s : TSpell) => HTMLTableCellElement[] = null)
+		constructor(game : IGame<TSpell>, q : string|null = null, sort : string|null = null, customRowElements : (s : TSpell) => HTMLTableCellElement[] = null)
 		{
 			const UP_ARROW = "\u2191";
 			const DOWN_ARROW = "\u2193";
 			this.game = game;
 			this.searchField = document.getElementById("search-field") as HTMLInputElement;
-			this.sorting = Data.defaultSorting
+			this.sorting = sort ? Data.parseSorting(sort) : Data.defaultSorting()
 			this.table = document.getElementById("spells") as HTMLTableElement;
 			this.customRowElements = customRowElements;
 
@@ -206,6 +206,22 @@ namespace UI
 				this.table.appendChild(this.toRow(s));
 
 			this.updateCount();
+		}
+
+		/** Returns the current sorting, or null if it's the default sorting */
+		getSorting() : string | null
+		{
+			const def = Data.defaultSorting()
+
+			if(this.sorting.key === def.key && this.sorting.reverse === def.reverse)
+				return null
+
+			var s = String(this.sorting.key)
+
+			if(this.sorting.reverse)
+				s = `-${s}`
+
+			return s
 		}
 	}
 }
