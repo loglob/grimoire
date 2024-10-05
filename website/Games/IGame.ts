@@ -17,7 +17,7 @@ namespace Games
 		/** The fields that are listed in index view */
 		readonly abstract tableHeaders : (keyof TSpell)[];
 		/** A set of custom comparers to use for table sorting */
-		readonly abstract customComparers : { [key : string] : ((a : TSpell, b : TSpell) => number); }
+		readonly abstract customComparers : Partial<{ [key in keyof TSpell] : ((a : TSpell, b : TSpell) => number); }>
 
 		/** Overwritten by some front-ends with a predicate that checks whether a function is prepared */
 		isPrepared : ((sp : TSpell) => boolean)|null = null

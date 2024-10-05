@@ -2,6 +2,7 @@ namespace UI
 {
 	import IGame = Games.IGame
 	import Query = Data.Query
+	import Sorting = Data.Sorting
 
 	/** Encapsulates the state of the table that displays the currently filtered spells. */
 	export class Table<TSpell extends Data.ISpell>
@@ -11,11 +12,10 @@ namespace UI
 		/** The text input for the current search query */
 		readonly searchField : HTMLInputElement;
 
-		private sortOn : keyof TSpell
-		private reverse : boolean = true
 		query : Query = []
-		private spells : TSpell[] = []
 		private display : TSpell[] = []
+		private sorting : Sorting<TSpell>
+		private spells : TSpell[] = []
 		private readonly table : HTMLTableElement
 		private readonly customRowElements : (s : TSpell) => HTMLTableCellElement[] = null
 
@@ -30,7 +30,7 @@ namespace UI
 			const DOWN_ARROW = "\u2193";
 			this.game = game;
 			this.searchField = document.getElementById("search-field") as HTMLInputElement;
-			this.sortOn = "name"
+			this.sorting = Data.defaultSorting
 			this.table = document.getElementById("spells") as HTMLTableElement;
 			this.customRowElements = customRowElements;
 
@@ -54,25 +54,23 @@ namespace UI
 				m.id = `${String(h)}-marker`;
 				th.appendChild(m);
 
-				if(h === this.sortOn)
-					m.innerText = this.reverse ? UP_ARROW : DOWN_ARROW;
+				if(h === this.sorting.key)
+					m.innerText = this.sorting.reverse ? UP_ARROW : DOWN_ARROW;
 
 				th.onclick = _ => {
-					if(this.sortOn === h)
-						this.reverse = !this.reverse;
+					if(this.sorting.key === h)
+						this.sorting.reverse = !this.sorting.reverse;
 					else
 					{
-						document.getElementById(`${String(this.sortOn)}-marker`).innerText = "";
-						this.sortOn = h;
-						this.reverse = false;
+						document.getElementById(`${String(this.sorting.key)}-marker`).innerText = "";
+						this.sorting = { key: h, reverse: false };
 					}
 
-					m.innerText = this.reverse ? UP_ARROW : DOWN_ARROW;
+					m.innerText = this.sorting.reverse ? UP_ARROW : DOWN_ARROW;
 					this.reset();
 					return false;
 				}
 			}
-
 
 			this.searchField.oninput = _ => {
 				this.query = Data.parseQuery(this.searchField.value)
@@ -84,19 +82,6 @@ namespace UI
 				this.searchField.value = q;
 				this.searchField.oninput(null)
 			}
-		}
-
-		/** Compares two spells for sorting according to the current table sort setting. */
-		compareSpell(l : TSpell, r : TSpell) : number
-		{
-			const so = this.sortOn;
-			const sos = so as string;
-
-			const cmp = (sos in this.game.customComparers)
-				? this.game.customComparers[sos](l, r)
-				: (l[so] > r[so] ? -1 : l[so] < r[so] ? +1 : 0)
-
-			return (this.reverse ? -cmp : +cmp);
 		}
 
 		/** Displays a spell as a row in the spell table. */
@@ -167,7 +152,7 @@ namespace UI
 		*/
 		insert(spells : TSpell[]) : void
 		{
-			spells.sort((x,y) => this.compareSpell(x,y));
+			Data.sortSpells(this.game, this.sorting, spells)
 
 			if(this.spells.length == 0)
 			{
@@ -183,7 +168,7 @@ namespace UI
 				if(!this.game.spellMatchesQuery(this.query, spell))
 					continue;
 
-				while(off < this.display.length && this.compareSpell(spell, this.display[off]) > 0)
+				while(off < this.display.length && Data.cmpSpell(this.game, this.sorting, spell, this.display[off]) > 0)
 					off++;
 
 				let row = this.toRow(spell);
@@ -210,7 +195,7 @@ namespace UI
 		reset(resort : boolean = true) : void
 		{
 			if(resort)
-				this.spells.sort((x,y) => this.compareSpell(x,y));
+				Data.sortSpells(this.game, this.sorting, this.spells);
 
 			this.display = this.spells.filter(s => this.game.spellMatchesQuery(this.query, s));
 
