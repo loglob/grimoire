@@ -2,6 +2,50 @@ namespace Games
 {
 	export type IsPrepared<TSpell> = ((sp : TSpell) => boolean)|null;
 
+	/** Compares two quantities with specified units.
+		Orders all valid quantities as smaller than all invalid quantities.
+		Understands alternatives separated by `or`, `,` or `/`.
+		@param units Expects unit names to be case-insensitive and given in all lowercase
+	 */
+	export function compareQuantities(units : { [unit : string] : number }, l : string, r : string) : number
+	{
+		const unitRegex = /^(\d+)\s+(.+)$/;
+		const sep = /\s*(\sor\s|\/|,)\s*/
+
+		function normalize(str : string) : number|null
+		{
+			const xs = str.split(sep).map(x =>
+			{
+				const m = x.match(unitRegex)
+
+				if(m === null)
+					return null;
+
+				const unit = m[2].toLowerCase(), v = Number(m[1])
+
+				return unit in units ? units[unit] * v : null
+			}).filter(x => x !== null);
+
+			if(xs.length)
+				return Math.min(...xs);
+
+			console.log(`Bad quantity: ${str}`);
+			return null;
+		}
+
+		const lv = normalize(l), rv = normalize(r)
+
+		if(lv && rv)
+			return lv - rv
+
+		if(lv)
+			return -1
+		else if(rv)
+			return +1
+		else
+			return l > r ? +1 : l < r ? -1 : 0;
+	}
+
 	/**
 	 * @template TSpell The local spell type
 	 */

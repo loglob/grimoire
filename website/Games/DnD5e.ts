@@ -18,13 +18,25 @@ namespace Games.DnD5e
 		hint : string|null
 	}
 
+	const timeUnits : { [k : string] : number } = {
+		"reaction": 1,
+		"bonus action": 2,
+		"action": 3,
+		"minute": 60,
+		"minutes": 60,
+		"hour": 60*60,
+		"hours": 60*60
+	}
+
 	export class Game extends IGame<Spell>
 	{
 		tableHeaders: (keyof Spell)[] = [
 			"level", "school", "castingTime", "ritual", "concentration", "source"
 		]
 
-		customComparers = {}
+		customComparers = {
+			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime)
+		}
 
 		spellCard(spell: Spell, book: string): HTMLDivElement
 		{

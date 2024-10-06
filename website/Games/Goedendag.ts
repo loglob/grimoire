@@ -64,6 +64,23 @@ namespace Games.Goedendag
 		]
 	}
 
+	const timeUnits : { [k : string] : number } = {
+		"acp": 1,
+		"[s]": 1,
+		"[turn]": 3,
+		"[turns]": 3,
+		// Although turns and rounds are both defined to be 3 seconds
+		// and all turns happen "concurrently" in the round,
+		// an entire round is longer than a turn in causal terms
+		"[round]": 3.001,
+		"[rounds]": 3.001,
+		"[min]": 60,
+		"[h]": 60*60,
+		"[d]": 24*60*60,
+		"[w]": 7*24*60*60,
+		"[m]": 365.2425*24*60*60 / 12
+	}
+
 	export class Game extends IGame<Spell>
 	{
 		tableHeaders: (keyof Spell)[] = [
@@ -72,8 +89,9 @@ namespace Games.Goedendag
 
 		customComparers = {
 			"powerLevel": cmpPowerLevel,
-			"arcanum": cmpArcana
-		}
+			"arcanum": cmpArcana,
+			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime)
+		};
 
 		spellCard(spell: Spell, _book: string): HTMLDivElement
 		{
