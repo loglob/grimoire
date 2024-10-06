@@ -81,6 +81,78 @@ namespace Games.Goedendag
 		"[m]": 365.2425*24*60*60 / 12
 	}
 
+	export function normalizeDistance(n : string, stage : number = 0) : number|null
+	{
+		// stage 0: keywords
+		if(stage <= 0)
+		{
+			if(/^touch$/i.test(n))
+				return 0.1;
+			else if(/^any$/i.test(n))
+				return Infinity;
+			else if(/^vision$/i.test(n))
+				return 5000;
+		}
+
+		// stage 1: filler
+		if(stage <= 1)
+		{
+			const r = n.match(/^(.*)\s+(radius|diameter)$/i)
+
+			if(r)
+				return normalizeDistance(r[1].trim(), 1.5);
+		}
+		if(stage <= 1.5)
+		{
+			const v = n.match(/^vision\s*\(\s*maximum\s+([^()]+)\)$/i)
+
+			if(v)
+				return normalizeDistance(v[1].trim(), 2);
+		}
+
+		// stage 2: units
+		if(stage <= 2)
+		{
+			const unit = n.match(/^(.*)\s+\[(.*)\]$/)
+
+			if(unit) switch(unit[2])
+			{
+				case "m": return normalizeDistance(unit[1].trim(), 3);
+				case "km": return 1000 * normalizeDistance(unit[1].trim(), 3);
+			}
+
+			// you need a unit of some kind
+			return null;
+		}
+
+		// stage 3: operator resolution
+		if(stage <= 3)
+		{
+			const mul = n.split(/·|&#183;|&#xB7;|&centerdot;/i)
+
+			if(mul.length > 1)
+				return mul.reduce((p,c) => p * normalizeDistance(c.trim(), 4), 1);
+
+			const div = n.split('/', 2)
+
+			if(div.length == 2)
+				return normalizeDistance(div[0], 4) / normalizeDistance(div[1], 4);
+		}
+
+		// stage 4: variable/constant decision
+		if(stage <= 4)
+		{
+			if(/\d+/.test(n))
+				return Number(n);
+			// don't bother with an exhaustive list of every class and stat the game
+			// pick 6 as universal constant for those
+			if(/\w+/.test(n))
+				return 6;
+		}
+
+		return null;
+	}
+
 	export class Game extends IGame<Spell>
 	{
 		tableHeaders: (keyof Spell)[] = [
@@ -90,7 +162,8 @@ namespace Games.Goedendag
 		customComparers = {
 			"powerLevel": cmpPowerLevel,
 			"arcanum": cmpArcana,
-			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime)
+			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime),
+			"distance": (x : Spell, y : Spell) => Games.compareNorm(normalizeDistance, x.distance, y.distance)
 		};
 
 		spellCard(spell: Spell, _book: string): HTMLDivElement

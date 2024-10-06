@@ -2,6 +2,20 @@ namespace Games
 {
 	export type IsPrepared<TSpell> = ((sp : TSpell) => boolean)|null;
 
+	export function compareNorm(normalize : (s : string) => number|null, l : string, r : string) : number
+	{
+		const lv = normalize(l), rv = normalize(r)
+
+		if(lv && rv)
+			return lv - rv
+		else if(lv)
+			return -1
+		else if(rv)
+			return +1
+		else
+			return l > r ? +1 : l < r ? -1 : 0;
+	}
+
 	/** Compares two quantities with specified units.
 		Orders all valid quantities as smaller than all invalid quantities.
 		Understands alternatives separated by `or`, `,` or `/`.
@@ -33,17 +47,7 @@ namespace Games
 			return null;
 		}
 
-		const lv = normalize(l), rv = normalize(r)
-
-		if(lv && rv)
-			return lv - rv
-
-		if(lv)
-			return -1
-		else if(rv)
-			return +1
-		else
-			return l > r ? +1 : l < r ? -1 : 0;
+		return compareNorm(normalize, l, r);
 	}
 
 	/**
