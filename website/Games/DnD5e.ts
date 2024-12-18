@@ -96,7 +96,7 @@ namespace Games.DnD5e
 				: [];
 
 			return  s.name.toLowerCase().includes(term)
-				|| [ s.school, s.castingTime, s.duration, ...s.classes ].some(x => term.toLowerCase() === x)
+				|| [ s.school, s.castingTime, s.duration, ...s.classes ].some(x => term === x.toLowerCase())
 				|| Util.fieldTermMatch(s, term, "verbal", "somatic", "ritual", "concentration", "upcast")
 				|| (s.materials && term === "material")
 				|| (this.isPrepared && term === "prepared" && this.isPrepared(s))
