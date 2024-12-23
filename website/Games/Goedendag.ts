@@ -2,6 +2,8 @@ namespace Games.Goedendag
 {
 	import bold = Util.bold
 	import child = Util.child
+	import same = Util.same
+	import infixOf = Util.infixOf
 
 	export const Arcana = {
 		General: 0,
@@ -213,13 +215,13 @@ namespace Games.Goedendag
 		{
 			const term1 = term.substring(1);
 
-			return  s.name.toLowerCase().includes(term)
-				|| [ s.arcanum, s.powerLevel, s.distance, s.duration, s.castingTime ].some(x => x.toLowerCase() === term)
-				|| [ "combat", "reaction" ].some(x => s[x as keyof Spell] && term === x)
+			return  infixOf(term, s.name)
+				|| [ s.arcanum, s.powerLevel, s.distance, s.duration, s.castingTime ].some(x => same(x, term))
+				|| Util.fieldTermMatch(s, term, "combat", "reaction")
 				|| (this.isPrepared && term === "prepared" && this.isPrepared(s))
-				|| (term[0] === '$' && s.components && s.components.toLowerCase().includes(term1))
+				|| (term[0] === '$' && s.components && infixOf(term1, s.components))
+				|| (term[0] === '\\' && same(s.name, term1))
 				|| Util.fullTextMatch(term, s.brief, s.effect, s.critSuccess, s.critFail, s.extra)
-				|| (term[0] === '\\' && s.name.toLowerCase() === term1)
 		}
 
 		cardOrder(spells: Spell[]): Spell[]

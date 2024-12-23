@@ -34,13 +34,13 @@ namespace Data
 		source : string
 	}
 
-	/** Normalizes a query. Resolved operators, squeezes whitespace and converts to lowercase. */
+	/** Normalizes a query. Resolves operators and squeezes whitespace. */
 	export function parseQuery(query : string) : Data.Query
 	{
 		return query
 			.split(';').map(x => x
 				.split('|').map(y => y
-					.split(',').map(z => z.toLowerCase().split(/\s+/).filter(x => x.length).join(' '))));
+					.split(',').map(z => z.split(/\s+/).filter(x => x.length).join(' '))));
 	}
 
 	/** Parses a sorting passed as URL parameter */

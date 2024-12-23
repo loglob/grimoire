@@ -3,6 +3,8 @@ namespace Games.DnD5e
 {
 	import bold = Util.bold
 	import child = Util.child
+	import same = Util.same
+	import infixOf = Util.infixOf
 
 	export type Spell =
 	{
@@ -91,23 +93,23 @@ namespace Games.DnD5e
 		spellMatchesTerm(term: string, s: Spell): boolean
 		{
 			const term1 = term.substring(1);
-			const lim = (term[0] === 'l')
+			const lim = (term[0] === 'L')
 				? term1.split('-').map(x => Number.parseInt(x))
 				: [];
 
-			return  s.name.toLowerCase().includes(term)
-				|| [ s.school, s.castingTime, s.duration, ...s.classes ].some(x => term === x.toLowerCase())
+			return infixOf(term, s.name)
+				|| [ s.school, s.castingTime, s.duration, ...s.classes ].some(x => same(term, x))
 				|| Util.fieldTermMatch(s, term, "verbal", "somatic", "ritual", "concentration", "upcast")
 				|| (s.materials && term === "material")
 				|| (this.isPrepared && term === "prepared" && this.isPrepared(s))
-				|| (term[0] === '$' && s.materials && s.materials.toLowerCase().includes(term1))
-				|| (term[0] === ':' && s.source.toLowerCase() === term1)
-				|| (term[0] === '#' && s.hint && s.hint.toLowerCase().includes(term1))
-				|| Util.fullTextMatch(term, s.description, s.upcast, s.statBlock)
-				|| (term[0] === '\\' && s.name.toLowerCase() === term1)
+				|| (term[0] === '$' && s.materials && infixOf(term1, s.materials))
+				|| (term[0] === ':' && same(s.source, term))
+				|| (term[0] === '#' && s.hint && infixOf(term1, s.hint))
+				|| (term[0] === '\\' && same(s.name, term1))
 				|| (term === "$$" && s.materials && /[1-9][0-9,]+\s*gp/i.test(s.materials))
 				|| (lim.length == 1 && lim[0] == s.level)
-				|| (lim.length == 2 && lim[0] <= s.level && s.level <= lim[1]);
+				|| (lim.length == 2 && lim[0] <= s.level && s.level <= lim[1])
+				|| Util.fullTextMatch(term, s.description, s.upcast, s.statBlock);
 		}
 
 		cardOrder(spells: Spell[]): Spell[]
@@ -156,7 +158,7 @@ namespace Games.DnD5e
 
 					nodes.push(sp.materials.substring(off));
 
-					const consume = sp.materials.toLowerCase().endsWith("consumes");
+					const consume = /(which the spell consumes|consumed by the spell)$/i.test(sp.materials)
 
 
 					if(sp.verbal || sp.somatic)

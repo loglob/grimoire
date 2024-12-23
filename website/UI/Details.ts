@@ -24,7 +24,7 @@ namespace UI
 				return;
 			}
 
-			const sp = (await g.fetchSource(from)).find(s => s.name.toLowerCase() === spell.toLowerCase());
+			const sp = (await g.fetchSource(from)).find(s => Util.same(s.name, spell));
 
 			if(!sp)
 			{

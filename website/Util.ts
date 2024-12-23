@@ -1,5 +1,32 @@
 namespace Util
 {
+	/** Collator for case-insensitive string compare */
+	const coll = Intl.Collator("en", { "sensitivity": "accent", "usage": "search" })
+
+	/** case-insensitive string comparison */
+	export function same(l : string, r : string) : boolean
+	{
+		return l.length === r.length && coll.compare(l, r) === 0;
+	}
+
+	/** case-insensitive string.includes */
+	export function infixOf(needle : string, haystack : string) : boolean
+	{
+		return RegExp(
+			needle.replace(/[/\\^$*+?.()|[\]{}]/g, '\\$&'),
+			"i"
+			).test(haystack);
+	}
+
+	/** checks if needle is a delimited word within haystack, case insensitive */
+	export function infixWordOf(needle : string, haystack : string) : boolean
+	{
+		return RegExp(
+			"(^|\\W)" +  needle.replace(/[/\\^$*+?.()|[\]{}]/g, '\\$&') + "($|\\W)",
+			"i"
+			).test(haystack);
+	}
+	
 	/**
 	 * @returns A <b> element displaying the given HTML code
 	 */
@@ -53,12 +80,15 @@ namespace Util
 	 */
 	export function fullTextMatch(term : string, ...test : (string | undefined | null)[]) : boolean
 	{
+		if(term[0] != '/')
+			return false;
+
 		const t1 = term.substring(1);
 		const t2 = term.substring(2);
 
-		return (term[0] === '/' && test.some(txt => txt && (term[1] === '/'
-			? txt.toLowerCase().split(/\s+/).some(w => w === t2 || w.split(/\W+/).includes(t2))
-			: txt.toLowerCase().includes(t1))))
+		return test.some(txt => 
+			txt && (term[1] === '/' ? infixWordOf(t2, txt) : infixOf(t1, txt))
+		);
 	}
 
 	export function fieldTermMatch<T>(obj : T, term : string, ...fields : (keyof T)[]) : boolean
