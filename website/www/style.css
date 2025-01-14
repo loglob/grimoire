@@ -123,12 +123,29 @@ button
 	}
 }
 
-#spell-cards div
+#spell-cards>div
 {
 	width: 48%;
 	margin-right: 1%;
 	margin-left: 1%;
 	break-inside: avoid-page;
+}
+
+.tag-list {
+	display: flex;
+	flex-direction: row;
+}
+
+.tag-box {
+  text-transform: uppercase;
+  flex: 0 0;
+  background-color: #5e0000;
+  color: #fff;
+  font-weight: bold;
+  padding-left: 1%;
+  padding-right: 1%;
+  border-color: burlywood;
+  border-style: solid;
 }
 
 #spell-cards div h3

@@ -9,7 +9,8 @@ namespace UI
 
 	export const games = {
 		dnd5e: "D&D 5e",
-		gd: "Goedendag"
+		gd: "Goedendag",
+		pf2e: "Pathfinder 2e"
 	};
 
 	export async function getGameIndex() : Promise<Data.GameIndex>
@@ -31,6 +32,9 @@ namespace UI
 
 			case "gd":
 				return await f(new Games.Goedendag.Game(id, games[id], books));
+
+			case "pf2e":
+				return await f(new Games.Pf2e.Game(id, games[id], books));
 		}
 
 		alert(`Invalid game ID: '${id}'. Either the URL is wrong or your browser cache is outdated.`);

@@ -13,6 +13,7 @@
 		"Games/IGame.ts",
 		"Games/DnD5e.ts",
 		"Games/Goedendag.ts",
+		"Games/Pf2e.ts",
 		"UI/Common.ts",
 		"UI/Cards.ts",
 		"UI/Details.ts",

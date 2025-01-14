@@ -13,7 +13,7 @@ namespace Games.Goedendag
 		Conjuration: 4,
 		Divine: 5,
 		Ritual: 6
-	};
+	} as const;
 
 	export const PowerLevelDCs = {
 		Generalist: 15,
@@ -21,7 +21,7 @@ namespace Games.Goedendag
 		Lesser: 22,
 		Greater: 30,
 		Ritual: 0
-	};
+	} as const;
 
 	export type Spell =
 	{

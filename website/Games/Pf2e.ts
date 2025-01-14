@@ -1,0 +1,193 @@
+namespace Games.Pf2e
+{
+	import bold = Util.bold
+	import child = Util.child
+	import same = Util.same
+	import infixOf = Util.infixOf
+
+	export const Traditions = {
+		Arcane: 1,
+		Divine: 2,
+		Occult: 3,
+		Primal: 4,
+		Focus: 5,
+		Elemental: 6
+	} as const
+
+	export type Spell =
+	{
+		name : string,
+		source : string,
+		summary : string,
+		traditions : (keyof (typeof Traditions))[],
+		level : number,
+		castingTime : string,
+		seconds : number,
+		reaction : string | null,
+		components : string,
+		range : string | null,
+		feet : number,
+		targets : string | null,
+		area : string | null,
+		duration : string | null,
+		save : string | null,
+		tags : string[],
+		description : string,
+		page : number
+	}
+
+	/** Produces 2D key-value pairs of the spell's properties */
+	function fmtFields(spell : Spell, withTraditions : Boolean) : [string, string][][]
+	{
+		const out : [string,string][][] = [ ]
+
+		function line(...xs : (keyof Spell | [keyof Spell, string])[])
+		{
+			const ln : [string,string][] = []
+			
+			for(const x of xs)
+			{
+				let name
+				let key
+
+				if(typeof x === "object")
+				{
+					key = x[0]
+					name = x[1]
+				}
+				else
+				{
+					key = x
+					name = x as string
+					name = name[0].toUpperCase() + name.slice(1)
+				}
+
+				if(spell[key])
+					ln.push([ name, spell[key] as string ])
+			}
+
+			if(ln.length > 0)
+				out.push(ln)
+		}
+
+		if(spell.traditions.length > 0 && withTraditions)
+			out.push([[ "Traditions", spell.traditions.join(", ") ]])
+
+		out.push([[ "Cast", `${spell.castingTime} ${spell.components}` ]])
+
+		line([ "reaction", "Trigger" ])
+
+		line(
+			"range",
+			"area",
+			"targets"
+		)
+
+		line(
+			"save",
+			"duration"
+		)
+
+		return out
+	}
+
+	function createTagList(spell : Spell, attach : HTMLElement)
+	{
+		const tags = child(attach, "div", "tag-list")
+
+		for (const tag of spell.tags)
+			child(tags, "div", "tag-box").innerText = tag	
+	}
+
+	function createProperties(spell : Spell, details : Boolean, attach : HTMLElement)
+	{			
+		const fields = child(attach, "p")
+
+		for(const line of fmtFields(spell, details))
+		{
+			let first = true
+
+			for(const field of line)
+			{
+				if(! first)
+					fields.append("; ");
+
+				(details ? child(fields, "b") : fields).append(field[0]);
+				fields.append(" ");
+				(details ? fields : child(fields, "b")).append(field[1]);
+				
+				first = false;
+			}
+
+			child(fields, "br")
+		}
+	}
+
+	export class Game extends IGame<Spell>
+	{
+		tableHeaders: (keyof Spell)[] = [
+			"level", "range", "castingTime", "components"
+		]
+
+		customComparers = {
+			"castingTime": (x : Spell, y : Spell) =>  x.seconds - y.seconds,
+			"range": (x : Spell, y : Spell) => {
+				var diff = x.feet - y.feet
+
+				// "0 feet", "touch", "" and "varies" all have feet == 0
+				return (diff === 0 && x.feet === 0)
+					? x.range.localeCompare(y.range)
+					: diff;
+			},
+			"components": (x : Spell, y : Spell) => {
+				var l = x.components.length - y.components.length;
+
+				return l ? l : x.components.localeCompare(y.components)
+			}
+		};
+		spellCard(spell: Spell, book: string): HTMLDivElement
+		{
+			const div = document.createElement("div");
+			child(div, "hr");
+			child(div, "h3").innerText = spell.name;
+
+			createTagList(spell, div)
+			createProperties(spell, false, div)
+
+			child(div, "p").innerText = spell.description;
+
+			child(div, "p", "subtle from").innerText = `${book} (pg. ${spell.page})`;
+
+			return div;
+		}
+
+		spellMatchesTerm(term: string, s: Spell): boolean
+		{
+			const term1 = term.substring(1);
+
+			return  infixOf(term, s.name)
+				|| [ s.range, s.area, s.duration, s.castingTime, ...s.tags, ...s.traditions ].some(x => x && same(x, term))
+				|| (this.isPrepared && term === "prepared" && this.isPrepared(s))
+				|| (s.save && infixOf(term, s.save))
+				|| (term[0] === '$' && s.components && infixOf(term1, s.components))
+				|| (term[0] === '\\' && same(s.name, term1))
+				|| Util.fullTextMatch(term, s.description, s.reaction, s.summary)
+		}
+
+		cardOrder(spells: Spell[]): Spell[]
+		{
+			return spells.sort((a,b) => a.name.localeCompare(b.name))
+		}
+
+		details(spell: Spell, book : string, div: HTMLDivElement): void
+		{
+			child(div, "p", "subtle").innerText = spell.summary;
+			createTagList(spell, div)
+			createProperties(spell, true, div)
+
+			child(div, "p").innerText = spell.description
+
+			child(div, "p", "subtle from").innerText = `${book} (pg. ${spell.page})`;
+		}
+	}
+}

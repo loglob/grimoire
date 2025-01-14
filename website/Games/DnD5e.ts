@@ -28,17 +28,17 @@ namespace Games.DnD5e
 		"minutes": 60,
 		"hour": 60*60,
 		"hours": 60*60
-	}
+	} as const
 
 	export class Game extends IGame<Spell>
 	{
 		tableHeaders: (keyof Spell)[] = [
 			"level", "school", "castingTime", "ritual", "concentration", "source"
-		]
+		] as const
 
 		customComparers = {
 			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime)
-		}
+		} as const
 
 		spellCard(spell: Spell, book: string): HTMLDivElement
 		{

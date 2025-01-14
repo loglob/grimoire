@@ -91,6 +91,7 @@ namespace Util
 		);
 	}
 
+	/** Checks if `term` is in the list `fields` and also if `obj` has that field set to a truthy value. */
 	export function fieldTermMatch<T>(obj : T, term : string, ...fields : (keyof T)[]) : boolean
 	{
 		return fields.some(f => obj[f] && term === f);
