@@ -1,5 +1,7 @@
 using HtmlAgilityPack;
+using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Grimoire.Util;
 
@@ -32,11 +34,10 @@ public class ScraperClient
 			this.RateLimit = rateLimit.Value;
 	}
 
-
 	/// <summary>
 	/// Requests a resource from the HTTP server. Enforces rate limit.
 	/// </summary>
-	private async Task<Stream> getWebStreamAsync(string uri)
+	private async Task<Stream> sendAsync(HttpRequestMessage req)
 	{
 		var diff = RateLimit - (DateTime.Now - lastHit);
 
@@ -44,10 +45,10 @@ public class ScraperClient
 			await Task.Delay(diff);
 
 		lastHit = DateTime.Now;
-		var resp = await client.GetAsync(uri);
+		var resp = await client.SendAsync(req);
 
 		resp.EnsureSuccessStatusCode();
-		return await resp.Content.ReadAsStreamAsync();
+		return await resp.Content.ReadAsStreamAsync();		
 	}
 
 	/// <summary>
@@ -62,14 +63,14 @@ public class ScraperClient
 			if(!File.Exists(cacheFile))
 			{
 				using var f = File.Create(cacheFile);
-				using var data = await getWebStreamAsync(uri);
+				using var data = await sendAsync(new(HttpMethod.Get, uri));
 				await data.CopyToAsync(f);
 			}
 
 			return File.OpenRead(cacheFile);
 		}
 		else
-			return await getWebStreamAsync(uri);
+			return await sendAsync(new(HttpMethod.Get, uri));
 	}
 
 	public async Task<JsonDocument> GetJsonAsync(string uri)
@@ -89,5 +90,18 @@ public class ScraperClient
 			doc.Load(s);
 
 		return doc;
+	}
+
+	/// <summary>
+	/// POSTs a JSON api. Never caches.
+	/// </summary>
+	public async Task<JsonDocument> PostJsonAsync(string uri, JsonNode request)
+	{
+		var req = new HttpRequestMessage(HttpMethod.Post, uri) {
+			Content = JsonContent.Create(request)
+		};
+		using var str = await sendAsync(req);
+		
+		return await JsonDocument.ParseAsync(str);
 	}
 }

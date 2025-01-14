@@ -99,22 +99,40 @@ public static class Config
 				"overleaf" => OverleafSource.Parse(n.AsObject()!),
 				"latex" => LatexSource.Parse(n.AsObject()!),
 				"copy" => CopySource.Parse(n.AsObject()!),
+				"aon" => NethysSource.Parse(n.AsObject()),
 				var x => throw new FormatException($"Invalid source type {x.Show()}")
 			};
 	}
 
-	public sealed record DndWikiSource(TimeSpan? RateLimit, float CacheLifetime)
-		: Source(CacheLifetime)
+	public abstract record OnlineSource(TimeSpan? RateLimit, float CacheLifetime) : Source(CacheLifetime)
 	{
-		new internal static DndWikiSource Parse(JsonNode n)
+		new internal static (TimeSpan? rateLimit, float cacheLifetime) Parse(JsonNode n)
 		{
 			var o = n as JsonObject;
-			return new(
+			return (
 				(o is not null && o["rateLimit"] is JsonValue v)
 					? TimeSpan.FromMilliseconds((int)v)
 					: null ,
 				(float?)o?["cacheLifetime"] ?? float.PositiveInfinity
 			);
+		}
+	}
+
+	public sealed record NethysSource(TimeSpan? RateLimit, float CacheLifetime, bool Legacy) : Source(CacheLifetime)
+	{
+		new internal static NethysSource Parse(JsonNode n)
+		{
+			var (rl,cl) = OnlineSource.Parse(n);
+			return new(rl, cl, (bool?)(n as JsonObject)?["legacy"] ?? false);
+		}
+	}
+
+	public sealed record DndWikiSource(TimeSpan? RateLimit, float CacheLifetime) : Source(CacheLifetime)
+	{
+		new internal static DndWikiSource Parse(JsonNode n)
+		{
+			var (rl,cl) = OnlineSource.Parse(n);
+			return new(rl, cl);
 		}
 	}
 

@@ -26,6 +26,13 @@ public class Program
 		await JsonSerializer.SerializeAsync(f, value, JsonOptions);
 	}
 
+	private static string conjugate(int count)
+		=> count == 1 ? "" : "s";
+
+	private static string conjugate<T>(ICollection<T> xs)
+		=> conjugate(xs.Count);
+
+
 	private static async Task<(Config.Game game, int count)> processGame<TSpell>(IGame<TSpell> game) where TSpell : ISpell
 	{
 		var spellsByBook = game.Conf.Books.ToDictionary(x => x.Key, x => new List<TSpell>());
@@ -53,7 +60,7 @@ public class Program
 				Log.DEFAULT.Warn($"No spells for source '{game.Conf.Shorthand}/{kvp.Key}'");
 		}
 
-		Log.DEFAULT.Emit($"Parsed {total} spells for {game.Conf.Shorthand}.");
+		Log.DEFAULT.Emit($"Parsed {total} spell{conjugate(total)} for {game.Conf.Shorthand}.");
 		return (game.Conf, total);
 	}
 
@@ -62,6 +69,7 @@ public class Program
 		{
 			"dnd5e" => processGame(new DnD5e(conf)),
 			"gd" => processGame(new Goedendag(conf)),
+			"pf2e" => processGame(new Pf2e(conf)),
 			var s => throw new ArgumentException($"Invalid game shorthand: {s}")
 		};
 
@@ -72,7 +80,8 @@ public class Program
 
 		var games = Config.Parse(await File.ReadAllTextAsync(args.Length > 0 ? args[0] : "config.json")).Values;
 
-		Log.DEFAULT.Emit($"Processing {games.Count} games with {games.Sum(g => g.Books.Count)} sources...");
+		var sourceCount = games.Sum(g => g.Books.Count);
+		Log.DEFAULT.Emit($"Processing {games.Count} game{conjugate(games)} with {sourceCount} source{conjugate(sourceCount)}...");
 		Directory.CreateDirectory("db");
 		int total = 0;
 
@@ -91,7 +100,7 @@ public class Program
 			)
 		);
 
-		Log.DEFAULT.Emit($"Done processing {total} spells.");
+		Log.DEFAULT.Emit($"Done processing {total} spell{conjugate(total)}.");
 		return 0;
 
 		usage:
