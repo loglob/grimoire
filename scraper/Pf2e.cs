@@ -5,7 +5,7 @@ namespace Grimoire;
 
 public record class Pf2e(Config.Game Conf) : IGame<Pf2e.Spell>
 {
-	public Log Log => throw new NotImplementedException();
+	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
 
 	public enum Tradition
 	{
@@ -34,7 +34,7 @@ public record class Pf2e(Config.Game Conf) : IGame<Pf2e.Spell>
 	{
 		string ISpell.Source => source;
 	}
-	
+
 
 	Spell IGame<Spell>.ExtractLatexSpell(Compiler comp, Config.Book source, Chain<Token> code)
 		=> throw new NotImplementedException("Latex not supported on Pf2e");
@@ -43,7 +43,7 @@ public record class Pf2e(Config.Game Conf) : IGame<Pf2e.Spell>
 		=> src switch {
 			Config.CopySource c => new Copy<Spell>(this, c),
 			Config.NethysSource n => new AoN(Conf.Books.Values.ToArray(), n),
-			_ => throw new ArgumentException($"Illegal Source type for D&D 5e: {src}")
+			_ => throw new ArgumentException($"Illegal Source type for pf2e: {src}")
 		};
 
 }
