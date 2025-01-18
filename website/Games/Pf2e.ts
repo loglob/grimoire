@@ -221,11 +221,12 @@ namespace Games.Pf2e
 			const lim = (term[0] === 'L')
 				? term1.split('-').map(x => Number.parseInt(x))
 				: [];
+			const saves : {[k : string] : boolean } = { "will":true, "fortitude":true, "reflex":true }
 
 			return  infixOf(term, s.name)
 				|| [ s.range, s.area, s.duration, s.castingTime, ...s.tags, ...s.traditions ].some(x => x && same(x, term))
 				|| (this.isPrepared && term === "prepared" && this.isPrepared(s))
-				|| (s.save && infixOf(term, s.save))
+				|| (s.save && saves[term.toLowerCase()] && infixOf(term, s.save))
 				|| (term[0] === '$' && s.components && infixOf(term1, s.components))
 				|| (term[0] === '\\' && same(s.name, term1))
 				|| (lim.length == 1 && lim[0] == s.level)
