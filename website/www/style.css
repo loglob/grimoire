@@ -179,10 +179,15 @@ footer
 
 .silver
 {
-	color: #7D7D7D;	
+	color: #7D7D7D;
 }
 
 .copper
 {
 	color: #B87333;
+}
+
+img
+{
+	height: 1em;
 }

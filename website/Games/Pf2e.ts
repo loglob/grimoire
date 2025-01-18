@@ -36,10 +36,49 @@ namespace Games.Pf2e
 		page : number
 	}
 
-	/** Produces 2D key-value pairs of the spell's properties */
-	function fmtFields(spell : Spell, withTraditions : Boolean) : [string, string][][]
+	const Images : { [k : string] : string } = {
+		"Free Action": "/img/free action.png",
+		"Two Actions": "/img/1 action.png",
+		"Three Actions": "/img/2 action.png",
+		"Single Action": "/img/3 action.png",
+		"Reaction": "/img/reaction.png"
+	} as const
+
+	function fmtCastingTime(time : string) : Node|null
 	{
-		const out : [string,string][][] = [ ]
+		let op = time.split(" to ")
+
+		if(op.length == 2)
+		{
+			let l = fmtCastingTime(op[0])
+			let r = fmtCastingTime(op[1])
+
+			if(l && r)
+			{
+				let both = document.createElement("span")
+				both.append(l, " to ", r);
+				return both
+			}
+		}
+		else if(op.length == 1)
+		{
+			let path = Images[time]
+
+			if(path)
+			{
+				let out = document.createElement("img");
+				out.setAttribute("src", path);
+				return out;
+			}
+		}
+
+		return null
+	}
+
+	/** Produces 2D key-value pairs of the spell's properties */
+	function fmtFields(spell : Spell, withTraditions : Boolean) : [string, string|Node][][]
+	{
+		const out : [string,string|Node][][] = [ ]
 
 		function line(...xs : (keyof Spell | [keyof Spell, string])[])
 		{
@@ -74,7 +113,21 @@ namespace Games.Pf2e
 			out.push([[ "Traditions", spell.traditions.join(", ") ]])
 
 		out.push([[ "Level", (spell.tags.some(x => x.toLowerCase() == "cantrip") ? "Cantrip " : "Spell ") + spell.level ]])
-		out.push([[ "Cast", `${spell.castingTime} ${spell.components}` ]])
+
+		{
+			let t = fmtCastingTime(spell.castingTime)
+
+			if(t)
+			{
+				let sp = document.createElement("span")
+				sp.append(t, " ", spell.components)
+				out.push([[ "Cast", sp ]])
+			}
+			else
+				out.push([[ "Cast", `${spell.castingTime}; ${spell.components}` ]])
+
+		}
+
 
 		line([ "reaction", "Trigger" ])
 
