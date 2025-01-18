@@ -73,6 +73,7 @@ namespace Games.Pf2e
 		if(spell.traditions.length > 0 && withTraditions)
 			out.push([[ "Traditions", spell.traditions.join(", ") ]])
 
+		out.push([[ "Level", (spell.tags.some(x => x.toLowerCase() == "cantrip") ? "Cantrip " : "Spell ") + spell.level ]])
 		out.push([[ "Cast", `${spell.castingTime} ${spell.components}` ]])
 
 		line([ "reaction", "Trigger" ])
