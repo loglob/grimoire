@@ -44,7 +44,7 @@ namespace Games.Pf2e
 		function line(...xs : (keyof Spell | [keyof Spell, string])[])
 		{
 			const ln : [string,string][] = []
-			
+
 			for(const x of xs)
 			{
 				let name
@@ -96,11 +96,11 @@ namespace Games.Pf2e
 		const tags = child(attach, "div", "tag-list")
 
 		for (const tag of spell.tags)
-			child(tags, "div", "tag-box").innerText = tag	
+			child(tags, "div", "tag-box").innerText = tag
 	}
 
 	function createProperties(spell : Spell, details : Boolean, attach : HTMLElement)
-	{			
+	{
 		const fields = child(attach, "p")
 
 		for(const line of fmtFields(spell, details))
@@ -115,7 +115,7 @@ namespace Games.Pf2e
 				(details ? child(fields, "b") : fields).append(field[0]);
 				fields.append(" ");
 				(details ? fields : child(fields, "b")).append(field[1]);
-				
+
 				first = false;
 			}
 
@@ -154,7 +154,7 @@ namespace Games.Pf2e
 			createTagList(spell, div)
 			createProperties(spell, false, div)
 
-			child(div, "p").innerText = spell.description;
+			child(div, "div").innerHTML = spell.description;
 
 			child(div, "p", "subtle from").innerText = `${book} (pg. ${spell.page})`;
 
@@ -164,6 +164,9 @@ namespace Games.Pf2e
 		spellMatchesTerm(term: string, s: Spell): boolean
 		{
 			const term1 = term.substring(1);
+			const lim = (term[0] === 'L')
+				? term1.split('-').map(x => Number.parseInt(x))
+				: [];
 
 			return  infixOf(term, s.name)
 				|| [ s.range, s.area, s.duration, s.castingTime, ...s.tags, ...s.traditions ].some(x => x && same(x, term))
@@ -171,6 +174,8 @@ namespace Games.Pf2e
 				|| (s.save && infixOf(term, s.save))
 				|| (term[0] === '$' && s.components && infixOf(term1, s.components))
 				|| (term[0] === '\\' && same(s.name, term1))
+				|| (lim.length == 1 && lim[0] == s.level)
+				|| (lim.length == 2 && lim[0] <= s.level && s.level <= lim[1])
 				|| Util.fullTextMatch(term, s.description, s.reaction, s.summary)
 		}
 
@@ -185,7 +190,7 @@ namespace Games.Pf2e
 			createTagList(spell, div)
 			createProperties(spell, true, div)
 
-			child(div, "p").innerText = spell.description
+			child(div, "div").innerHTML = spell.description
 
 			child(div, "p", "subtle from").innerText = `${book} (pg. ${spell.page})`;
 		}

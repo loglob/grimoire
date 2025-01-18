@@ -1,3 +1,4 @@
+using Grimoire.Markdown;
 using Grimoire.Util;
 using System.Buffers;
 using System.Text.Json;
@@ -37,7 +38,7 @@ public record AoN(Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.S
 		int range,
 		string? area_raw,
 		string? saving_throw,
-		string text,
+		string markdown,
 		string[]? tradition,
 		string[] trait,
 		string summary,
@@ -108,7 +109,12 @@ public record AoN(Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.S
 			page = int.Parse(m.Groups[1].ValueSpan);
 		}
 
-		// TODO: process r.text
+		string desc;
+		{
+			// AoN markdown is shoddy, sometimes just plain invalid, and actually just HTML
+			var tx = r.markdown.Split("---", 2)[1];
+			desc = ToHtml.Convert(Markdown.Parser.ParseLines(tx));
+		}
 
 		return new Spell(
 			r.name, b.Shorthand,
@@ -119,7 +125,7 @@ public record AoN(Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.S
 			r.range_raw ?? "", r.range,
 			r.target,
 			r.area_raw, r.duration_raw, r.saving_throw,
-			r.trait, r.text,
+			r.trait, desc,
 			page
 		);
 	}
@@ -132,7 +138,7 @@ public record AoN(Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.S
 		{
 			var log = AoN.log.AddTags(b.Shorthand);
 			using var data = await cache.CacheFunc(
-				b.Shorthand, 
+				b.Shorthand,
 				() => client.PostJsonAsync("/aon/_search?stats=search", query(b.FullName))
 			);
 
@@ -158,7 +164,7 @@ public record AoN(Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.S
 				// The Elasticsearch query is a bit too lenient (i.e. "Player Core" also matches "Player Core 2")
 				if(!r.primary_source.Equals(b.FullName, StringComparison.CurrentCultureIgnoreCase))
 					continue;
-				
+
 				Spell s;
 
 				try
