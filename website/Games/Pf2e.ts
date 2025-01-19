@@ -239,8 +239,8 @@ namespace Games.Pf2e
 
 		details(spell: Spell, book : string, div: HTMLDivElement): void
 		{
-			child(div, "p", "subtle").innerText = spell.summary;
 			createTagList(spell, div)
+			child(div, "p", "subtle").innerText = spell.summary;
 			createProperties(spell, true, div)
 
 			child(div, "div").innerHTML = spell.description
