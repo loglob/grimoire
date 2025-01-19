@@ -48,6 +48,40 @@ public record AoN(Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.S
 		string? trigger
 	);
 
+	private class Post() : Markdown.PostProcessor
+	{
+		private static readonly HashSet<string> standardTags = [
+			"br", "ol", "ul", "li", "tr", "td", "table"
+		];
+
+		public string? translateClosingHtml(string tag)
+			=> standardTags.Contains(tag)
+				? null
+				: tag switch {
+					"title" => "</h4>",
+					"row" => "",
+					_ => throw new NotImplementedException($"Closing tag {tag} not handled!")
+				};
+
+		public string? translateOpeningHtml(Parser.OpenHtml html)
+			=> standardTags.Contains(html.tag)
+				? null
+				: html.tag switch {
+					"title" => (html.selfClosing || html.attributes.Keys.SingleOrDefault("-") != "level")
+						? throw new FormatException($"Invalid usage of <title>: {html}")
+						: "<h4>",
+					"actions" => (!html.selfClosing || html.attributes.Keys.SingleOrDefault("-") != "string")
+						? throw new FormatException($"Invalid usage of <action>: {html}")
+						: $"<img src=\"/img/{html.attributes.Values.Single()}.png\" />",
+					"row" => "<br/>",
+					"document" => "",
+					_ => throw new NotImplementedException($"Opening tag {html.tag} not handled!")
+				};
+
+		public Uri? translateURI(Uri original)
+			=> null; //throw new NotImplementedException($"Unhandled URI: {original}");
+	}
+
 	private record ObjectCtx(params string[] keys)
 	{
 		public static JsonObject operator *(ObjectCtx c, JsonNode? n)
@@ -113,7 +147,7 @@ public record AoN(Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.S
 		{
 			// AoN markdown is shoddy, sometimes just plain invalid, and actually just HTML
 			var tx = r.markdown.Split("---", 2)[1];
-			desc = ToHtml.Convert(Markdown.Parser.ParseLines(tx));
+			desc = Markdown.ToHtml.Convert(tx, new Post());
 		}
 
 		return new Spell(

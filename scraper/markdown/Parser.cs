@@ -1,3 +1,4 @@
+using Grimoire.Util;
 
 namespace Grimoire.Markdown;
 
@@ -8,6 +9,7 @@ namespace Grimoire.Markdown;
 	- headlines with `#`
 	- horizontal rules with `---`
 	- links
+	- arbitrary HTML tags
  */
 static class Parser
 {
@@ -17,6 +19,18 @@ static class Parser
 	internal record BeginLink() : Token(); // [
 	internal record EndLink(Uri Url) : Token(); // ](…)
 	internal record Text(string Content) : Token();
+	/// <param name="selfClosing"> If true, this tag closes itself. </param>
+	/// <param name="tag"> The specified tag name, in original case </param>
+	/// <param name="attributes">
+	/// 	The specified parameters
+	/// 	(!) maps onto RAW strings WITH escape sequences WITHOUT quotes
+	/// </param>
+	internal record OpenHtml(string tag, Dictionary<string,string> attributes, bool selfClosing) : Token()
+	{
+		public override string ToString()
+			=> $"OpenHtml {{ {nameof(tag)} = {tag}, {nameof(attributes)} = {attributes.Show()} , {nameof(selfClosing)} = {selfClosing}}}";
+	}
+	internal record CloseHtml(string tag) : Token();
 
 	internal abstract record Line();
 	internal record EmptyLine() : Line();
@@ -31,7 +45,136 @@ static class Parser
 	/// <returns></returns>
 	internal record PlainLine(List<Token> Content, bool LineBreak) : ContentLine(Content);
 
-	private static readonly char[] special = ['*', '_', '[', ']', '!', '\\'];
+	private static readonly char[] special = ['*', '_', '[', ']', '!', '\\', '<'];
+
+	private static int countWhile<T>(this ReadOnlySpan<T> data, Func<T, bool> pred)
+	{
+		int n = 0;
+
+		while(n < data.Length && pred(data[n]))
+			++n;
+
+		return n;
+	}
+
+	private static bool parseStringLiteral(ReadOnlySpan<char> content, out int n)
+	{
+		n = 0;
+
+		while(true)
+		{
+			if(n >= content.Length)
+				return false;
+			switch(content[n++])
+			{
+				case '\n':
+					return false;
+
+				case '"':
+					return true;
+
+				case '\\':
+					++n;
+				break;
+			}
+		}
+	}
+
+	/// <summary>
+	///  Accepts an identifier possibly preceded by spaces
+	/// </summary>
+	/// <param name="text"></param>
+	/// <param name="n"></param>
+	/// <returns></returns>
+	private static string? parseName(ReadOnlySpan<char> text, ref int n)
+	{
+		if(! char.IsLetter(nextNonSpace(text, ref n)))
+			return null;
+
+		var cur = text.Slice(n);
+		var l = cur.countWhile(char.IsLetterOrDigit);
+		n += l;
+
+		return cur.Slice(0, l).ToString();
+	}
+
+	private static char nextNonSpace(ReadOnlySpan<char> text, ref int n)
+	{
+		n += text.Slice(n).countWhile(char.IsWhiteSpace);
+
+		return n < text.Length ? text[n] : (char)0;
+	}
+
+	private static OpenHtml? parseOpeningHtml(ReadOnlySpan<char> text, out int n)
+	{
+		n = 1;
+
+		var tagName = parseName(text, ref n);
+
+		if(tagName is null)
+			return null;
+
+		var attr = new Dictionary<string, string>();
+
+		while(true)
+		{
+			switch(nextNonSpace(text, ref n))
+			{
+				case '>':
+				{
+					++n;
+					return new OpenHtml(tagName.ToString(), attr, false);
+				}
+				case '/':
+				{
+					++n;
+
+					if(n >= text.Length || text[n] != '>')
+						return null;
+
+					++n;
+
+					return new OpenHtml(tagName.ToString(), attr, true);
+				}
+				case (char)0:
+					return null;
+			}
+
+			var attrName = parseName(text, ref n);
+
+			if(attrName is null || nextNonSpace(text, ref n) != '=')
+				return null;
+
+			++n;
+
+			if(nextNonSpace(text, ref n) != '"')
+				return null;
+
+			++n;
+			var vStart = text.Slice(n);
+
+			if(! parseStringLiteral(vStart, out var vl))
+				return null;
+
+			n += vl;
+			attr[attrName] = vStart.Slice(0, vl - 1).ToString();
+		}
+	}
+
+	private static CloseHtml? parseClosingHtml(ReadOnlySpan<char> text, out int n)
+	{
+		n = 2;
+		var tagName = parseName(text, ref n);
+
+		if(tagName is null)
+			return null;
+
+		if(nextNonSpace(text, ref n) != '>')
+			return null;
+
+		++n;
+		return new(tagName);
+	}
 
 	private static List<Token> parseContent(ReadOnlySpan<char> text)
 	{
@@ -98,6 +241,13 @@ static class Parser
 					put = new Text(text[1].ToString());
 				break;
 
+				case '<':
+					put = ((text.Length > 1 && text[1] == '/')
+							? (Token?)parseClosingHtml(text, out cut)
+							: parseOpeningHtml(text, out cut)
+						) ?? throw new FormatException($"Invalid HTML tag: {text}");
+				break;
+
 				default:
 					throw new InvalidOperationException();
 			}
@@ -160,8 +310,6 @@ static class Parser
 
 		return true;
 	}
-
-
 
 	/// <summary>
 	///  Lexes a single line

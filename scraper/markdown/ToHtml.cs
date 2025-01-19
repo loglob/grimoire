@@ -1,18 +1,11 @@
-
-
-using HtmlAgilityPack;
-using System.Data;
-using System.Formats.Asn1;
-using System.Net;
 using System.Text;
-using System.Web;
 using static Grimoire.Markdown.Parser;
 
 namespace Grimoire.Markdown;
 
 static class ToHtml
 {
-	private sealed class Inner(StringBuilder content)
+	private sealed class Inner(PostProcessor post, StringBuilder content)
 	{
 		private enum Tag { EM, STRONG };
 
@@ -52,19 +45,29 @@ static class ToHtml
 				throw new FormatException($"Unmatched <{t.ToString().ToLower()}>" + (state.Count > 0 ? $" (and {state.Count} more tags)" : ""));
 		}
 
-		void convert(Parser.Token tk)
+		void convert(Token tk)
 		{
 			if(nested is not null)
 			{
-				if(tk is Parser.BeginLink)
+				if(tk is BeginLink)
 					throw new FormatException("Nested <a> tags");
-				else if(tk is Parser.EndLink el)
+				else if(tk is EndLink el)
 				{
 					nested.checkEnd();
-					// there seems to be no method that encodes " in URIs?!
-					content.Append($"<a href=\"{el.Url}\">");
-					content.Append(nested.content);
-					content.Append("</a>");
+					var uri = post.translateURI(el.Url);
+
+					if(uri is not null)
+					{
+						content.Append("<a href=\"");
+						// there is no builtin method to do this for XML?
+						content.Append(uri.ToString().Replace("\"", "%22"));
+						content.Append("\">");
+						content.Append(nested.content);
+						content.Append("</a>");
+					}
+					else
+						content.Append(nested.content);
+
 					nested = null;
 				}
 				else
@@ -73,21 +76,63 @@ static class ToHtml
 				return;
 			}
 
-			if(tk is Parser.ToggleItalic)
+			if(tk is ToggleItalic)
 				toggle(Tag.EM);
-			else if(tk is Parser.ToggleBold)
+			else if(tk is ToggleBold)
 				toggle(Tag.STRONG);
-			else if(tk is Parser.BeginLink) // use a nested buffer because the href is at the end in MD but the start in HTML
-				nested = new Inner(new());
-			else if(tk is Parser.EndLink el)
+			else if(tk is BeginLink) // use a nested buffer because the href is at the end in MD but the start in HTML
+				nested = new Inner(post, new());
+			else if(tk is EndLink el)
 				throw new FormatException("Orphaned '](…)'");
-			else if(tk is Parser.Text tx)
+			else if(tk is Text tx)
 				// for some reason, AoN uses HTML mixed with markdown, instead of just HTML
 				content.Append(tx.Content);
 				// content.Append(HttpUtility.HtmlEncode(tx.Content));
+			else if(tk is OpenHtml oh)
+			{
+				var code = post.translateOpeningHtml(oh);
+
+				if(code is not null)
+					content.Append(code);
+				else
+				{
+					content.Append('<');
+					content.Append(oh.tag);
+
+					foreach(var entry in oh.attributes)
+					{
+						content.Append(' ');
+						content.Append(entry.Key);
+						content.Append("=\"");
+						content.Append(entry.Value);
+						content.Append('"');
+					}
+
+					if(oh.selfClosing)
+						content.Append('/');
+
+					content.Append('>');
+				}
+			}
+			else if(tk is CloseHtml ch)
+			{
+				var code = post.translateClosingHtml(ch.tag);
+
+				if(code is not null)
+					content.Append(code);
+				else
+				{
+					content.Append('<');
+					content.Append('/');
+					content.Append(ch.tag);
+					content.Append('>');
+				}
+			}
+			else
+				throw new InvalidOperationException($"Impossible token: {tk}");
 		}
 
-		public void convert(IEnumerable<Parser.Token> tokens)
+		public void convert(IEnumerable<Token> tokens)
 		{
 			foreach(var tk in tokens)
 				convert(tk);
@@ -97,7 +142,7 @@ static class ToHtml
 
 	}
 
-	private class Outer(StringBuilder content)
+	private class Outer(PostProcessor post, StringBuilder content)
 	{
 		private abstract record Tag(string HtmlName)
 		{
@@ -167,34 +212,34 @@ static class ToHtml
 				pop();
 		}
 
-		private void convert(Parser.Line line)
+		private void convert(Line line)
 		{
 			content.AppendLine();
 
-			if(line is Parser.EmptyLine)
+			if(line is EmptyLine)
 				close();
 			else if(line is Parser.Rule)
 			{
 				close();
 				content.Append("<hr />");
 			}
-			else if(line is Parser.ListItem li)
+			else if(line is ListItem li)
 			{
 				pushList(li.Depth, false);
 				content.Append("<li> ");
-				new Inner(content).convert(li.Content);
+				new Inner(post, content).convert(li.Content);
 				content.Append(" </li>");
 			}
-			else if(line is Parser.Headline hl)
+			else if(line is Headline hl)
 			{
 				content.Append($"<h{hl.Level}> ");
-				new Inner(content).convert(hl.Content);
+				new Inner(post, content).convert(hl.Content);
 				content.Append($" </h{hl.Level}>");
 			}
-			else if(line is Parser.PlainLine pl)
+			else if(line is PlainLine pl)
 			{
 				pushParagraph();
-				new Inner(content).convert(pl.Content);
+				new Inner(post, content).convert(pl.Content);
 
 				if(pl.LineBreak)
 					content.Append(" <br/>");
@@ -203,7 +248,7 @@ static class ToHtml
 				throw new InvalidOperationException();
 		}
 
-		public void convert(IEnumerable<Parser.Line> line)
+		public void convert(IEnumerable<Line> line)
 		{
 			foreach (var ln in line)
 				convert(ln);
@@ -212,10 +257,11 @@ static class ToHtml
 		}
 	}
 
-	public static string Convert(IEnumerable<Parser.Line> parsed)
+	public static string Convert(string markdown, PostProcessor post)
 	{
+		var p = Parser.ParseLines(markdown.AsSpan());
 		var sb = new StringBuilder();
-		new Outer(sb).convert(parsed);
+		new Outer(post, sb).convert(p);
 		return sb.ToString();
 	}
 }

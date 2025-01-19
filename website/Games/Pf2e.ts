@@ -36,12 +36,12 @@ namespace Games.Pf2e
 		page : number
 	}
 
-	const Images : { [k : string] : string } = {
-		"Free Action": "/img/free action.png",
-		"Two Actions": "/img/1 action.png",
-		"Three Actions": "/img/2 action.png",
-		"Single Action": "/img/3 action.png",
-		"Reaction": "/img/reaction.png"
+	const Images : { [k : string] : boolean } = {
+		"Free Action": true,
+		"Two Actions": true,
+		"Three Actions": true,
+		"Single Action": true,
+		"Reaction": true
 	} as const
 
 	function fmtCastingTime(time : string) : Node|null
@@ -62,12 +62,10 @@ namespace Games.Pf2e
 		}
 		else if(op.length == 1)
 		{
-			let path = Images[time]
-
-			if(path)
+			if(Images[time])
 			{
 				let out = document.createElement("img");
-				out.setAttribute("src", path);
+				out.setAttribute("src", `/img/${time}.png`);
 				return out;
 			}
 		}

@@ -164,7 +164,7 @@ internal static class Extensions
 			null => "null" ,
 			char c => $"'{c}'" ,
 			string s => Show(s) ,
-			IDictionary d => "{ " + string.Join(", ", unpack(d.Values).Select(x => Show(x) + " -> " + Show(d[x]))) + " }" ,
+			IDictionary d => "{ " + string.Join(", ", unpack(d.Keys).Select(x => Show(x) + " -> " + Show(d[x]))) + " }" ,
 			IEnumerable l => "[ " + string.Join(", ", unpack(l).Select(Show)) + " ]",
 			_ => any.ToString()!
 		};
