@@ -83,9 +83,9 @@ namespace UI
 				return;
 			}
 
-			// without any "from" parameters, preload the first book listed in the index
+			// without any "from" parameters, preload the first three book listed in the index
 			if(preload === null)
-				preload = [ Object.keys(this.books)[0] ]
+				preload = Object.keys(this.books).slice(0, 3)
 
 			for (const id in this.books)
 			{
