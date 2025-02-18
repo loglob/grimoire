@@ -46,6 +46,54 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string Source
 	) : ISpell;
 
+	private string processCastTime(string spell, string ct, ref bool reaction)
+	{
+		var pieces = ct.Split("\\action");
+		var log = Log.AddTags(spell);
+		var _reaction = false;
+
+		for(int i = 1; i < pieces.Length; ++i)
+		{
+			var cursor = pieces[i].AsSpan();
+
+			if(cursor.Length > 0 && cursor[0] == '*')
+			{
+				_reaction = true;
+				cursor = cursor.Slice(1);
+			}
+
+			string acp;
+
+			if(cursor.Length > 0 && cursor[0] == '[')
+			{
+				int cl = cursor.IndexOf(']');
+
+				if(cl < 0)
+					throw new FormatException("Unterminated [] in casting time");
+				
+				acp = cursor.Slice(1, cl - 1).ToString();
+				cursor = cursor.Slice(cl + 1);
+			}
+			else
+			{
+				log.Warn("Casting time uses plain \\action");
+				acp = "1";
+			}
+
+			pieces[i] = acp + " AcP" + cursor.ToString();
+		}
+
+		if(_reaction)
+		{
+			if(reaction)
+				log.Warn("Mixing legacy (R) and new \\action*");
+
+			reaction = true;
+		}
+		
+		return string.Join("", pieces);
+	}
+
 	public Spell ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
 	{
 		if(body.Args(0, 3) is not ([ var _name, var _tag, var _prop ], var _extra) || _name is null || _tag is null || _prop is null)
@@ -83,6 +131,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			[_, "ele",  _] => Arcanum.Elementalism,
 			[_, "charm",  _] => Arcanum.Charms,
 			[_, "divine",  _] => Arcanum.Divine,
+			[_, "div",  _] => Arcanum.Divine,
 			[_, "conj", _] => Arcanum.Conjuration,
 			[_, "wytch", _] => Arcanum.Wytch,
 			_ => throw new FormatException($"Unexpected label format {tag.Show()}")
@@ -126,8 +175,10 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				extra = e.Trim();
 		}
 
+		var ct = processCastTime(name, prop["casting-time"], ref reaction);
+
 		return new(name, arcanum, Enum.Parse<PowerLevel>(prop["power-level"]), combat, reaction,
-			prop["distance"], prop["duration"], prop["casting-time"], prop["components"], prop["brief"],
+			prop["distance"], prop["duration"], ct, prop["components"], prop["brief"],
 			prop["effect"], prop["crit"], prop["fail"], extra, book.Shorthand);
 	}
 

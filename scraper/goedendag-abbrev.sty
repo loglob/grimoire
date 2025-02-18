@@ -1,0 +1,73 @@
+\usepackage{etoolbox}
+\usepackage{xspace}
+
+% true if abbrev-legend.tex was included and we should insert hyperrefs there
+\newtoggle{ReferenceAbbrevLegend}
+% which source names to print
+
+% Inserts a reference to a abbrev-legend line iff that file was included. Otherwise just echos #2
+% #1 - Name of the unit to reference matching a label in abbrev-legend
+% #2 - The text to insert
+\newcommand{\unitref}[2]{{%
+    \iftoggle{ReferenceAbbrevLegend}{%
+        \hyperref[ab:#1]{#2}%
+    }{#2}%
+}}
+
+% Distance ________________________________________________________________________________
+\newcommand{\cm}{\unitref{cmeter}{[cm]}\xspace}%{Meters, 2m = 1 Tile}}
+\newcommand{\m}{\unitref{meter}{[m]}\xspace}%{Meters, 2m = 1 Tile}}
+\newcommand{\km}{\unitref{kmeter}{[km]}\xspace}%{Meters, 2m = 1 Tile}}
+
+% Volume ________________________________________________________________________________
+\newcommand{\drop}{\unitref{drop}{[drop]}\xspace}%{Millilitres}}
+\newcommand{\ml}{\unitref{ml}{[ml]}\xspace}%{Millilitres}}
+\newcommand{\litre}{\unitref{l}{[l]}\xspace}%{Litre}}
+
+% Time ________________________________________________________________________________
+\newcommand{\s}{\unitref{second}{[s]}\xspace}%{seconds}}
+\newcommand{\minute}{\unitref{minute}{[min]}\xspace}%{minutes}}
+\newcommand{\h}{\unitref{hour}{[h]}\xspace}%{hours}}
+\newcommand{\days}{\unitref{day}{[d]}\xspace}%{days}}
+\newcommand{\w}{\unitref{week}{[w]}\xspace}%{weeks}}
+\newcommand{\Mo}{\unitref{month}{[M]}\xspace}%{Month}}
+\newcommand{\Round}{\unitref{round}{[rounds]}\xspace}%{1 Round = 3 seconds}}
+\newcommand{\Turns}{\unitref{turn}{[turns]}\xspace}%{Turn: Your initiative in a round}}
+
+% Weight ________________________________________________________________________________
+\newcommand{\gr}{\unitref{gr}{[g]}\xspace}%{Grams}}
+\newcommand{\kgr}{\unitref{kgr}{[kg]}\xspace}%{KiloGrams}}
+\newcommand{\tons}{\unitref{ton}{[t]}\xspace}%{Tons}}
+
+% Money _____________________________________________________________________________________
+\newcommand{\coin}[2]{{\gdSerif\bfseries\color{#1}\raisebox{-1pt}{\resizebox{.9em}{.9em}{\raisebox{\depth}{#2}}}}}
+\newcommand{\Au}{\coin{gold}{Ⓖ}\xspace}
+\newcommand{\Ag}{\coin{silver}{Ⓢ}\xspace}
+\newcommand{\Cu}{\coin{copper}{Ⓒ}\xspace}
+
+% Rules ________________________________________________________________________________
+\newcommand{\DV}{\unitref{dv}{DV}\xspace}%{Difficulty Value, must be exceeded to succeed}}
+\newcommand{\Sk}{\unitref{skill}{Sk}\xspace}%{The bonus of that skill}}
+\newcommand{\B}{\unitref{bonus}{B}\xspace}%{Any additional bonus}}
+\newcommand{\IP}{\unitref{ip}{IP}\xspace}%{Improvement Points}}
+\newcommand{\GM}{\unitref{gm}{GM}\xspace}%{Game Master (The person running the game)}}
+
+% Combat ________________________________________________________________________________
+\newcommand{\AP}{\unitref{ap}{\includegraphics[height=0.9em]{img/AP_Symbol.png}}\xspace}%{Armor Points}}
+\newcommand{\AcP}{{\action}\xspace}
+\newcommand{\R}{\unitref{r}{\gdSection(R)}\xspace}
+\newcommand{\Com}{\unitref{comb}{\gdSection(C)}\xspace}
+\newcommand{\p}{\unitref{p}{\gdSection(P)}\xspace}
+\newcommand{\RE}{\unitref{re}{\gdSection(Re)}\xspace}
+\newcommand{\LE}{\unitref{le}{\gdSection(Le)}\xspace}
+\newcommand{\VA}{\unitref{va}{\gdSection(Va)}\xspace}
+
+% Spells ________________________________________________________________________________
+\newcommand{\con}{\unitref{con}{\gdTitle\textsuperscript{C}}\xspace}
+\newcommand{\use}{\unitref{use}{\gdTitle\textsuperscript{U}}\xspace}
+\newcommand{\comb}{\unitref{comb}{\gdSection(C)}\xspace}
+
+% Rule Books ________________________________________________________________________
+\newcommand{\CR}{\unitref{cr}{{\gdTitle CR}}\xspace}
+\newcommand{\TOC}{\unitref{toc}{{\gdTitle ToC}}\xspace}
+\newcommand{\ANA}{\unitref{ana}{{\gdTitle A\&A}}\xspace}
