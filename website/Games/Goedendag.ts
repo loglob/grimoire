@@ -12,7 +12,8 @@ namespace Games.Goedendag
 		Charms: 3,
 		Conjuration: 4,
 		Divine: 5,
-		Ritual: 6
+		Ritual: 6,
+		Wytch: 7
 	} as const;
 
 	export const PowerLevelDCs = {
