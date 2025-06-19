@@ -6,6 +6,7 @@ public abstract class Log
 	private class Endpoint(TextWriter dest) : Log
 	{
 		private ( bool onPin, int width ) pinState = (false, 0);
+		new public bool disablePins = false;
 
 		public void write(string message)
 		{
@@ -26,6 +27,9 @@ public abstract class Log
 
 		override public void Pin(string message)
 		{
+			if(disablePins)
+				return;
+
 			lock(this)
 			{
 				if(pinState.onPin)
@@ -59,7 +63,10 @@ public abstract class Log
 	protected abstract void write(string mode, string message);
 	public abstract void Pin(string message);
 
-	public static readonly Log DEFAULT = new Endpoint(Console.Out);
+	private static readonly Endpoint _DEFAULT = new Endpoint(Console.Out);
+	public static Log DEFAULT => _DEFAULT; 
+	public static void disablePins()
+		=> _DEFAULT.disablePins = true;
 
 	private Log()
 	{}

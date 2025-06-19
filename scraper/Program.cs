@@ -9,7 +9,7 @@ public class Program
 {
 	private record class GameIndex(string fullName, Dictionary<string, string> books);
 
-	public const string USAGE = @"USAGE: {0} [<config.json>]";
+	public const string USAGE = @"USAGE: {0} [<-n|--noprogress>] [<config.json>]";
 
 	public static readonly JsonSerializerOptions JsonOptions = new() {
 		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -73,12 +73,35 @@ public class Program
 			var s => throw new ArgumentException($"Invalid game shorthand: {s}")
 		};
 
-	public static async Task<int> Main(string[] args)
+	public static async Task<int> Main(string[] allArgs)
 	{
-		if(args.Length > 1 || (args.Length == 1 && (args[0] == "-h" || args[0] == "--help")))
+		var args = new ArraySegment<string>(allArgs);
+		bool moreArgs = true;
+
+		while(args.Count >= 1 && moreArgs) 
+		{
+			switch(args[0])
+			{
+				case "-n":
+				case "--noprogress":
+					Log.disablePins();
+					args = args.Slice(1);
+				continue;
+
+
+				case "-h":
+				case "--help":
+					goto usage;
+
+				default:
+					moreArgs = false;
+				break;
+			}
+		}
+		if(args.Count > 1)
 			goto usage;
 
-		var games = Config.Parse(await File.ReadAllTextAsync(args.Length > 0 ? args[0] : "config.json")).Values;
+		var games = Config.Parse(await File.ReadAllTextAsync(args.Count > 0 ? args[0] : "config.json")).Values;
 
 		var sourceCount = games.Sum(g => g.Books.Count);
 		Log.DEFAULT.Emit($"Processing {games.Count} game{conjugate(games)} with {sourceCount} source{conjugate(sourceCount)}...");
