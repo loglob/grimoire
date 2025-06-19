@@ -80,7 +80,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 					return await session.GetDocumentByID(f.ID);
 				}
-			).Select(kvp => (kvp.key, val: new ArraySegment<Token>(lex.Tokenize(kvp.val, kvp.key))))
+			).Select(kvp => (kvp.key, val: lex.Tokenize(kvp.val, kvp.key)))
 			.Select(kvp => (kvp.key, val: kvp.val.DocumentContents() ?? kvp.val))
 			.ToDictionaryAsync(kvp => kvp.key, kvp => kvp.val);
 

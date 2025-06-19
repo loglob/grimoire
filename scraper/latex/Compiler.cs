@@ -17,7 +17,11 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// <param name="replacement"> The code to insert on expansion </param>
 	/// <param name="force"> If true, this macro cannot be overwritten with \renewcommand </param>
 	/// <returns></returns>
-	internal sealed record Macro(int argc, ArraySegment<Token>? opt, ArraySegment<Token> replacement, bool force = false);
+	internal sealed record Macro(ArgType[] args, CodeSegment replacement, bool force = false)
+	{
+		public Macro(ArgType[] args, Token[] replacement, bool force = false) : this(args, new CodeSegment(replacement), force)
+		{}
+	}
 
 	public enum KnownEnvironments
 	{
@@ -29,26 +33,26 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	private static Macro tagWrap(string tag)
 	{
 		var pos = new Position("builtin/tagWrap", 0, 0);
-		return new(1, null, new Token[]{ new HtmlChunk($"<{tag}>", pos), new ArgumentRef(1, pos), new HtmlChunk($"</{tag}>", pos) });
+		return new([ new MandatoryArg() ], [ new HtmlChunk($"<{tag}>", pos), new ArgumentRef(1, pos), new HtmlChunk($"</{tag}>", pos) ]);
 	}
 
 	private static Macro translate(char c)
-		=> new(0, null, new Token[] { new Character(c, new("builtin/translate", 0, 0)) });
+		=> new([], [ new Character(c, new("builtin/translate", 0, 0)) ]);
 
 	private static Macro constant(string html)
-		=> new(0, null, new Token[]{ new HtmlChunk(html, new("builtin/constant", 0, 0)) });
+		=> new([], [ new HtmlChunk(html, new("builtin/constant", 0, 0)) ]);
 
 	private static Macro discard()
-		=> new(0, null, Array.Empty<Token>());
+		=> new([], Array.Empty<Token>());
 
 	private static Macro hyperref(Config.LatexOptions conf)
 	{
 		var p0 = new Position("builtin/hyperref", 0, 0);
 
 		if(conf.Pdf is null)
-			return new(2, [], new([ new ArgumentRef(2, p0) ]));
+			return new([ new OptionalArg(), new MandatoryArg() ], [ new ArgumentRef(2, p0) ]);
 
-		return new(2, new([]), new([
+		return new([ new OptionalArg(), new MandatoryArg() ], [
 			new ToggleMode(OutputMode.HTML_ONLY, p0),
 			new HtmlChunk("<a href=\"" + conf.Pdf + "#nameddest=", p0),
 			new ArgumentRef(1, p0),
@@ -58,7 +62,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 			new ToggleMode(OutputMode.HTML_ONLY, p0),
 			new HtmlChunk("</a>", p0),
 			new ToggleMode(OutputMode.NORMAL, p0)
-		]));
+		]);
 	}
 
 	/// <summary>
@@ -88,7 +92,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		{ "newpage", discard() },
 		{ "rowstyle", discard() },
 		{ "hyperref", hyperref(Conf) },
-		{ "newline", new(0, null, new Token[]{ new BackBack(new("builtin/newline", 0, 0)) }) }
+		{ "newline", new([], [ new BackBack(new("builtin/newline", 0, 0)) ]) }
 	};
 
 	internal readonly Token[]? upcastAnchor = Conf.UpcastAnchor is string ua ? new Lexer(Log).TokenizeUnchecked(new[]{ ua }, "builtin/upcast anchor") : null;
@@ -118,76 +122,145 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		}
 	}
 
+
 	/// <summary>
-	///  Extracts a macro definition
+	///  Extracts a macro definition from a \(re)newcommand
 	/// </summary>
-	/// <param name="offset"> The index of the initial \(re)newcommand </param>
-	private (string? name, Macro? m, int e) extractMacro(ArraySegment<Token> chain, int offset, bool pin)
+	/// <param name="pos"> Reference position for error logging </param>
+	/// <param name="code"> Positioned exactly AFTER the initial \*newcommand </param>
+	private (string name, Macro macro)? extractMacro(Position pos, ref CodeSegment code, bool force)
 	{
-		var tk0 = chain[offset];
+		var nameArg = code.popArg();
 
-		int s, l, e;
-		(s, l, e) = chain.LocateArg(offset + 1);
-
-		if(s < 0)
+		if(! nameArg.HasValue)
 		{
-			Log.Warn($"No macro name after {tk0.At}, ignoring it");
-			return (null, null, offset + 1);
+			Log.Warn($"Ignoring incomplete macro definition at {pos}");
+			return null;
 		}
 
-		var nameTk = chain.Slice(s,l);
-
-		if(nameTk.Count(x => x is not WhiteSpace) != 1 || nameTk.FirstOrDefault(x => x is not WhiteSpace, null) is not MacroName name)
+		if(nameArg.Value.Items().SingleOrNull() is not MacroName name)
 		{
-			Log.Warn($"Invalid macro name '{Lexer.Untokenize(nameTk)}' at {tk0.Pos}, ignoring this definition");
-			return (null, null, e);
+			Log.Warn($"Invalid macro name '{Lexer.Untokenize(nameArg.Value)}' at {pos}, ignoring this definition");
+			return null;
 		}
 
-		var (args, ee) = chain.LocateArgs(e, 2, 3);
+		var arityArg = code.popOptArg();
+		int arity;
 
-		int arity = 0;
-		ArraySegment<Token>? opt = null;
-
-		if(args[0].index >= 0)
+		if(! arityArg.HasValue)
+			arity = 0;
+		else if(!int.TryParse(Lexer.Untokenize(arityArg.Value).Trim(), out arity) || arity < 0)
 		{
-			var str = Lexer.Untokenize(chain.Slice(args[0].index, args[0].len));
+			Log.Warn($"Ignoring invalid arity spec '{arityArg}' at {pos}");
+			arity = 0;
+		}
 
-			if(! int.TryParse(str, out arity) || arity < 0)
+		var defaultVal = code.popOptArg();
+
+		if(defaultVal.HasValue && arity == 0)
+		{
+			Log.Warn($"Macro defined at {pos} takes no arguments but has a default argument.");
+			defaultVal = null;
+		}
+
+		// only accept braced definitions
+		var body = code.popArg(false);
+
+		if(! body.HasValue)
+		{
+			Log.Warn($"Ignoring incomplete macro definition at {pos}");
+			return null;
+		}
+
+		return (name.Macro, new Macro( ArgType.SimpleSignature( arity, defaultVal ), body.Value, force ));
+	}
+
+	/// <summary>
+	///  Extracts a macro definition from a \*DocumentCommand declaration
+	/// </summary>
+	/// <param name="pos"> Reference position for error logging </param>
+	/// <param name="code"> Positioned exactly AFTER the initial \*DocumentCommand </param>
+	private (string name, Macro macro)? extractXParseMacro(Position pos, ref CodeSegment code, bool force)
+	{
+		var nameArg = code.popArg();
+
+		if(! nameArg.HasValue)
+		{
+			Log.Warn($"Ignoring incomplete macro definition at {pos}");
+			return null;
+		}
+		if(nameArg.Value.SingleOrNull() is not MacroName name)
+		{
+			Log.Warn($"Invalid macro name '{Lexer.Untokenize(nameArg.Value)}' at {pos}, ignoring this definition");
+			return null;
+		}
+
+		var spec = code.popArg(false);
+		var body = code.popArg(false);
+
+		if(!spec.HasValue || !body.HasValue)
+		{
+			Log.Warn($"Ignoring incomplete macro at ${pos}");
+			return null;
+		}
+
+		var args = new List<ArgType>();
+		var s = spec.Value;
+
+		while(s.IsNotEmpty)
+		{
+			var head = s.pop()[0];
+
+			if(head is WhiteSpace)
+				continue;
+			if(head is Character c) switch(c.Char)
 			{
-				arity = 0;
-				Log.Warn($"Ignoring invalid arity spec '{str}' at {tk0.Pos}");
+				case 'm':
+					args.Add(new MandatoryArg());
+				continue;
+
+				case 'o':
+					args.Add(new OptionalArg());
+				continue;
+
+				case 'O':
+				{
+					var inner = s.popArg(false);
+
+					if(! inner.HasValue)
+					{
+						Log.Warn($"Incomplete O argument spec at {head.Pos}");
+						return null;
+					}
+
+					args.Add(new OptionalArg(inner.Value));
+				}
+				continue;
+
+				case 's':
+					args.Add(new StarArg());
+				continue;
 			}
+
+			Log.Warn($"Unsupported argument spec: {head} at {head.Pos}");
+			return null;
 		}
 
-		if(args[1].index >= 0)
-		{
-			opt = chain.Slice(args[1].index, args[1].len);
-
-			if(arity == 0)
-			{
-				arity = 1;
-				Log.Warn($"Optional argument with incorrect arity at {tk0.Pos}");
-			}
-		}
-
-		if(args[2].index < 0)
-		{
-			Log.Warn($"Macro definition for {name} without body at {tk0.Pos}, ignoring it");
-			return (null, null, ee);
-		}
-
-		return (name.Macro, new Macro(arity, opt, chain.Slice(args[2].index, args[2].len), pin), ee);
+		return (name.Macro, new Macro( args.ToArray(), body.Value, force ));
 	}
 
 	private static void putTrace(Stack<MacroName> trace)
 		=> Console.Error.WriteLine("	stack trace: " + string.Join(" < ", trace.Select(x => x.At)));
 
-	private CodeSegment insertArgs(ArraySegment<Token> inp, CodeSegment[] argv, Stack<MacroName> trace)
+	/// <summary>
+	///  Expands ArgumentRef (#1, #2, ...) tokens
+	/// </summary>
+	private CodeSegment insertArgs(CodeSegment inp, CodeSegment[] argv, Stack<MacroName> trace)
 	{
 		var builder = new ChainBuilder<Token>();
 		int last = 0;
 
-		foreach (var i in inp.FindIndices(x => x is ArgumentRef))
+		foreach (var i in inp.Items().FindIndices(x => x is ArgumentRef))
 		{
 			builder.Append(inp.Slice(last, i - last));
 
@@ -219,133 +292,206 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		if(--gas <= 0)
 			throw new TimeoutException("Maximum expansion count exceeded");
 
-		// index of the first entry requiring write-back
-		int w = 0;
+		// slice that is fully written back. Always shared a right edge with the current `inp`
+		var rest = inp;
 
-		for(int i = 0; i < inp.Length;)
+		while(inp.IsNotEmpty)
 		{
-			if(inp[i] is ArgumentRef)
+			var head = inp.pop()[0];
+
+			if(head is ArgumentRef)
 			{
-				Log.Warn($"Unexpanded argument ref {inp[i].At}");
+				Log.Warn($"Unexpanded argument ref {head.At}");
 				putTrace(trace!);
+				// the token is discarded later during HTML generation
 			}
 
-			if(inp[i] is not MacroName m)
-			{
-				++i;
+			// tokens will be written back later
+			if(head is not MacroName m)
 				continue;
-			}
 
-			if(i > w) // write-back
-				builder.Append(inp.Slice(w, i - w));
+			// perform writeback (without head) (overwrite rest later)
+			var w = rest.Length - inp.Length - 1;
+
+			if(w > 0)
+				builder.Append(rest.Slice(0, w));
 
 			if(m.Macro == "includegraphics")
 			{
-				var (imgArgs, end) = inp.LocateArgs(i + 1, 1, 2);
-				w = i = end;
-				var (s, l) = imgArgs[1];
+				// optional arg indicates LaTeX-side image side, we just ignore it
+				var args = inp.parseArguments([ new OptionalArg(), new MandatoryArg() ]);
+				rest = inp;
 
-				if(s < 0)
+				if(args is null)
 				{
-					Log.Warn($"Discarding invalid {m.At}");
+					Log.Warn($"Discarding incomplete {m.At}");
 					continue;
 				}
 
-				var file = Lexer.Untokenize(inp.Items().Skip(s).Take(l)).Trim();
+				var file = Lexer.Untokenize(args[1]);
 
 				if(Conf.Images is null || !(Conf.Images.TryGetValue(file, out var replace) || Conf.Images.TryGetValue(Path.GetFileName(file), out replace)))
-				{
 					Log.Warn($"Discarding use of unknown image '{file}' at {m.Pos}");
+				else
+					builder.Append( new HtmlChunk(replace, new("builtin/images", 0, 0)) );
+			}
+			else if(! macros.TryGetValue(m.Macro, out var def))
+			{
+				Log.Warn($"Unknown macro {m.At}, discarding it");
+				rest = inp;
+			}
+			else
+			{
+				var args = inp.parseArguments(def.args);
+				rest = inp;
+
+				if(args is null)
+				{
+					Log.Warn($"Discarding incomplete use of {m.At}");
 					continue;
 				}
 
-				builder.Append( new HtmlChunk(replace, new("builtin/images", 0, 0)) );
-				continue;
-			}
-			if(! macros.TryGetValue(m.Macro, out var def))
-			{
-				Log.Warn($"Unknown macro {m.At}, discarding it");
-				++w;
-				++i;
-				continue;
-			}
-
-			var (args, e) = inp.LocateArgs(i + 1, def.opt is null ? 0 : 1, def.argc);
-			bool warned = false;
-			var argVals = args.Select((il,j) => {
-				if(il.index >= 0)
-					return inp.Slice(il.index, il.len);
-				else if(j == 0 && def.opt is ArraySegment<Token> opt)
-					return new Chain<Token>(opt);
-				else
+				if(Debug)
 				{
-					if(! warned)
-					{
-						Log.Warn($"Partial call to {m.At} missing argument #{j+1}.");
-						putTrace(trace!);
-						Log.Note($"Macro defined at: {def.replacement.PosRange()}");
-					}
+					Console.Error.WriteLine($"[TRACE] Expanding {m.At} to '{Lexer.Untokenize(def.replacement)}'");
+					int j = 0;
 
-					warned = true;
-					return CodeSegment.Empty;
+					foreach(var x in args)
+						Console.Error.WriteLine($"[TRACE]     Argument #{++j}: {Lexer.Untokenize(x)}");
 				}
-			}).ToArray();
 
-			if(Debug)
-			{
-				Console.Error.WriteLine($"[TRACE] Expanding '{Lexer.Untokenize(inp.Items().Take(e).Skip(i))}' at {m.Pos} to '{Lexer.Untokenize(def.replacement)}'");
-				int j = 0;
-
-				foreach (var x in argVals)
-					Console.Error.WriteLine($"[TRACE]     Argument #{++j}: {Lexer.Untokenize(x)}");
+				trace?.Push(m);
+				expand(builder, insertArgs(def.replacement, args, trace!), ref gas, trace!);
+				trace?.Pop();
 			}
-
-			trace?.Push(m);
-			expand(builder, insertArgs(def.replacement, argVals, trace!), ref gas, trace!);
-			trace?.Pop();
-
-			i = w = e;
 		}
 
-		if(w < inp.Length)
-			builder.Append(inp.Slice(w));
+		builder.Append(rest);
 	}
 
 	/// <summary>
 	///  Loads macros from the given text into the active context
 	/// </summary>
 	public void LearnMacrosFrom(IEnumerable<string> lines, string filename)
-		=> LearnMacrosFrom(new Lexer(Log).Tokenize(lines, filename ?? "<unknown>"));
+		=> LearnMacrosFrom( new Lexer(Log).Tokenize(lines, filename ?? "<unknown>") );
 
-	public void LearnMacrosFrom(ArraySegment<Token> code)
+	/// <summary>
+	///  Actions a declaration command may take
+	/// </summary>
+	private enum DeclarationAction
 	{
-		for (int i = 0; i < code.Count;)
+		OVERWRITE,
+		NOOP,
+		ERROR
+	}
+
+	/// <summary>
+	///  Learns every macro definition in a file.
+	///  Does not know about \if or quoting environments.
+	/// </summary>
+	public void LearnMacrosFrom(CodeSegment code)
+	{
+		while(code.IsNotEmpty)
 		{
-			if(code[i] is MacroName mn && mn.Macro is "newcommand" or "renewcommand" or "forcenewcommand")
+			var head = code.pop()[0];
+
+			if(head is not MacroName macro)
+				continue;
+
+			bool force = false;
+			DeclarationAction ifPresent = DeclarationAction.ERROR;
+			DeclarationAction ifAbsent = DeclarationAction.OVERWRITE;
+			(string name, Macro macro) definition;
+
+			switch(macro.Macro)
 			{
-				var (n, m, e) = extractMacro(code, i, mn.Macro is "forcenewcommand");
-				i = e;
-
-				if(n is null || m is null)
-					continue;
-
-				if(macros.TryGetValue(n, out var old))
+				case "renewcommand":
+					ifPresent = DeclarationAction.OVERWRITE;
+					ifAbsent = DeclarationAction.ERROR;
+				goto newcommand;
+				case "providenewcommand":
+					ifPresent = DeclarationAction.NOOP;
+				goto newcommand;
+				case "forcenewcommand":
+					force = true;
+				goto newcommand;
+				case "newcommand":
+				newcommand:
 				{
-					if(old.force)
+					var d = extractMacro(head.Pos, ref code, force);
+
+					if(! d.HasValue)
 						continue;
 
-					if(mn.Macro is "newcommand")
-						Log.Warn($"Overwriting definition for {n} without using \\renewcommand at {mn.Pos}"
-								+ (old.replacement.FirstOrDefault() is Token tk ? $", previous definition at {tk.Pos}" : ""));
+					definition = d.Value;
 				}
+				break;
 
-				macros[n] = m;
+				case "RenewDocumentCommand":
+					ifPresent = DeclarationAction.OVERWRITE;
+					ifAbsent = DeclarationAction.ERROR;
+				goto NewDocumentCommand;
+				case "ProvideDocumentCommand":
+					ifPresent = DeclarationAction.NOOP;
+				goto NewDocumentCommand;
+				case "DeclareDocumentCommand":
+					ifPresent = DeclarationAction.OVERWRITE;
+				goto NewDocumentCommand;
+				case "ForceDocumentCommand":
+					force = true;
+				goto NewDocumentCommand;
+				case "NewDocumentCommand":
+				NewDocumentCommand:
+				{
+					var d = extractXParseMacro(head.Pos, ref code, force);
+
+					if(! d.HasValue)
+						continue;
+
+					definition = d.Value;
+				}
+				break;
+
+				default:
+					continue;
 			}
-			else
-				++i;
+
+			if(macros.TryGetValue(definition.name, out var previous))
+			{
+				if(previous.force)
+					continue;
+
+				switch(ifPresent)
+				{
+					case DeclarationAction.NOOP:
+						continue;
+					case DeclarationAction.OVERWRITE:
+						break;
+					case DeclarationAction.ERROR:
+						Log.Warn($"Overwriting definition for \\{definition.name} without using a redefine at {head.Pos}");
+					break;
+				}
+			}
+			else switch(ifAbsent)
+			{
+				case DeclarationAction.NOOP:
+					continue;
+				case DeclarationAction.OVERWRITE:
+					break;
+				case DeclarationAction.ERROR:
+					Log.Warn($"Redefining undeclared macro \\{definition.name} at {head.Pos}");
+				break;
+			}
+
+			macros[definition.name] = definition.macro;
 		}
 	}
 
+	/// <summary>
+	///  Expands latex code once
+	/// </summary>
+	/// <param name="chain"></param>
+	/// <returns></returns>
 	public CodeSegment Expand(CodeSegment chain)
 	{
 		int gas = Conf.MaximumExpansions;
@@ -362,9 +508,9 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// <summary>
 	///  Extracts the segments that define spells and invokes the game's extractor for them
 	/// </summary>
-	public IEnumerable<TSpell> ExtractSpells<TSpell>(IGame<TSpell> game, ArraySegment<Token> code, string source)
+	public IEnumerable<TSpell> ExtractSpells<TSpell>(IGame<TSpell> game, CodeSegment code, string source)
 	{
-		foreach (var (c,n) in code.FindIndices(spellAnchor, (x,y) => x.IsSame(y), false).Pairs())
+		foreach (var (c,n) in code.Items().FindIndices(spellAnchor, (x,y) => x.IsSame(y), false).Pairs())
 		{
 			var cc = c + spellAnchor.Length;
 			var seg = n.HasValue ? code.Slice(cc, n.Value - cc) : code.Slice(cc);
@@ -379,7 +525,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 			try
 			{
-				spell = game.ExtractLatexSpell(this, book, new(seg));
+				spell = game.ExtractLatexSpell(this, book, seg);
 			}
 			catch(NotASpellException)
 			{
@@ -529,7 +675,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 	/// <summary>
 	///  Expands and displays a segment
-	/// 
+	///
 	///  (!) DON'T use for DB-stored values, as those should be HTML-safe
 	/// </summary>
 	public string ToString(CodeSegment seg)
@@ -559,7 +705,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 	/// <summary>
 	///  Same as `ToString()` but escapes any HTML characters
-	/// </summary>	
+	/// </summary>
 	public string ToSafeString(CodeSegment seg)
 		=> WebUtility.HtmlEncode(ToString(seg));
 

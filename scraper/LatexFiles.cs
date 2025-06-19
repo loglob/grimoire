@@ -44,7 +44,7 @@ public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : 
 
 		return segments
 			.Where(seg => seg.source != Config.LatexOptions.MACROS_SOURCE_NAME)
-			.SelectMany(seg => comp.ExtractSpells(Game, seg.code.ToArray(), seg.source))
+			.SelectMany(seg => comp.ExtractSpells(Game, seg.code, seg.source))
 			.ToAsyncEnumerable();
 	}
 }

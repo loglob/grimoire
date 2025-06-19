@@ -120,73 +120,75 @@ public readonly record struct Lexer(Log Log)
 	/// <summary>
 	///  Post-processes a token list to recognize environments
 	/// </summary>
-	private void postLex(List<Token> tokens)
+	private Chain<Token> postLex(Chain<Token> input)
 	{
-		var stack = new Stack<int>();
+		var stack = new Stack<BeginEnv>();
+		var builder = new ChainBuilder<Token>();
+		// marks the last position that was written back. `input` is always a suffix of `mark`
+		var mark = input;
 
-		for (int i = 0; i < tokens.Count; ++i)
+		while(input.IsNotEmpty)
 		{
-			if(tokens[i] is MacroName m && m.Macro is "begin" or "end")
+			var head = input.pop()[0];
+
+			if(head is not MacroName m || (m.Macro != "begin" && m.Macro != "end"))
+				continue;
+
+			// perform writeback (without head)
+			var w = mark.Length - input.Length - 1;
+
+			if(w > 0)
+				builder.Append(mark.Slice(0, w));
+
+			var arg = input.popArg(false);
+			mark = input;
+
+			if(arg is null)
 			{
-				var (args, end) = tokens.LocateArgs(i + 1, 0, 1);
-
-				if(args.Length != 1)
-					throw new UnreachableException("LocateArgs() returned wrong arity");
-
-				var (index, len) = args[0];
-
-				if(index < 0)
-				{
-					Log.Warn($"Expected an environment name after {m}, discarding it");
-					// discard the macro
-					tokens.RemoveAt(i);
-					--i; // undo ++i
-					continue;
-				}
-
-				var slice = tokens.Skip(index).Take(len);
-				var str = Untokenize(slice).Trim();
-
-				if(slice.Any(t => t is not WhiteSpace && t is not Character) || !slice.Any())
-					Log.Warn($"Suspicious environment name '{str}' at {m.Pos}");
-
-				Token envTk = m.Macro switch {
-					"begin" => new BeginEnv(str, m.Pos) ,
-					"end" => new EndEnv(str, m.Pos) ,
-					_ => throw new UnreachableException()
-				};
-
-				tokens.RemoveRange(i, end - i);
-				tokens.Insert(i, envTk);
+				Log.Warn($"Expected an environment name after {m.At}, discarding it");
+				continue;
 			}
 
-			if(tokens[i] is BeginEnv b)
-				stack.Push(i);
-			else if(tokens[i] is EndEnv e)
+			var name = Untokenize(arg.Value);
+
+			if(arg.Value.Items().Any(t => t is not Character) || arg.Value.IsEmpty)
+				Log.Warn($"Suspicious environment name '{name}' at {m.Pos}");
+
+			if(m.Macro == "begin")
 			{
-				if(stack.TryPeek(out var t) && ((BeginEnv)tokens[t]).Env == e.Env)
+				var b = new BeginEnv(name, m.Pos);
+				builder.Append(b);
+				stack.Push(b);
+			}
+			else // m.Macro == "end"
+			{
+				var e = new EndEnv(name, m.Pos);
+
+				if(stack.TryPeek(out var b) && b.Env == name)
+				{
 					stack.Pop();
-				else
-				{
-					Log.Warn($"{e} has no matching \\begin, discarding it");
-					tokens.RemoveAt(i);
-					--i; // undoes following ++i
+					builder.Append(e);
 				}
+				else
+					Log.Warn($"{e.At} has no matching \\begin, discarding it");
 			}
 		}
 
-		foreach (var i in stack)
+		builder.Append(mark);
+
+		foreach(var b in stack)
 		{
-			var o = (BeginEnv)tokens[i];
-			Log.Warn($"{o} has no matching \\end, discarding it");
-			tokens.RemoveAt(i);
+			builder.Append( new EndEnv(b.Env, new("builtin/postLex", 0, 0)) );
+			Log.Warn($"{b.At} has no matching \\end, inserting one");
 		}
+
+		return builder.Build();
 	}
 
 	/// <summary>
 	///  Lexes a latex program. Ensures that OpenBrace and CloseBrace perfectly balance another.
 	/// </summary>
-	public Token[] Tokenize(IEnumerable<string> lines, string filename)
+	public Chain<Token> Tokenize(IEnumerable<string> lines, string filename)
 	{
 		var tks = new List<Token>();
 		int row = 1;
@@ -230,9 +232,7 @@ public readonly record struct Lexer(Log Log)
 			tks[l] = new Character('{', tk.Pos);
 		}
 
-		postLex(tks);
-
-		return tks.ToArray();
+		return postLex( new( tks.ToArray() ) );
 	}
 
 	/// <summary>

@@ -2,6 +2,7 @@ using Grimoire.Util;
 using System.Collections;
 using System.Diagnostics;
 using System.Text;
+
 using CodeSegment = Grimoire.Util.Chain<Grimoire.Latex.Token>;
 
 namespace Grimoire.Latex;
@@ -54,120 +55,18 @@ public static class Extensions
 	}
 
 	/// <summary>
-	///  Locates a single mandatory macro argument.
-	/// </summary>
-	/// <param name="chain"> Token list to read </param>
-	/// <param name="offset"> Offset at which to start searching </param>
-	/// <returns>
-	///  start: index where the argument _value_ starts (excluding parens)
-	///  		-1 if no argument is found
-	///  len: length of the argument value (excluding closing parens)
-	///  end: index at which the argument has ended, i.e. after closing parens
-	/// </returns>
-	public static (int start, int len, int end) LocateArg(this IReadOnlyList<Token> chain, int offset = 0)
-	{
-		while(offset < chain.Count && chain[offset] is WhiteSpace)
-			++offset;
-
-		if(offset >= chain.Count)
-			return ( -1, 0, offset );
-		else if(chain[offset] is OpenBrace o)
-		{
-			int l = chain.Skip(offset + 1).FindOnSameLevel(t => t is CloseBrace);
-
-			if(l < 0) // this should've been made impossible during lexing
-				throw new UnreachableException($"An impossible slice happened, orphaning the open brace at {o.Pos} (chain offset {offset})");
-
-			return ( offset + 1, l, offset + 2 + l );
-		}
-		else
-			return ( offset, 1, offset + 1 );
-	}
-
-	/// <summary>
-	///  Variant of LocateArg() that locates an optional argument
-	/// </summary>
-	public static (int start, int len, int end) LocateOptArg(this IReadOnlyList<Token> chain, int offset = 0)
-	{
-		while(offset < chain.Count && chain[offset] is WhiteSpace)
-			++offset;
-
-		if(offset < chain.Count && chain[offset] is Character c && c.Char == '[')
-		{
-			int l = chain.Skip(offset + 1).FindOnSameLevel(t => t is Character c && c.Char == ']');
-
-			if(l < 0) // TODO: get a proper log instance here
-				Log.DEFAULT.Warn($"Optional argument started at {c.Pos} never terminated");
-			else
-				return (offset + 1, l, offset + 2 + l);
-		}
-
-		return (-1, 0, offset);
-	}
-
-	/// <summary>
-	///  Locates arguments to a macro
-	/// </summary>
-	/// <param name="chain"> The chain to process </param>
-	/// <param name="offset"> Where to start in the chain, i.e. the index just past the invoking \macro </param>
-	/// <param name="optionalArity"> Amount of optional arguments, less than arity. </param>
-	/// <param name="arity"> Amount of total arguments to parse </param>
-	/// <returns>
-	///  args: The slices for those argument values. Or (-1,0) if an argument is missing.
-	///  		Parenthesized arguments do not include the parenthesis
-	///  end: The position immediately past the final argument. May be chain.Count if there are no tokens past the end.
-	/// </returns>
-	public static ((int index, int len)[] args, int end) LocateArgs(this IReadOnlyList<Token> chain, int offset, int optionalArity, int arity)
-	{
-		ArgumentOutOfRangeException.ThrowIfLessThan(arity, optionalArity);
-
-		List<(int, int)> ret = new();
-
-		for(;arity > 0 && offset < chain.Count; --arity)
-		{
-			int s, l;
-
-			if(optionalArity > 0)
-			{
-				(s,l, offset) = LocateOptArg(chain, offset);
-
-				--optionalArity;
-			}
-			else
-				(s,l, offset) = LocateArg(chain, offset);
-
-			ret.Add((s,l));
-		}
-
-		if(arity > 0)
-			ret.AddRange(Enumerable.Repeat((-1, 0), arity));
-
-		return (ret.ToArray(), offset);
-	}
-
-	public static ((int index, int len)[] args, int end) LocateArgs(this CodeSegment chain, int offset, int optionalArity, int arity)
-		=> chain.AsList().LocateArgs(offset, optionalArity, arity);
-
-	public static (CodeSegment?[] args, CodeSegment rest) Args(this CodeSegment chain, int optionalArity, int arity)
-	{
-		var (a, e) = chain.AsList().LocateArgs(0, optionalArity, arity);
-
-		return (a.Select(il => il.index < 0 ? (CodeSegment?)null : chain.Slice(il.index, il.len)).ToArray(), chain.Slice(e));
-	}
-
-	/// <summary>
 	///  Finds the contents of the document environment
 	/// </summary>
-	public static ArraySegment<Token>? DocumentContents(this ArraySegment<Token> file)
+	public static CodeSegment? DocumentContents(this CodeSegment file)
 	{
-		var begin = file.FirstIndexOf(x => x is BeginEnv b && b.Env == "document");
+		var begin = file.Items().FirstIndexOf(x => x is BeginEnv b && b.Env == "document");
 
 		if(begin < 0)
 			return null;
 
 		file = file.Slice(begin + 1);
 
-		return file.Slice(0, file.FirstIndexOf(x => x is EndEnv e && e.Env == "document"));
+		return file.Slice(0, file.Items().FirstIndexOf(x => x is EndEnv e && e.Env == "document"));
 	}
 
 	private static Func<Token, bool> checkLevel(Func<Token, bool> cond)
@@ -195,12 +94,59 @@ public static class Extensions
 	public static IEnumerable<CodeSegment> SplitBy(this CodeSegment code, Func<Token, bool> sep, bool sameLevel)
 		=> code.SplitBy(sameLevel ? checkLevel(sep) : sep);
 
+	public static ArraySegment<Token> TrimStart(this ArraySegment<Token> code)
+	{
+		int n;
+
+		for(n = 0; n < code.Count && code[n] is WhiteSpace; ++n)
+		{}
+
+		return code.Slice(n);
+	}
+
+	public static ArraySegment<Token> Trim(this ArraySegment<Token> code)
+		=> code.Trim(static tk => tk is WhiteSpace);
+
+
+	public static ArraySegment<T> Trim<T>(this ArraySegment<T> seg, Predicate<T> pred)
+	{
+		int l = 0;
+
+		while(l < seg.Count && pred(seg[l]))
+			++l;
+
+		int n = seg.Count - l;
+
+		while(n > 0 && pred(seg[l + n - 1]))
+			--n;
+
+		return seg.Slice(l, n);
+	}
+
+	/// <summary>
+	///  Sane `IEnumerable<T>.SingleOrDefault()`
+	/// </summary>
+	public static T? SingleOrNull<T>(this IEnumerable<T> xs) where T : class
+	{
+		T? result = null;
+
+		foreach(var x in xs)
+		{
+			if(result is not null)
+				return null;
+
+			result = x;
+		}
+
+		return result;
+	}
+
 	/// <summary>
 	///  Formats the coordinate range of a code segment
 	/// </summary>
-	public static string PosRange(this IReadOnlyList<Token> seg)
+	public static string PosRange(this CodeSegment seg)
 	{
-		if(seg.Count == 0)
+		if(seg.IsEmpty)
 			return "<empty>";
 
 		var l = seg[0].Pos;
@@ -237,5 +183,99 @@ public static class Extensions
 	{
 		sb.TrimLeft();
 		sb.TrimRight();
+	}
+
+	public static bool IsParBreak(this Token tk)
+		=> tk is Character c && c.Char == '\n';
+
+	public static CodeSegment TrimStart(this CodeSegment tokens)
+		=> tokens.DropWhile(t => t is WhiteSpace);
+
+	/// <summary>
+	///  Removes the first `n` tokens IN-PLACE
+	/// </summary>
+	public static Chain<T> pop<T>(ref this Chain<T> seg, int n = 1)
+	{
+		var head = seg.Slice(0, n);
+		seg = seg.Slice(n);
+
+		return head;
+	}
+
+	/// <summary>
+	///  Pops a single optional argument IN-PLACE
+	/// </summary>
+	public static CodeSegment? popOptArg(ref this CodeSegment code)
+	{
+		code = code.TrimStart();
+
+		if(code.IsNotEmpty && code[0] is Character opening && opening.Char == '[')
+		{
+			int closing = code.Items().FindOnSameLevel(t => t is Character c && c.Char == ']');
+
+			if(closing < 0) // TODO: get a proper log instance here
+				Log.DEFAULT.Warn($"Optional argument started at {opening.Pos} never terminated");
+			else
+			{
+				var inside = code.Slice(1, closing - 1);
+				code = code.Slice(closing + 1);
+
+				return inside;
+			}
+		}
+
+		return null;
+	}
+
+	/// <summary>
+	///  Pops a single mandatory argument IN-PLACE
+	/// </summary>
+	/// <param ></param>
+	public static CodeSegment? popArg(ref this CodeSegment code, bool acceptUnbraced = true)
+	{
+		code = code.TrimStart();
+
+		if(code.IsEmpty || (code[0] is Character nl && nl.Char == '\n')) // paragraph breaks
+			return null;
+
+		if(code[0] is OpenBrace opening)
+		{
+			int width = code.Items().Skip(1).FindOnSameLevel(t => t is CloseBrace);
+
+			if(width < 0) // this should've been made impossible during lexing
+				throw new UnreachableException($"An impossible slice happened, orphaning the open brace at {opening.Pos}");
+
+			var inside = code.Slice(1, width);
+			code = code.Slice(2 + width);
+
+			return inside;
+		}
+		else if(acceptUnbraced)
+			return pop(ref code);
+		else
+			return null;
+	}
+
+	/// <summary>
+	///  Parses macro arguments
+	/// </summary>
+	/// <param name="args"> The signature to parse </param>
+	/// <param name="code"> The slice to read from. Updated with the remaining tokens. </param>
+	/// <returns> The argument values, or null if a mandatory argument is missing. </returns>
+	public static CodeSegment[]? parseArguments(ref this CodeSegment code, ArgType[] args)
+	{
+		var result = new CodeSegment[args.Length];
+
+		for (int i = 0; i < args.Length; i++)
+		{
+			var r = args[i].parse(ref code);
+
+			if(r.HasValue)
+				result[i] = r.Value;
+			else
+				return null;
+		}
+
+		return result;
 	}
 }

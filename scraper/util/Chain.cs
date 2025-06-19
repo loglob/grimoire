@@ -53,6 +53,12 @@ public readonly struct Chain<T>
 	public int Length
 		=> lengths.Length > 0 ? lengths[^1] : 0;
 
+	public bool IsEmpty
+		=> Length == 0;
+
+	public bool IsNotEmpty
+		=> Length > 0;
+
 	public T this[int index]
 	{
 		get
@@ -330,4 +336,7 @@ public readonly struct Chain<T>
 
 	public override string ToString()
 		=> "[ " + string.Join(", ", Items()) + " ]";
+
+	public T? SingleOrNull()
+		=> IsEmpty ? default(T?) : (T?)this[0];
 }

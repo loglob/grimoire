@@ -140,39 +140,36 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 
 	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
 
+	private static readonly ArgType[] signature = [ new OptionalArg(), new MandatoryArg() ];
+
 	public Spell ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
 	{
-		var (_props, rest) = body.Args(1, 8);
+		var props = body.parseArguments(ArgType.SimpleSignature(8, Chain<Token>.Empty)) ?? throw new FormatException("Incomplete application of \\spell");
 
-		string? hint = _props[0].WithValue(comp.ToSafeString, null);
+		string hint = comp.ToSafeString(props[0]);
+		var name = comp.ToString(props[1]);
+		var (level, school, ritual) = ParseLevel(comp.ToSafeString(props[2]));
+		var spl = props[3].SplitOn(tk => tk is Character c && c.Char == ',');
 
-		var props = _props.Skip(1)
-			.Select(p => p ?? throw new FormatException("Partial spell properties"))
-			.ToArray();
-
-		var name = comp.ToString(props[0]);
-		var (level, school, ritual) = ParseLevel(comp.ToSafeString(props[1]));
-		var spl = props[2].SplitOn(tk => tk is Character c && c.Char == ',');
-
-		var (_left, right) = props[2].SplitOn(tk => tk is Character c && c.Char == ',').WithValue(
+		var (_left, right) = props[3].SplitOn(tk => tk is Character c && c.Char == ',').WithValue(
 			(lr) => (lr.left, comp.ToHTML(lr.right)),
-			(props[2], null)
+			(props[3], null)
 		);
 		var left = comp.ToSafeString(_left);
-		
-		var range = comp.ToSafeString(props[3]);
-		var (verbal, somatic, material) = ParseComponents(comp.ToSafeString(props[4]));
-		var (concentration, duration) = ParseDuration(comp.ToSafeString(props[5]));
-		var classes = props[6]
+
+		var range = comp.ToSafeString(props[4]);
+		var (verbal, somatic, material) = ParseComponents(comp.ToSafeString(props[5]));
+		var (concentration, duration) = ParseDuration(comp.ToSafeString(props[6]));
+		var classes = props[7]
 			.SplitBy(tk => tk is WhiteSpace || (tk is Character c && c.Char == ','))
 			.Where(seg => seg.Length > 0)
 			.Select(comp.ToSafeString)
 			.ToArray();
-			
+
 		var (_desc, _upcast) = comp.upcastAnchor is Token[] ua
-			&& rest.SplitOn(ua, (a,b) => a.IsSame(b)) is var (x,y)
+			&& body.SplitOn(ua, (a,b) => a.IsSame(b)) is var (x,y)
 				? (x, y.Just())
-				: (rest, null);
+				: (body, null);
 
 		return new Spell(
 			name, book.Shorthand,

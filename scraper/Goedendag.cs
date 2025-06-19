@@ -1,5 +1,6 @@
 using Grimoire.Latex;
 using Grimoire.Util;
+using System.Security.Principal;
 
 namespace Grimoire;
 
@@ -70,7 +71,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 				if(cl < 0)
 					throw new FormatException("Unterminated [] in casting time");
-				
+
 				acp = cursor.Slice(1, cl - 1).ToString();
 				cursor = cursor.Slice(cl + 1);
 			}
@@ -90,13 +91,13 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 			reaction = true;
 		}
-		
+
 		return string.Join("", pieces);
 	}
 
 	public Spell ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
 	{
-		if(body.Args(0, 3) is not ([ var _name, var _tag, var _prop ], var _extra) || _name is null || _tag is null || _prop is null)
+		if(body.parseArguments(ArgType.SimpleSignature(3)) is not [ var _name, var _tag, var _prop ])
 			throw new FormatException("Bad spell format, missing arguments to \\spell");
 
 		bool combat = false;
@@ -104,7 +105,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string name;
 
 		{
-			var nameWords = comp.ToString(_name.Value).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+			var nameWords = comp.ToString(_name).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
 			int wLen = nameWords.Length;
 			recheck_combat:
 			if(!combat && nameWords[wLen - 1] == "\\C")
@@ -122,7 +123,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			name = string.Join(' ', nameWords.Take(wLen));
 		}
 
-		var tag = comp.ToString(_tag.Value);
+		var tag = comp.ToString(_tag);
 		var arcanum = tag.Split(':') switch {
 			["arc", _] => throw new NotASpellException(),
 			["rit", _] => Arcanum.Ritual,
@@ -141,7 +142,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		// these are used for table headers, so we avoid inserting formatting
 		HashSet<string> plainKeys = [ "casting-time", "distance", "power-level" ];
 
-		var prop = _prop.Value.SplitBy(tk => tk is Character c && c.Char == ',', true)
+		var prop = _prop.SplitBy(tk => tk is Character c && c.Char == ',', true)
 			.Select(v => v
 				.SplitOn(tk => tk is Character c && c.Char == '=')
 				?? throw new FormatException("properties are not assignment list"))
@@ -169,7 +170,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string? extra = null;
 
 		{
-			var e = comp.ToHTML(_extra);
+			var e = comp.ToHTML(body);
 
 			if(! string.IsNullOrWhiteSpace(e))
 				extra = e.Trim();
