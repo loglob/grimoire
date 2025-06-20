@@ -1,6 +1,7 @@
 using Grimoire.Util;
 using System.Collections;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 using CodeSegment = Grimoire.Util.Chain<Grimoire.Latex.Token>;
@@ -278,4 +279,89 @@ public static class Extensions
 
 		return result;
 	}
+
+	/// <summary>
+	///  Wrapper around IEnumerable that allows single-item lookahead
+	/// </summary>
+	public class LL1<T>
+	{
+		private readonly IEnumerator<T> inner;
+		private bool hasCurrent;
+
+		public LL1(IEnumerator<T> inner)
+		{
+			this.inner = inner;
+			hasCurrent = inner.MoveNext();
+		}
+
+		public LL1(IEnumerable<T> inner) : this(inner.GetEnumerator())
+		{}
+
+		public bool Move([MaybeNullWhen(false)] out T cur)
+		{
+			if(! hasCurrent)
+			{
+				cur = default;
+				return false;
+			}
+
+			cur = inner.Current;
+			hasCurrent = inner.MoveNext();
+
+			return true;
+		}
+
+		public bool Peek([MaybeNullWhen(false)] out T next)
+		{
+			next = hasCurrent ? inner.Current : default;
+			return hasCurrent;
+		}
+
+		/// <returns> Whether any items where consumed </returns>
+		public bool MoveWhile(Func<T, bool> pred)
+		{
+			var movedAny = false;
+
+			while(hasCurrent)
+			{
+				if(pred(inner.Current))
+					hasCurrent = inner.MoveNext();
+				else
+					break;
+
+				movedAny = true;
+			}
+
+			return movedAny;
+		}
+	}
+
+	public static bool like(this LL1<Token> xs, LL1<Token> ys)
+	{
+		// trim
+		xs.MoveWhile(tk => tk is WhiteSpace);
+		ys.MoveWhile(tk => tk is WhiteSpace);
+
+		while(true)
+		{
+			var xWs = xs.MoveWhile(tk => tk is WhiteSpace);
+			var yWs = ys.MoveWhile(tk => tk is WhiteSpace);
+
+			var xGot = xs.Move(out var xTk);
+			var yGot = xs.Move(out var yTk);
+
+			if(xGot != yGot || xWs != yWs)
+				return false;
+			if(!xGot)
+				return true;
+			if(! xTk!.IsSame(yTk!))
+				return false;
+		}
+	}
+
+	public static bool like(this IEnumerator<Token> xs, IEnumerator<Token> ys)
+		=> new LL1<Token>(xs).like(new LL1<Token>(ys));
+
+	public static bool like(this IEnumerable<Token> xs, IEnumerable<Token> ys)
+		=> xs.GetEnumerator().like(ys.GetEnumerator());
 }

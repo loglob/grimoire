@@ -30,6 +30,15 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		Div
 	}
 
+	/// <summary>
+	///  A \CASE application that implements conditional compilation.
+	/// </summary>
+	/// <param name="Expanded"> Whether `subject` and case labels should be expanded before matching </param>
+	/// <param name="Subject"> Tokens to match against </param>
+	/// <param name="Cases"> List of cases, consisting of possible values of `Subject` and result code </param>
+	/// <param name="Fallback"> Code to expand if no case matched </param>
+	private readonly record struct Case(bool Expanded, CodeSegment Subject, List<(CodeSegment when, CodeSegment then)> Cases, CodeSegment Fallback);
+
 	private static Macro tagWrap(string tag)
 	{
 		var pos = new Position("builtin/tagWrap", 0, 0);
@@ -287,13 +296,80 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		return builder.Build();
 	}
 
-	private void expand(ChainBuilder<Token> builder, CodeSegment inp, ref int gas, Stack<MacroName> trace)
+	/// <summary>
+	///  Parses the \CASE dynamic compilation macro.
+	/// </summary>
+	private static Case? parseCase(ref CodeSegment code)
+	{
+		var expanded = new StarArg().parse(ref code)!.Value.IsNotEmpty;
+		var subject = code.popArg();
+
+		if(! subject.HasValue)
+			return null;
+
+		var cases = new List<(CodeSegment, CodeSegment)>();
+
+		while(true)
+		{
+			var w = code.popOptArg();
+
+			if(! w.HasValue)
+				break;
+
+			var t = code.popArg();
+
+			if(! t.HasValue)
+				return null;
+
+			cases.Add((w.Value, t.Value));
+		}
+
+		var fallback = code.popArg();
+
+		if(! fallback.HasValue)
+			return null;
+
+		return new( expanded, subject.Value, cases, fallback.Value );
+	}
+
+	/// <summary>
+	///  Evaluates a \CASE macro
+	/// </summary>
+	private CodeSegment evalCase(Case data, ref int gas, Stack<MacroName>? trace)
+	{
+		if(data.Expanded)
+		{
+			var subject = new ChainBuilder<Token>();
+			expand(subject, data.Subject, ref gas, trace);
+
+			foreach(var (when, then) in data.Cases)
+			{
+				var cur = new ChainBuilder<Token>();
+				expand(cur, when, ref gas, trace);
+
+				if(subject.Items().like( cur.Items() ))
+					return then;
+			}
+		}
+		else
+		{
+			foreach(var (when, then) in data.Cases)
+			{
+				if(data.Subject.Items().like( when.Items() ))
+					return then;
+			}
+		}
+
+		return data.Fallback;
+	}
+
+	private void expand(ChainBuilder<Token> builder, CodeSegment inp, ref int gas, Stack<MacroName>? trace)
 	{
 		if(--gas <= 0)
 			throw new TimeoutException("Maximum expansion count exceeded");
 
 		// slice that is fully written back. Always shared a right edge with the current `inp`
-		var rest = inp;
+		var mark = inp;
 
 		while(inp.IsNotEmpty)
 		{
@@ -311,16 +387,16 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 				continue;
 
 			// perform writeback (without head) (overwrite rest later)
-			var w = rest.Length - inp.Length - 1;
+			var w = mark.Length - inp.Length - 1;
 
 			if(w > 0)
-				builder.Append(rest.Slice(0, w));
+				builder.Append(mark.Slice(0, w));
 
 			if(m.Macro == "includegraphics")
 			{
-				// optional arg indicates LaTeX-side image side, we just ignore it
+				// optional arg indicates LaTeX-side image size, we just ignore it
 				var args = inp.parseArguments([ new OptionalArg(), new MandatoryArg() ]);
-				rest = inp;
+				mark = inp;
 
 				if(args is null)
 				{
@@ -335,15 +411,31 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 				else
 					builder.Append( new HtmlChunk(replace, new("builtin/images", 0, 0)) );
 			}
+			else if(m.Macro == "CASE")
+			{ // signature like `s m (M[] m)* m`
+				var data = parseCase(ref inp);
+				mark = inp;
+
+				if(! data.HasValue)
+				{
+					Log.Warn($"Discarding incomplete {m.At}");
+					continue;
+				}
+
+				trace?.Push(m);
+				var ev = evalCase(data.Value, ref gas, trace);
+				expand(builder, ev, ref gas, trace);
+				trace?.Pop();
+			}
 			else if(! macros.TryGetValue(m.Macro, out var def))
 			{
 				Log.Warn($"Unknown macro {m.At}, discarding it");
-				rest = inp;
+				mark = inp;
 			}
 			else
 			{
 				var args = inp.parseArguments(def.args);
-				rest = inp;
+				mark = inp;
 
 				if(args is null)
 				{
@@ -366,7 +458,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 			}
 		}
 
-		builder.Append(rest);
+		builder.Append(mark);
 	}
 
 	/// <summary>
