@@ -146,7 +146,7 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 	{
 		var props = body.parseArguments(ArgType.SimpleSignature(8, Chain<Token>.Empty)) ?? throw new FormatException("Incomplete application of \\spell");
 
-		string hint = comp.ToSafeString(props[0]);
+		string? hint = props[0].Items().All(tk => tk is WhiteSpace) ? null : comp.ToSafeString(props[0]);
 		var name = comp.ToString(props[1]);
 		var (level, school, ritual) = ParseLevel(comp.ToSafeString(props[2]));
 		var spl = props[3].SplitOn(tk => tk is Character c && c.Char == ',');
