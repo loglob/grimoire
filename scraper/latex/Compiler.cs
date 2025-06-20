@@ -1,11 +1,12 @@
 using Grimoire.Util;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
 
 namespace Grimoire.Latex;
 
-using CodeSegment = Chain<Token>;
+using Code = Chain<Token>;
 
 public record Compiler(Config.LatexOptions Conf, Log Log)
 {
@@ -14,13 +15,55 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// </summary>
 	/// <param name="argc"> Total number of arguments (including the optional arg) </param>
 	/// <param name="opt"> A default value for the first argument, if present </param>
-	/// <param name="replacement"> The code to insert on expansion </param>
-	/// <param name="force"> If true, this macro cannot be overwritten with \renewcommand </param>
+	/// <param name="Replacement"> The code to insert on expansion </param>
+	/// <param name="Force"> If true, this macro cannot be overwritten with \renewcommand </param>
 	/// <returns></returns>
-	internal sealed record Macro(ArgType[] args, CodeSegment replacement, bool force = false)
+	internal sealed record Macro(ArgType[] Args, Code Replacement, bool Force = false)
 	{
-		public Macro(ArgType[] args, Token[] replacement, bool force = false) : this(args, new CodeSegment(replacement), force)
+		public Macro(ArgType[] args, Token[] replacement, bool force = false) : this(args, new Code(replacement), force)
 		{}
+	}
+
+	/// <summary>
+	///  A decrement-only shared integer
+	/// </summary>
+	/// <param name="initial"> The maximum amount of times `decrement()` may return `true` </param>
+	private record Gas(int initial)
+	{
+		private int value = initial;
+
+		public bool decrement()
+		{
+			if(value <= 0)
+				return false;
+			else
+			{
+				--value;
+				return true;
+			}
+		}
+	}
+
+	/// <summary>
+	///  Context for macro expansions
+	/// </summary>
+	/// <param name="Builder"> The buffer to write expanded tokens to </param>
+	/// <param name="Trace"> Optional trace of expansions for debugging </param>
+	/// <param name="HtmlMode">If true, we're currently generating full-fledged HTML. Observable with `\IFHTML` </param>
+	/// <returns></returns>
+	private readonly record struct ExpandContext(ChainBuilder<Token> Builder, Gas Gas, ImmutableStack<MacroName>? Trace, bool HtmlMode)
+	{
+		public ExpandContext WithExpand(MacroName mn)
+			=> new( Builder, Gas, Trace?.Push(mn), HtmlMode );
+
+		public ExpandContext WithBuilder(ChainBuilder<Token> newBuilder)
+			=> new( newBuilder, Gas, Trace, HtmlMode );
+
+		public void PutTrace()
+		{
+			if(Trace is not null)
+				Console.Error.WriteLine("	stack trace: " + string.Join(" < ", Trace.Select(x => x.At)));
+		}
 	}
 
 	public enum KnownEnvironments
@@ -37,7 +80,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// <param name="Subject"> Tokens to match against </param>
 	/// <param name="Cases"> List of cases, consisting of possible values of `Subject` and result code </param>
 	/// <param name="Fallback"> Code to expand if no case matched </param>
-	private readonly record struct Case(bool Expanded, CodeSegment Subject, List<(CodeSegment when, CodeSegment then)> Cases, CodeSegment Fallback);
+	private readonly record struct Case(bool Expanded, Code Subject, List<(Code when, Code then)> Cases, Code Fallback);
 
 	private static Macro tagWrap(string tag)
 	{
@@ -52,7 +95,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		=> new([], [ new HtmlChunk(html, new("builtin/constant", 0, 0)) ]);
 
 	private static Macro discard()
-		=> new([], Array.Empty<Token>());
+		=> new([], []);
 
 	private static Macro hyperref(Config.LatexOptions conf)
 	{
@@ -104,19 +147,13 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		{ "newline", new([], [ new BackBack(new("builtin/newline", 0, 0)) ]) }
 	};
 
-	internal readonly Token[]? upcastAnchor = Conf.UpcastAnchor is string ua ? new Lexer(Log).TokenizeUnchecked(new[]{ ua }, "builtin/upcast anchor") : null;
-	internal readonly Token[] spellAnchor = new Lexer(Log).TokenizeUnchecked(new[]{ Conf.SpellAnchor }, "builtin/spell anchor");
+	internal readonly Token[]? upcastAnchor = Conf.UpcastAnchor is string ua ? new Lexer(Log).TokenizeUnchecked([ua], "builtin/upcast anchor") : null;
+	internal readonly Token[] spellAnchor = new Lexer(Log).TokenizeUnchecked([Conf.SpellAnchor], "builtin/spell anchor");
 
 	/// <summary>
 	///  If true, record stack traces on latex errors and include line markers in HTML output.
 	/// </summary>
 	public bool Debug { get; init; } = false;
-	/// <summary>
-	///  If true, we're currently generating full-fledged HTML.
-	///  Observable with \IFHTML
-	/// </summary>
-	public bool HtmlMode = true;
-
 	/// <summary>
 	///  Maps an environment token onto its corresponding enum entry.
 	///  Utilizes the Config environment map.
@@ -142,7 +179,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// </summary>
 	/// <param name="pos"> Reference position for error logging </param>
 	/// <param name="code"> Positioned exactly AFTER the initial \*newcommand </param>
-	private (string name, Macro macro)? extractMacro(Position pos, ref CodeSegment code, bool force)
+	private (string name, Macro macro)? extractMacro(Position pos, ref Code code, bool force)
 	{
 		var nameArg = code.popArg();
 
@@ -194,7 +231,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// </summary>
 	/// <param name="pos"> Reference position for error logging </param>
 	/// <param name="code"> Positioned exactly AFTER the initial \*DocumentCommand </param>
-	private (string name, Macro macro)? extractXParseMacro(Position pos, ref CodeSegment code, bool force)
+	private (string name, Macro macro)? extractXParseMacro(Position pos, ref Code code, bool force)
 	{
 		var nameArg = code.popArg();
 
@@ -263,13 +300,10 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		return (name.Macro, new Macro( args.ToArray(), body.Value, force ));
 	}
 
-	private static void putTrace(Stack<MacroName> trace)
-		=> Console.Error.WriteLine("	stack trace: " + string.Join(" < ", trace.Select(x => x.At)));
-
 	/// <summary>
 	///  Expands ArgumentRef (#1, #2, ...) tokens
 	/// </summary>
-	private CodeSegment insertArgs(CodeSegment inp, CodeSegment[] argv, Stack<MacroName> trace)
+	private Code insertArgs(Code inp, Code[] argv, ExpandContext ctx)
 	{
 		var builder = new ChainBuilder<Token>();
 		int last = 0;
@@ -290,7 +324,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 			else
 			{
 				Log.Warn($"Discarding out-of-bounds argument specifier {ar.At} (current expansion has only {argv.Length} arguments)");
-				putTrace(trace);
+				ctx.PutTrace();
 			}
 
 			last = i + 1;
@@ -304,7 +338,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// <summary>
 	///  Parses the \CASE dynamic compilation macro.
 	/// </summary>
-	private static Case? parseCase(ref CodeSegment code)
+	private static Case? parseCase(ref Code code)
 	{
 		var expanded = new StarArg().parse(ref code)!.Value.IsNotEmpty;
 		var subject = code.popArg();
@@ -312,7 +346,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		if(! subject.HasValue)
 			return null;
 
-		var cases = new List<(CodeSegment, CodeSegment)>();
+		var cases = new List<(Code, Code)>();
 
 		while(true)
 		{
@@ -340,17 +374,17 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// <summary>
 	///  Evaluates a \CASE macro
 	/// </summary>
-	private CodeSegment evalCase(Case data, ref int gas, Stack<MacroName>? trace)
+	private Code evalCase(Case data, ExpandContext ctx)
 	{
 		if(data.Expanded)
 		{
 			var subject = new ChainBuilder<Token>();
-			expand(subject, data.Subject, ref gas, trace);
+			expand(data.Subject, ctx.WithBuilder(subject));
 
 			foreach(var (when, then) in data.Cases)
 			{
 				var cur = new ChainBuilder<Token>();
-				expand(cur, when, ref gas, trace);
+				expand(when, ctx.WithBuilder(cur));
 
 				if(subject.Items().like( cur.Items() ))
 					return then;
@@ -368,22 +402,23 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		return data.Fallback;
 	}
 
-	private void expand(ChainBuilder<Token> builder, CodeSegment inp, ref int gas, Stack<MacroName>? trace)
+	private void expand(Code code, ExpandContext ctx)
 	{
-		if(--gas <= 0)
+		if(! ctx.Gas.decrement())
 			throw new TimeoutException("Maximum expansion count exceeded");
 
 		// slice that is fully written back. Always shared a right edge with the current `inp`
-		var mark = inp;
+		var mark = code;
 
-		while(inp.IsNotEmpty)
+		while(code.IsNotEmpty)
 		{
-			var head = inp.pop()[0];
+			var head = code.pop()[0];
 
 			if(head is ArgumentRef)
 			{
 				Log.Warn($"Unexpanded argument ref {head.At}");
-				putTrace(trace!);
+				ctx.PutTrace();
+
 				// the token is discarded later during HTML generation
 			}
 
@@ -392,16 +427,16 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 				continue;
 
 			// perform writeback (without head) (overwrite rest later)
-			var w = mark.Length - inp.Length - 1;
+			var w = mark.Length - code.Length - 1;
 
 			if(w > 0)
-				builder.Append(mark.Slice(0, w));
+				ctx.Builder.Append(mark.Slice(0, w));
 
 			if(m.Macro == "includegraphics")
 			{
 				// optional arg indicates LaTeX-side image size, we just ignore it
-				var args = inp.parseArguments([ new OptionalArg(), new MandatoryArg() ]);
-				mark = inp;
+				var args = code.parseArguments([ new OptionalArg(), new MandatoryArg() ]);
+				mark = code;
 
 				if(args is null)
 				{
@@ -414,16 +449,12 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 				if(Conf.Images is null || !(Conf.Images.TryGetValue(file, out var replace) || Conf.Images.TryGetValue(Path.GetFileName(file), out replace)))
 					Log.Warn($"Discarding use of unknown image '{file}' at {m.Pos}");
 				else
-					builder.Append( new HtmlChunk(replace, new("builtin/images", 0, 0)) );
+					ctx.Builder.Append( new HtmlChunk(replace, new("builtin/images", 0, 0)) );
 			}
 			else if(m.Macro == "CASE")
 			{ // signature like `s m (M[] m)* m`
-				var debug1 = Lexer.Untokenize(inp);
-
-				var data = parseCase(ref inp);
-				mark = inp;
-
-				var debug2 = Lexer.Untokenize(inp);
+				var data = parseCase(ref code);
+				mark = code;
 
 				if(! data.HasValue)
 				{
@@ -431,19 +462,17 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 					continue;
 				}
 
-				trace?.Push(m);
-				var ev = evalCase(data.Value, ref gas, trace);
+				ctx.Trace?.Push(m);
+				var ev = evalCase(data.Value, ctx);
 
-				var debug4 = Lexer.Untokenize(ev);
-
-				expand(builder, ev, ref gas, trace);
-				trace?.Pop();
+				expand(ev, ctx);
+				ctx.Trace?.Pop();
 			}
 			else if(m.Macro == "IFHTML")
 			{
-				var then = inp.popArg();
-				var els = inp.popOptArg();
-				mark = inp;
+				var then = code.popArg();
+				var els = code.popOptArg();
+				mark = code;
 
 				if(! then.HasValue)
 				{
@@ -451,22 +480,20 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 					continue;
 				}
 
-				trace?.Push(m);
-				if(HtmlMode)
-					expand(builder, then.Value, ref gas, trace);
+				if(ctx.HtmlMode)
+					expand(then.Value, ctx.WithExpand(m));
 				else if(els.HasValue)
-					expand(builder, els.Value, ref gas, trace);
-				trace?.Pop();
+					expand(els.Value, ctx.WithExpand(m));
 			}
 			else if(! macros.TryGetValue(m.Macro, out var def))
 			{
 				Log.Warn($"Unknown macro {m.At}, discarding it");
-				mark = inp;
+				mark = code;
 			}
 			else
 			{
-				var args = inp.parseArguments(def.args);
-				mark = inp;
+				var args = code.parseArguments(def.Args);
+				mark = code;
 
 				if(args is null)
 				{
@@ -476,20 +503,19 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 				if(Debug)
 				{
-					Console.Error.WriteLine($"[TRACE] Expanding {m.At} to '{Lexer.Untokenize(def.replacement)}'");
+					Console.Error.WriteLine($"[TRACE] Expanding {m.At} to '{Lexer.Untokenize(def.Replacement)}'");
 					int j = 0;
 
 					foreach(var x in args)
 						Console.Error.WriteLine($"[TRACE]     Argument #{++j}: {Lexer.Untokenize(x)}");
 				}
 
-				trace?.Push(m);
-				expand(builder, insertArgs(def.replacement, args, trace!), ref gas, trace!);
-				trace?.Pop();
+				var sub = ctx.WithExpand(m);
+				expand(insertArgs(def.Replacement, args, sub), sub);
 			}
 		}
 
-		builder.Append(mark);
+		ctx.Builder.Append(mark);
 	}
 
 	/// <summary>
@@ -512,7 +538,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	///  Learns every macro definition in a file.
 	///  Does not know about \if or quoting environments.
 	/// </summary>
-	public void LearnMacrosFrom(CodeSegment code)
+	public void LearnMacrosFrom(Code code)
 	{
 		while(code.IsNotEmpty)
 		{
@@ -581,7 +607,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 			if(macros.TryGetValue(definition.name, out var previous))
 			{
-				if(previous.force)
+				if(previous.Force)
 					continue;
 
 				switch(ifPresent)
@@ -611,27 +637,9 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	}
 
 	/// <summary>
-	///  Expands latex code once
-	/// </summary>
-	/// <param name="chain"></param>
-	/// <returns></returns>
-	public CodeSegment Expand(CodeSegment chain)
-	{
-		int gas = Conf.MaximumExpansions;
-		var builder = new ChainBuilder<Token>();
-		var st = new Stack<MacroName>();
-
-		st.Push( new("compile", new("Expand()", 0, 0)) );
-
-		expand(builder, chain, ref gas, st);
-
-		return builder.Build();
-	}
-
-	/// <summary>
 	///  Extracts the segments that define spells and invokes the game's extractor for them
 	/// </summary>
-	public IEnumerable<TSpell> ExtractSpells<TSpell>(IGame<TSpell> game, CodeSegment code, string source)
+	public IEnumerable<TSpell> ExtractSpells<TSpell>(IGame<TSpell> game, Code code, string source)
 	{
 		foreach (var (c,n) in code.Items().FindIndices(spellAnchor, (x,y) => x.IsSame(y), false).Pairs())
 		{
@@ -782,17 +790,11 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		return doc.ToString().Trim();
 	}
 
-	public string ToHTML(CodeSegment code)
+	public string ToHTML(Code code)
 	{
-		HtmlMode = true;
-		int gas = Conf.MaximumExpansions;
 		var builder = new ChainBuilder<Token>();
-		var st = new Stack<MacroName>();
 
-		st.Push( new("compile", new("ToHTML()", 0, 0)) );
-
-
-		expand(builder, code, ref gas, st);
+		expand( code, new( builder, new(Conf.MaximumExpansions), [ new MacroName("compile", new("ToHTML()", 0, 0)) ], true ) );
 
 		return ToHTML(builder.Items());
 	}
@@ -802,16 +804,12 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	///
 	///  (!) DON'T use for DB-stored values, as those should be HTML-safe
 	/// </summary>
-	public string ToString(CodeSegment seg)
+	public string ToString(Code code)
 	{
-		HtmlMode = false;
-		int gas = Conf.MaximumExpansions;
 		var builder = new ChainBuilder<Token>();
-		var st = new Stack<MacroName>();
 
-		st.Push( new("compile", new("ToString()", 0, 0)) );
+		expand( code, new( builder, new(Conf.MaximumExpansions), [ new MacroName("compile", new("ToString()", 0, 0)) ], false ) );
 
-		expand(builder, seg, ref gas, st);
 		var str = new StringBuilder();
 		bool outputState = true;
 
@@ -831,10 +829,10 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// <summary>
 	///  Same as `ToString()` but escapes any HTML characters
 	/// </summary>
-	public string ToSafeString(CodeSegment seg)
+	public string ToSafeString(Code seg)
 		=> WebUtility.HtmlEncode(ToString(seg));
 
 	public string ToString(ArraySegment<Token> seg)
-		=> ToString(new CodeSegment(seg));
+		=> ToString(new Code(seg));
 
 }

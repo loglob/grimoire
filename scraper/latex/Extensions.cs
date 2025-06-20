@@ -283,16 +283,10 @@ public static class Extensions
 	/// <summary>
 	///  Wrapper around IEnumerable that allows single-item lookahead
 	/// </summary>
-	public class LL1<T>
+	public class LL1<T>(IEnumerator<T> inner)
 	{
-		private readonly IEnumerator<T> inner;
-		private bool hasCurrent;
-
-		public LL1(IEnumerator<T> inner)
-		{
-			this.inner = inner;
-			hasCurrent = inner.MoveNext();
-		}
+		private readonly IEnumerator<T> inner = inner;
+		private bool hasCurrent = inner.MoveNext();
 
 		public LL1(IEnumerable<T> inner) : this(inner.GetEnumerator())
 		{}
@@ -350,11 +344,11 @@ public static class Extensions
 			var xGot = xs.Move(out var xTk);
 			var yGot = ys.Move(out var yTk);
 
-			if(xGot != yGot || xWs != yWs)
+			if(xGot != yGot)
 				return false;
 			if(!xGot)
 				return true;
-			if(! xTk!.IsSame(yTk!))
+			if(xWs != yWs || !xTk!.IsSame(yTk!))
 				return false;
 		}
 	}
