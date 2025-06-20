@@ -67,7 +67,7 @@ namespace Games.DnD5e
 						.join(", ") ),
 					document.createElement("br"),
 					"Duration: ",
-					bold( spell.duration )
+					bold( (spell.concentration ? "Concentration, up to " : "") + spell.duration )
 				);
 			}
 
