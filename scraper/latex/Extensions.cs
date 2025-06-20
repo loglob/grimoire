@@ -338,7 +338,7 @@ public static class Extensions
 
 	public static bool like(this LL1<Token> xs, LL1<Token> ys)
 	{
-		// trim
+		// trim start
 		xs.MoveWhile(tk => tk is WhiteSpace);
 		ys.MoveWhile(tk => tk is WhiteSpace);
 
@@ -348,7 +348,7 @@ public static class Extensions
 			var yWs = ys.MoveWhile(tk => tk is WhiteSpace);
 
 			var xGot = xs.Move(out var xTk);
-			var yGot = xs.Move(out var yTk);
+			var yGot = ys.Move(out var yTk);
 
 			if(xGot != yGot || xWs != yWs)
 				return false;

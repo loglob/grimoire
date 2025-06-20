@@ -111,6 +111,11 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	///  If true, record stack traces on latex errors and include line markers in HTML output.
 	/// </summary>
 	public bool Debug { get; init; } = false;
+	/// <summary>
+	///  If true, we're currently generating full-fledged HTML.
+	///  Observable with \IFHTML
+	/// </summary>
+	public bool HtmlMode = true;
 
 	/// <summary>
 	///  Maps an environment token onto its corresponding enum entry.
@@ -413,8 +418,12 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 			}
 			else if(m.Macro == "CASE")
 			{ // signature like `s m (M[] m)* m`
+				var debug1 = Lexer.Untokenize(inp);
+
 				var data = parseCase(ref inp);
 				mark = inp;
+
+				var debug2 = Lexer.Untokenize(inp);
 
 				if(! data.HasValue)
 				{
@@ -424,7 +433,29 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 				trace?.Push(m);
 				var ev = evalCase(data.Value, ref gas, trace);
+
+				var debug4 = Lexer.Untokenize(ev);
+
 				expand(builder, ev, ref gas, trace);
+				trace?.Pop();
+			}
+			else if(m.Macro == "IFHTML")
+			{
+				var then = inp.popArg();
+				var els = inp.popOptArg();
+				mark = inp;
+
+				if(! then.HasValue)
+				{
+					Log.Warn($"Discarding incomplete {m.At}");
+					continue;
+				}
+
+				trace?.Push(m);
+				if(HtmlMode)
+					expand(builder, then.Value, ref gas, trace);
+				else if(els.HasValue)
+					expand(builder, els.Value, ref gas, trace);
 				trace?.Pop();
 			}
 			else if(! macros.TryGetValue(m.Macro, out var def))
@@ -753,6 +784,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 
 	public string ToHTML(CodeSegment code)
 	{
+		HtmlMode = true;
 		int gas = Conf.MaximumExpansions;
 		var builder = new ChainBuilder<Token>();
 		var st = new Stack<MacroName>();
@@ -772,6 +804,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	/// </summary>
 	public string ToString(CodeSegment seg)
 	{
+		HtmlMode = false;
 		int gas = Conf.MaximumExpansions;
 		var builder = new ChainBuilder<Token>();
 		var st = new Stack<MacroName>();

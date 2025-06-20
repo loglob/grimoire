@@ -19,7 +19,25 @@
 \forcenewcommand{\comb}{\<\C\>}
 \forcenewcommand{\Com}{\<\C\>}
 \forcenewcommand{\R}{\<\R\>}
-\forcenewcommand{\action}{\<\action\>}
+
+\ForceDocumentCommand{\action}{ s O{1} }{
+\IFHTML{
+	\<<img src=\>
+	\CASE{#1}
+	[*]{
+		\<"/img/Reaction.png"/>\>\CASE{#2}[1]{}{\<<sup>\>#2\<</sup>\>}
+	}{
+		\CASE{#2}
+		[0]{ \<"/img/Free Action.png"/>\> }
+		[1]{ \<"/img/Single Action.png"/>\> }
+		[2]{ \<"/img/Two Actions.png"/>\> }
+		[3]{ \<"/img/Three Actions.png"/>\> }
+		{ \<"/img/Single Action.png"/><sup>\> #2 \<</sup>\> }
+	}
+}[{
+	\<\action\>#1[#2]
+}]
+}
 
 % substitute symbols
 \newcommand{\cdot}{·}
