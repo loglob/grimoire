@@ -1,12 +1,9 @@
 /bin
 /obj
 /cache
-/db
+/db*
 /.vscode
 /olspy
-latex.json
-overleaf.json
-books.json
-copy.json
-config.json
+!*-example.json
+*.json
 *.tex
