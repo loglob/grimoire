@@ -15,6 +15,9 @@ public interface IGame<out TSpell>
 	TSpell ExtractLatexSpell(Compiler comp, Config.Book source, Chain<Token> code);
 
 	ISource<TSpell> Instantiate(Config.Source src);
+
+	void LearnMaterials(Chain<Token> code)
+		=> throw new InvalidOperationException($"Game {Conf.Shorthand} doesn't support material parsing");
 }
 
 public interface ISpell

@@ -1,6 +1,8 @@
 using Grimoire.Latex;
 using Grimoire.Util;
-using System.Security.Principal;
+using System.Data;
+using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace Grimoire;
 
@@ -193,5 +195,142 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			Config.DndWikiSource => throw new ArgumentException("The DnDWiki doesn't have any Goedendag spells"),
 			_ => throw new ArgumentException($"Invalid source for Goedendag: {src}")
 		};
+	}
+
+	public readonly struct Cost
+	{
+		private const int COPPER_PER_SILVER = 36;
+		private const int SILVER_PER_GOLD = 12;
+		private const int COPPER_PER_GOLD = SILVER_PER_GOLD * COPPER_PER_SILVER;
+
+		public readonly int Gold, Silver, Copper;
+
+		public int TotalCopper
+			=> Gold * COPPER_PER_GOLD  +  Silver * COPPER_PER_SILVER  +  Copper;
+
+		public Cost(int copper)
+		{
+			Copper = copper % COPPER_PER_SILVER;
+			int silver = copper / COPPER_PER_SILVER;
+			Silver = silver % SILVER_PER_GOLD;
+			Gold = silver / SILVER_PER_GOLD;
+		}
+
+		public Cost(int gold, int silver, int copper) : this(gold*12*36 + silver*36 + copper)
+		{ }
+
+		public static bool operator >(Cost l, Cost r)
+			=> l.TotalCopper > r.TotalCopper;
+		public static bool operator <(Cost l, Cost r)
+			=> l.TotalCopper < r.TotalCopper;
+		public static bool operator >=(Cost l, Cost r)
+			=> l.TotalCopper >= r.TotalCopper;
+		public static bool operator <=(Cost l, Cost r)
+			=> l.TotalCopper <= r.TotalCopper;
+		public static bool operator ==(Cost l, Cost r)
+			=> l.TotalCopper == r.TotalCopper;
+		public static bool operator !=(Cost l, Cost r)
+			=> l.TotalCopper != r.TotalCopper;
+
+		public override bool Equals([NotNullWhen(true)] object? obj)
+			=> obj is Cost c && this == c;
+
+		public override int GetHashCode()
+			=> TotalCopper;
+
+		private enum Unit
+		{
+			COPPER, SILVER, GOLD
+		}
+
+		public static Cost Parse(Chain<Token> data)
+		{
+			Position? pos = null;
+			int? cost = null;
+			Unit? unit = null;
+			bool costFin = false;
+
+			foreach(var tk in data.Items())
+			{
+				if(!pos.HasValue)
+					pos = tk.Pos;
+
+				if(tk is WhiteSpace)
+					costFin = true; // already trimmed
+				else if(tk is Character digit && char.IsDigit(digit.Char) && !costFin)
+					cost = cost.GetValueOrDefault(0) * 10 + (digit.Char - '0');
+				else if(tk is MacroName macro && !unit.HasValue && cost.HasValue)
+				{
+					costFin = true;
+					unit = macro.Macro switch
+					{
+						"Cu" => Unit.COPPER,
+						"Ag" => Unit.SILVER,
+						"Au" => Unit.GOLD,
+						_ => throw new FormatException($"{macro.At} is not a currency")
+					};
+				}
+				else
+					throw new FormatException($"Unexpected token in cost: {tk.At}");
+			}
+
+			if(!cost.HasValue || !unit.HasValue)
+				throw new FormatException(pos.HasValue ? $"{pos}: Invalid currency value" : "Empty currency field");
+
+			return unit.Value switch {
+				Unit.COPPER => new(0, 0, cost.Value),
+				Unit.SILVER => new(0, cost.Value, 0),
+				Unit.GOLD   => new(cost.Value, 0, 0),
+				_ => throw new InvalidDataException()
+			};
+		}
+
+		public override string ToString()
+		{
+			var b = new StringBuilder();
+
+			if(Gold > 0)
+			{
+				b.Append(Gold);
+				b.Append("G");
+			}
+			if(Silver > 0)
+			{
+				if(b.Length > 0)
+					b.Append(' ');
+
+				b.Append(Silver);
+				b.Append("S");
+			}
+			if(Copper > 0 || b.Length == 0)
+			{
+				if(b.Length > 0)
+					b.Append(' ');
+
+				b.Append(Copper);
+				b.Append("C");
+			}
+
+			return b.ToString();
+		}
+	}
+
+	public void LearnMaterials(Chain<Token> body)
+	{
+		foreach(var table in body.extractEnvironments("tblr"))
+		{
+			foreach(var row in table.SplitBy(tk => tk is BackBack))
+			{
+				var cols = row
+					.SplitBy(tk => tk is Character amp && amp.Char == '&')
+					.ToList();
+				var name = Lexer.Untokenize(cols[0]).Trim();
+				var descr = Lexer.Untokenize(cols[1]).Trim();
+				var _cost = cols[2].TrimStart();
+				Cost? cost = _cost.IsEmpty ? null : Cost.Parse(_cost);
+
+				Console.WriteLine($"{name}: {descr} ({cost})");
+			}
+		}
 	}
 }

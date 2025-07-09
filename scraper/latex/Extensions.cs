@@ -358,4 +358,25 @@ public static class Extensions
 
 	public static bool like(this IEnumerable<Token> xs, IEnumerable<Token> ys)
 		=> xs.GetEnumerator().like(ys.GetEnumerator());
+
+	public static IEnumerable<CodeSegment> extractEnvironments(this CodeSegment code, string env)
+	{
+		for(;;)
+		{
+			var spL = code.SplitOn(x => x is BeginEnv be && be.Env == env);
+
+			if(! spL.HasValue)
+				yield break;
+
+			code = spL.Value.right;
+
+			var spR = code.SplitOn(x => x is EndEnv ee && ee.Env == env);
+			
+			if(! spR.HasValue)
+				throw new InvalidDataException($"Illegal slice unbalancing environments");
+
+			yield return spR.Value.left;
+			code = spR.Value.right;
+		}
+	}
 }
