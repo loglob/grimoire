@@ -45,6 +45,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 		var lex = new Lexer(log);
 
 		var macroFiles = config.Latex.MacroFiles.ToHashSet();
+		var materialFiles = config.Latex.MaterialFiles.ToHashSet();
 		var files = config.Latex.Files.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToHashSet());
 
 		// manifest has to be loaded eagerly
@@ -63,6 +64,9 @@ public class Overleaf<TSpell> : ISource<TSpell>
 				if(manifest.MacroFiles is not null)
 					macroFiles.AddRange(manifest.MacroFiles);
 
+				if(manifest.MaterialFiles is not null)
+					materialFiles.AddRange(manifest.MaterialFiles);
+
 				if(manifest.Files is not null)
 					files.UnionAll(manifest.Files);
 			}
@@ -71,7 +75,9 @@ public class Overleaf<TSpell> : ISource<TSpell>
 		var byPath = await cache.CacheMany(
 				"files",
 				files.Values.SelectMany(x => x)
-					.Concat(macroFiles),
+					.Concat(macroFiles)
+					.Concat(materialFiles)
+					.Distinct(),
 				async path => {
 					if(root is null || session is null)
 						(project, session, root) = await open();
@@ -90,6 +96,14 @@ public class Overleaf<TSpell> : ISource<TSpell>
 		{
 			if(byPath.TryGetValue(f, out var content))
 				latex.LearnMacrosFrom(content);
+			else
+				missing.Add(f);
+		}
+
+		foreach(var f in materialFiles)
+		{
+			if(byPath.TryGetValue(f, out var content))
+				game.LearnMaterials(content);
 			else
 				missing.Add(f);
 		}

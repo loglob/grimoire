@@ -17,22 +17,29 @@ public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : 
 		var lex = new Lexer(log);
 
 		var macroFiles = Conf.MacroFiles.ToHashSet();
+		var materialFiles = Conf.MaterialFiles.ToHashSet();
 		var files = Conf.Files.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToHashSet());
 
 		if(Conf.LocalManifest is not null)
 		{
 			using var f = File.OpenRead(Conf.LocalManifest);
-			var manifest = JsonSerializer.Deserialize<Config.LatexManifest>(f, Config.JsonOpt);
+			var manifest = JsonSerializer.Deserialize<Config.LatexManifest>(f, Config.JsonOpt)!;
 
-			if(manifest!.Files is not null)
+			if(manifest.Files is not null)
 				files.UnionAll(manifest.Files);
 
-			if(manifest!.MacroFiles is not null)
+			if(manifest.MacroFiles is not null)
 				macroFiles.AddRange(manifest.MacroFiles);
+
+			if(manifest.MaterialFiles is not null)
+				materialFiles.AddRange(manifest.MaterialFiles);
 		}
 
 		foreach(var f in macroFiles)
 			comp.LearnMacrosFrom(File.ReadLines(f), f);
+
+		foreach(var f in materialFiles)
+			Game.LearnMaterials(File.ReadLines(f), f);
 
 		var segments = files
 			.SelectMany(kvp => kvp.Value.Select(file => (kvp.Key, file)))
@@ -42,8 +49,11 @@ public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : 
 		foreach (var (_, code) in segments.Where(seg => seg.source == Config.LatexOptions.MACROS_SOURCE_NAME))
 			comp.LearnMacrosFrom(code);
 
+		foreach (var (_, code) in segments.Where(seg => seg.source == Config.LatexOptions.MATERIAL_SOURCE_NAME))
+			Game.LearnMaterials(code);
+
 		return segments
-			.Where(seg => seg.source != Config.LatexOptions.MACROS_SOURCE_NAME)
+			.Where(seg => seg.source != Config.LatexOptions.MACROS_SOURCE_NAME && seg.source != Config.LatexOptions.MATERIAL_SOURCE_NAME)
 			.SelectMany(seg => comp.ExtractSpells(Game, seg.code, seg.source))
 			.ToAsyncEnumerable();
 	}
