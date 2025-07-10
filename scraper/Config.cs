@@ -194,9 +194,7 @@ public static class Config
 			);
 	}
 
-	public sealed record LatexManifest(string[]? MacroFiles = null, string[]? MaterialFiles = null, Dictionary<string, string[]>? Files = null);
-
-	public sealed record LatexSource(LatexOptions Options, string[] MacroFiles, string[] MaterialFiles, Dictionary<string, string[]> Files, float CacheLifetime, string? LocalManifest = null)
+	public sealed record LatexSource(LatexOptions Options, Dictionary<string, string[]> Files, float CacheLifetime, string? LocalManifest = null)
 		: Source(CacheLifetime)
 	{
 		private static Dictionary<string, string[]> parseFiles(JsonObject o)
@@ -219,15 +217,13 @@ public static class Config
 		internal static LatexSource Parse(JsonObject o)
 			=> new(
 				LatexOptions.Parse(o) ,
-				strArray(o["macroFiles"]) ,
-				strArray(o["materialFiles"]) ,
 				parseFiles(o["files"]!.AsObject()) ,
 				((float?)o["cacheLifetime"]) ?? float.PositiveInfinity ,
 				(string?)o["localManifest"]
 			);
 
 		public override string ToString()
-			=> $"LatexSource( {nameof(Options)} = {Options}, {nameof(MacroFiles)} = {MacroFiles.Show()}, {nameof(MaterialFiles)} = {MaterialFiles.Show()}, {nameof(Files)} = {Files.Show()}, {nameof(CacheLifetime)} = {CacheLifetime}s, {nameof(LocalManifest)} = {LocalManifest.Show()} )";
+			=> $"LatexSource( {nameof(Options)} = {Options}, {nameof(Files)} = {Files.Show()}, {nameof(CacheLifetime)} = {CacheLifetime}s, {nameof(LocalManifest)} = {LocalManifest.Show()} )";
 	}
 
 	public sealed record CopySource(string[] From) : Source(0.0f)
@@ -253,8 +249,9 @@ public static class Config
 		int MaximumExpansions = LatexOptions.DEFAULT_MAXIMUM_EXPANSIONS)
 	{
 		public const int DEFAULT_MAXIMUM_EXPANSIONS = 1_000_000;
-
+		/** Meta source that undergoes macro- instead of spell extraction */
 		public const string MACROS_SOURCE_NAME = "macros";
+		/** Meta source that undergoes material- instead of spell extraction */
 		public const string MATERIAL_SOURCE_NAME = "materials";
 
 		internal static LatexOptions Parse(JsonObject o)

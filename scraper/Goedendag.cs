@@ -140,7 +140,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			if(Gold > 0)
 			{
 				b.Append(Gold);
-				b.Append("G");
+				b.Append('G');
 			}
 			if(Silver > 0)
 			{
@@ -148,7 +148,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 					b.Append(' ');
 
 				b.Append(Silver);
-				b.Append("S");
+				b.Append('S');
 			}
 			if(Copper > 0 || b.Length == 0)
 			{
@@ -156,7 +156,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 					b.Append(' ');
 
 				b.Append(Copper);
-				b.Append("C");
+				b.Append('C');
 			}
 
 			return b.ToString();

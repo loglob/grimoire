@@ -44,8 +44,6 @@ public class Overleaf<TSpell> : ISource<TSpell>
 		Protocol.FolderInfo? root = null;
 		var lex = new Lexer(log);
 
-		var macroFiles = config.Latex.MacroFiles.ToHashSet();
-		var materialFiles = config.Latex.MaterialFiles.ToHashSet();
 		var files = config.Latex.Files.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToHashSet());
 
 		// manifest has to be loaded eagerly
@@ -59,25 +57,14 @@ public class Overleaf<TSpell> : ISource<TSpell>
 				log.Warn("Cannot open manifest path");
 			else
 			{
-				var manifest = JsonSerializer.Deserialize<Config.LatexManifest>(string.Join(' ', await session.GetDocumentByID(mf.ID)), Config.JsonOpt)!;
-
-				if(manifest.MacroFiles is not null)
-					macroFiles.AddRange(manifest.MacroFiles);
-
-				if(manifest.MaterialFiles is not null)
-					materialFiles.AddRange(manifest.MaterialFiles);
-
-				if(manifest.Files is not null)
-					files.UnionAll(manifest.Files);
+				var manifest = JsonSerializer.Deserialize<Dictionary<string, string[]>>(string.Join(' ', await session.GetDocumentByID(mf.ID)), Config.JsonOpt)!;
+				files.UnionAll(manifest);
 			}
 		}
 
 		var byPath = await cache.CacheMany(
 				"files",
-				files.Values.SelectMany(x => x)
-					.Concat(macroFiles)
-					.Concat(materialFiles)
-					.Distinct(),
+				files.Values.SelectMany(x => x),
 				async path => {
 					if(root is null || session is null)
 						(project, session, root) = await open();
@@ -90,22 +77,28 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			.Select(kvp => (kvp.key, val: kvp.val.DocumentContents() ?? kvp.val))
 			.ToDictionaryAsync(kvp => kvp.key, kvp => kvp.val);
 
-		List<string> missing = [];
+		HashSet<string> missing = [];
 
-		foreach (var f in macroFiles)
+		if(files.Remove(Config.LatexOptions.MACROS_SOURCE_NAME, out var macroFiles))
 		{
-			if(byPath.TryGetValue(f, out var content))
-				latex.LearnMacrosFrom(content);
-			else
-				missing.Add(f);
+			foreach(var f in macroFiles)
+			{
+				if(byPath.TryGetValue(f, out var content))
+					latex.LearnMacrosFrom(content);
+				else
+					missing.Add(f);
+			}
 		}
 
-		foreach(var f in materialFiles)
+		if(files.Remove(Config.LatexOptions.MATERIAL_SOURCE_NAME, out var materialFiles))
 		{
-			if(byPath.TryGetValue(f, out var content))
-				game.LearnMaterials(content);
-			else
-				missing.Add(f);
+			foreach(var f in materialFiles)
+			{
+				if(byPath.TryGetValue(f, out var content))
+					game.LearnMaterials(content);
+				else
+					missing.Add(f);
+			}
 		}
 
 		foreach (var kvp in files)

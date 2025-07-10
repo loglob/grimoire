@@ -39,10 +39,10 @@ Optionally an object with the fields
 Processes local LaTeX files.
 For dnd5e, this expects [the rpgtex template](https://github.com/rpgtex/DND-5e-LaTeX-Template) format for spells.
 Expects an object with the fields:
-- `macroFiles`: A list of filenames to extract macros from.
-	No spells are extracted from these and macros from other files are not parsed.
-- `files`: A map from book IDs to one or more filenames. The same key may be supplied multiple times to concatenate the given filenames.
-- `localManifest`: A path to a JSON file that contains additional values for the `macroFiles` and `files` fields 
+- `files`: A map from book IDs to one or more filenames.
+			The special keys `macros` disables spell processing and extracts macros instead.
+			Goedendag also supports `materials` to extract spell materials.
+- `localManifest`: A path to a JSON file that contains additional values for the `files` fields 
 - The latex options described below, embedded directly into the object
 
 #### overleaf
@@ -73,15 +73,11 @@ Sources that process latex files provide latex options with the fields:
 - `environments`: A string -> string dictionary that maps LaTeX environments onto HTML tags, `itemize` or `tabular`. The original latex environment name is preserved as a CSS class.
 - `images`: A string -> string dictionary that maps images (either full paths or just filenames) used with `\includegraphics` onto TeX code that should be inserted where they are included instead.
 
-If a file contains a line starting with `%% grimoire begin`, only contents after that line until end of file or a closing `%% grimoire end` is parsed.
-The `%% grimoire begin` may also be followed by a book ID which overwrites the current book ID for that segment.
-A file may contain multiple such segments.
-
-Otherwise, the file contents between `\begin{document}` and `\end{document}` are searched for spells.
-The compiler permits the escape sequence `\< ... \>` for inserting literal HTML code.
-Such a sequence may not span over multiple lines, and is copied verbatim, without checking for syntactical correctness.
+For each file listed in `files`, the content between `\begin{document}` and `\end{document}` is searched for spells beginning with the configured spell anchor.
 
 The latex dialect understood by Grimoire has a few quirks:
+- The escape sequence `\< ... \>` allows for inserting literal HTML code.
+	- Such a sequence may not span over multiple lines, and is copied verbatim, without checking for syntactical correctness.
 - Incomplete invocations in macros are expanded eagerly
 	- i.e. `\newcommand{\I}{\textit}` would not work as a shorthand
 - The `\forcenewcommand` variant of `\newcommand`, which ignores any following `\renewcommand` for the same macro name
