@@ -16,11 +16,11 @@ public interface IGame<out TSpell>
 
 	ISource<TSpell> Instantiate(Config.Source src);
 
-	void LearnMaterials(Chain<Token> code)
+	void LearnMaterials(Compiler comp, Chain<Token> code)
 		=> throw new InvalidOperationException($"Game {Conf.Shorthand} doesn't support material parsing");
 
-	void LearnMaterials(IEnumerable<string> lines, string filename)
-		=> LearnMaterials(new Lexer(Log).Tokenize(lines, filename));
+	void LearnMaterials(Compiler comp, IEnumerable<string> lines, string filename)
+		=> LearnMaterials(comp, new Lexer(Log).Tokenize(lines, filename));
 }
 
 public interface ISpell

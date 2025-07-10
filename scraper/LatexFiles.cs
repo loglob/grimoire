@@ -34,7 +34,7 @@ public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : 
 		if(files.Remove(Config.LatexOptions.MATERIAL_SOURCE_NAME, out var materialFiles))
 		{
 			foreach(var f in materialFiles)
-				Game.LearnMaterials(File.ReadLines(f), f);
+				Game.LearnMaterials(comp, File.ReadLines(f), f);
 		}
 
 		var segments = files

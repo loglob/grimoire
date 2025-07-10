@@ -8,6 +8,8 @@
     <!-- Suggests converting .Substring() to range slicing,
         and .ToArray() to [ .. _ ] -->
     <NoWarn>IDE0057;IDE0305</NoWarn>
+    <!-- Compile time regex BS -->
+    <NoWarn>SYSLIB1045</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

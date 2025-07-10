@@ -3,6 +3,7 @@ using Grimoire.Util;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Grimoire;
 
@@ -312,7 +313,15 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		};
 	}
 
-	public void LearnMaterials(Chain<Token> body)
+	private static Token[] units = [
+		new MacroName("gr", default),
+		new MacroName("drop", default)
+	];
+
+	private static Regex unitRegex = new(@"([0-9]+)\s*\[([a-z]+)]");
+
+
+	public void LearnMaterials(Compiler comp, Chain<Token> body)
 	{
 		// there is a headline at the very start
 		var veryFirstRow = true;
@@ -323,7 +332,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			_ = inner.popArg();
 
 			// this table format is fucked up...
-			foreach(var row in inner.SplitBy(tk => tk is BackBack))
+			foreach(var row in inner.SplitBy(tk => tk is BackBack, true))
 			{
 				if(veryFirstRow)
 				{
@@ -332,13 +341,21 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				}
 
 				var cols = row
-					.SplitBy(tk => tk is AlignTab)
+					.SplitBy(tk => tk is AlignTab, true)
 					.ToList();
 
 				if(cols.Count != 3 || !Cost.TryParse(cols[2], out var cost))
 					continue;
 
-				Console.WriteLine($"{Lexer.Untokenize(cols[0])}: {Lexer.Untokenize(cols[1])} ({cost})");
+				var name = Regex.Replace(comp.ToString(cols[0]), @"(\n|\s)+", " ");
+				var descr = comp.ToString(cols[1]);
+
+				var um = unitRegex.Match(descr);
+
+				if(! um.Success)
+					continue;
+
+				Console.WriteLine($"\"{name}\" costs {cost} per {um.Groups[1]} {um.Groups[2]}");
 			}
 		}
 	}

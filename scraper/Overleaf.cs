@@ -96,7 +96,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			foreach(var f in materialFiles)
 			{
 				if(byPath.TryGetValue(f, out var content))
-					game.LearnMaterials(content);
+					game.LearnMaterials(latex, content);
 				else
 					missing.Add(f);
 			}

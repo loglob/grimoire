@@ -307,4 +307,18 @@ internal static class Extensions
 
 	public static T? Just<T>(this T x) where T : struct
 		=> x;
+
+	public static bool Unpack<T>(this T? x, out T val) where T : struct
+	{
+		if(x.HasValue)
+		{
+			val = x.Value;
+			return true;
+		}
+		else
+		{
+			val = default;
+			return false;
+		}
+	}
 }
