@@ -17,8 +17,16 @@ public class Program
 			new JsonStringEnumConverter()
 		},
 		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-		Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+		Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+		UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+		RespectNullableAnnotations = true,
+		RespectRequiredConstructorParameters = true
 	};
+
+	static Program()
+	{
+		JsonOptions.Converters.Add(new FlatCollectionConverter());
+	}
 
 	private static async Task store<T>(string path, T value)
 	{
@@ -78,7 +86,7 @@ public class Program
 		var args = new ArraySegment<string>(allArgs);
 		bool moreArgs = true;
 
-		while(args.Count >= 1 && moreArgs) 
+		while(args.Count >= 1 && moreArgs)
 		{
 			switch(args[0])
 			{

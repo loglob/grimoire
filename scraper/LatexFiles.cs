@@ -21,7 +21,7 @@ public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : 
 		if(Conf.LocalManifest is not null)
 		{
 			using var f = File.OpenRead(Conf.LocalManifest);
-			var manifest = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(f, Config.JsonOpt)!;
+			var manifest = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(f, Program.JsonOptions)!;
 			files.UnionAll(manifest);
 		}
 

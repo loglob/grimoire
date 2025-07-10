@@ -10,10 +10,6 @@ public static class Config
 	private static string[] strArray(JsonNode? n)
 		=> n?.AsArray()?.Select(x => (string)x!)?.ToArray() ?? [];
 
-	public static readonly JsonSerializerOptions JsonOpt = new() {
-		PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-	};
-
 	public record Game(string Shorthand, Dictionary<string, Book> Books, Source[] Sources)
 	{
 		private void trackSourceDiscriminators()
@@ -148,7 +144,7 @@ public static class Config
 		public static OverleafAuth Parse(JsonNode o)
 			=> (o is JsonValue v)
 				? new OverleafLinkAuth(((string?)v.AsValue())!)
-				: o.AsObject().Deserialize<OverleafUserAuth>(JsonOpt)!;
+				: o.AsObject().Deserialize<OverleafUserAuth>(Program.JsonOptions)!;
 	}
 
 	public record OverleafLinkAuth(string Link) : OverleafAuth()

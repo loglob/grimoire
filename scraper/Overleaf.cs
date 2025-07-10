@@ -1,6 +1,7 @@
 using Grimoire.Latex;
 using Grimoire.Util;
 using Olspy;
+using System.Collections.Immutable;
 using System.Text.Json;
 
 using static Grimoire.Util.Extensions;
@@ -57,7 +58,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 				log.Warn("Cannot open manifest path");
 			else
 			{
-				var manifest = JsonSerializer.Deserialize<Dictionary<string, string[]>>(string.Join(' ', await session.GetDocumentByID(mf.ID)), Config.JsonOpt)!;
+				var manifest = JsonSerializer.Deserialize<Dictionary<string, ImmutableList<string>>>(string.Join(' ', await session.GetDocumentByID(mf.ID)), Program.JsonOptions)!;
 				files.UnionAll(manifest);
 			}
 		}
