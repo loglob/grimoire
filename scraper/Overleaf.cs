@@ -5,16 +5,22 @@ using System.Collections.Immutable;
 using System.Text.Json;
 
 using static Grimoire.Util.Extensions;
+using Code = Grimoire.Util.Chain<Grimoire.Latex.Token>;
 
 namespace Grimoire;
 
 public class Overleaf<TSpell> : ISource<TSpell>
 {
+	public readonly record struct InputFile(string source, Code contents);
+	public readonly record struct Context(Compiler compiler, List<Code> materialFiles, List<InputFile> codeFiles);
+
+
 	private readonly Compiler latex;
 	private readonly IGame<TSpell> game;
 	private readonly Config.OverleafSource config;
 	private readonly Log log;
 	private readonly Cache cache;
+	private Context? storedContext = null;
 
 	public Overleaf(IGame<TSpell> game, Config.OverleafSource config)
 	{
@@ -38,13 +44,17 @@ public class Overleaf<TSpell> : ISource<TSpell>
 		return (project, session, root);
 	}
 
-	public async IAsyncEnumerable<TSpell> Spells()
+	private async ValueTask<Context> initialize()
 	{
+		if(storedContext.HasValue)
+			return storedContext.Value;
+
 		Project? project;
 		ProjectSession? session = null;
 		Protocol.FolderInfo? root = null;
 		var lex = new Lexer(log);
 
+		// maps source names onto paths
 		var files = config.Latex.Files.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToHashSet());
 
 		// manifest has to be loaded eagerly
@@ -58,7 +68,9 @@ public class Overleaf<TSpell> : ISource<TSpell>
 				log.Warn("Cannot open manifest path");
 			else
 			{
-				var manifest = JsonSerializer.Deserialize<Dictionary<string, ImmutableList<string>>>(string.Join(' ', await session.GetDocumentByID(mf.ID)), Program.JsonOptions)!;
+				var manifest = JsonSerializer.Deserialize<Dictionary<string, ImmutableList<string>>>(
+					string.Join(' ', await session.GetDocumentByID(mf.ID)), Program.JsonOptions
+				)!;
 				files.UnionAll(manifest);
 			}
 		}
@@ -78,8 +90,6 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			.Select(kvp => (kvp.key, val: kvp.val.DocumentContents() ?? kvp.val))
 			.ToDictionaryAsync(kvp => kvp.key, kvp => kvp.val);
 
-		HashSet<string> missing = [];
-
 		if(files.Remove(Config.LatexOptions.MACROS_SOURCE_NAME, out var macroFiles))
 		{
 			foreach(var f in macroFiles)
@@ -87,39 +97,65 @@ public class Overleaf<TSpell> : ISource<TSpell>
 				if(byPath.TryGetValue(f, out var content))
 					latex.LearnMacrosFrom(content);
 				else
-					missing.Add(f);
+					log.Warn($"Missing macro source file {f}");
 			}
 		}
 
-		if(files.Remove(Config.LatexOptions.MATERIAL_SOURCE_NAME, out var materialFiles))
+		List<string> missing = [];
+		List<Code> matFiles = [];
+
+		if(files.Remove(Config.LatexOptions.MATERIAL_SOURCE_NAME, out var _matFiles))
 		{
-			foreach(var f in materialFiles)
+			foreach(var file in _matFiles)
 			{
-				if(byPath.TryGetValue(f, out var content))
-					game.LearnMaterials(latex, content);
+				if(byPath.TryGetValue(file, out var code))
+					matFiles.Add(code);
 				else
-					missing.Add(f);
+					missing.Add(file);
 			}
 		}
 
-		foreach (var kvp in files)
+		List<InputFile> input = [];
+
+		foreach(var kvp in files)
 		{
-			foreach (var f in kvp.Value)
+			foreach(var file in kvp.Value)
 			{
-				if(byPath.TryGetValue(f, out var tks))
-				{
-					foreach (var spell in latex.ExtractSpells(game, tks, kvp.Key))
-						yield return spell;
-				}
+				if(byPath.TryGetValue(file, out var content))
+					input.Add(new(kvp.Key, content));
 				else
-					missing.Add(f);
+					missing.Add(file);
 			}
 		}
-
-		if(session is not null)
-			await session.DisposeAsync();
 
 		if(missing.Count > 0)
 			log.Warn($"{missing.Count} referenced files were not found: {string.Join(", ", missing)}");
+
+		storedContext = new(latex, matFiles, input);
+		return storedContext.Value;
+	}
+
+	async IAsyncEnumerable<TSpell> ISource<TSpell>.Spells()
+	{
+		var ctx = await initialize();
+
+		foreach(var f in ctx.codeFiles)
+		{
+			foreach(var spell in ctx.compiler.ExtractSpells(game, f.contents, f.source))
+				yield return spell;
+		}
+	}
+
+	async Task<bool> ISource<TSpell>.HasMaterials(MaterialManifest manifest)
+	{
+		var ctx = await initialize();
+
+		if(ctx.materialFiles.Count == 0)
+			return false;
+
+		foreach(var f in ctx.materialFiles)
+			game.LearnMaterials(manifest, ctx.compiler, f);
+
+		return true;
 	}
 }

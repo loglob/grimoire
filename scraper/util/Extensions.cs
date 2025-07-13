@@ -1,5 +1,6 @@
 using HtmlAgilityPack;
 using System.Collections;
+using System.Numerics;
 using System.Text;
 
 namespace Grimoire.Util;
@@ -321,4 +322,43 @@ internal static class Extensions
 			return false;
 		}
 	}
+
+	/// <summary>
+	/// Curiously missing from the standard library of every single language released in the last 70 years
+	/// </summary>
+	public static int GCD(this int a, int b)
+	{
+		ArgumentOutOfRangeException.ThrowIfNegative(a);
+		ArgumentOutOfRangeException.ThrowIfNegative(b);
+
+		if(a == 0L)
+			return b;
+		if(b == 0L)
+			return a;
+
+		var i = BitOperations.TrailingZeroCount(a);
+		var j = BitOperations.TrailingZeroCount(b);
+		a >>= i;
+		b >>= j;
+		// largest common power of two
+		var k = Math.Min(i, j);
+
+		while(true)
+		{
+			if(a < b)
+			{
+				b -= a;
+				b >>= BitOperations.TrailingZeroCount(b);
+			}
+			else if(a > b)
+			{
+				a -= b;
+				a >>= BitOperations.TrailingZeroCount(a);
+			}
+			else
+				return a << k;
+        }
+	}
+
+
 }

@@ -1,8 +1,7 @@
 using Grimoire.Latex;
 using Grimoire.Util;
+using System.Collections.Immutable;
 using System.Data;
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Grimoire;
@@ -30,8 +29,6 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		Ritual
 	}
 
-	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
-
 	public readonly record struct Spell(
 		string name,
 		Arcanum arcanum,
@@ -50,120 +47,145 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string Source
 	) : ISpell;
 
-	public readonly struct Cost
+	/// <summary>
+	///  The character that separates variant in \grVariants
+	/// </summary>
+	private const char VARIANT_SEPARATOR = '/';
+
+	private static readonly Regex amountRegex = new(@"\s*([0-9]+)\s*(\S*)\s*");
+
+	private static readonly ImmutableDictionary<string, int> coinMacros = new Dictionary<string, int>() {
+		{ "Cu", 1 },
+		{ "Ag", 36 },
+		{ "Au", 12*36 }
+	}.ToImmutableDictionary();
+
+	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
+
+	private static Amount parseAmount(string str)
 	{
-		private const int COPPER_PER_SILVER = 36;
-		private const int SILVER_PER_GOLD = 12;
-		private const int COPPER_PER_GOLD = SILVER_PER_GOLD * COPPER_PER_SILVER;
+		var m = amountRegex.Match(str);
 
-		public readonly int Gold, Silver, Copper;
+		if(! m.Success)
+			goto bad;
 
-		public int TotalCopper
-			=> Gold * COPPER_PER_GOLD  +  Silver * COPPER_PER_SILVER  +  Copper;
+		var num = int.Parse(m.Groups[1].ValueSpan);
+		var unit = m.Groups[2].ValueSpan;
 
-		public Cost(int copper)
+		if(unit[0] == '[' || unit[^1] == ']')
 		{
-			Copper = copper % COPPER_PER_SILVER;
-			int silver = copper / COPPER_PER_SILVER;
-			Silver = silver % SILVER_PER_GOLD;
-			Gold = silver / SILVER_PER_GOLD;
+			if(unit[0] != '[' || unit[^1] != ']')
+				goto bad;
+
+			unit = unit[1..^1];
 		}
 
-		public Cost(int gold, int silver, int copper) : this(gold*12*36 + silver*36 + copper)
-		{ }
+		return new(num, unit.IsEmpty ? MaterialManifest.DIMENSIONLESS_UNIT : unit.ToString());
 
-		public static bool operator >(Cost l, Cost r)
-			=> l.TotalCopper > r.TotalCopper;
-		public static bool operator <(Cost l, Cost r)
-			=> l.TotalCopper < r.TotalCopper;
-		public static bool operator >=(Cost l, Cost r)
-			=> l.TotalCopper >= r.TotalCopper;
-		public static bool operator <=(Cost l, Cost r)
-			=> l.TotalCopper <= r.TotalCopper;
-		public static bool operator ==(Cost l, Cost r)
-			=> l.TotalCopper == r.TotalCopper;
-		public static bool operator !=(Cost l, Cost r)
-			=> l.TotalCopper != r.TotalCopper;
-
-		public override bool Equals([NotNullWhen(true)] object? obj)
-			=> obj is Cost c && this == c;
-
-		public override int GetHashCode()
-			=> TotalCopper;
-
-		public static bool TryParse(Chain<Token> data, [MaybeNullWhen(false)] out Cost result)
-		{
-			int? cost = null;
-			bool costFin = false;
-			bool fin = false;
-			result = default;
-
-			foreach(var tk in data.Items())
-			{
-				if(tk is WhiteSpace)
-				{
-					if(cost.HasValue)
-						costFin = true;
-				}
-				else if(tk is Character digit && char.IsDigit(digit.Char) && !costFin)
-					cost = cost.GetValueOrDefault(0) * 10 + (digit.Char - '0');
-				else if(tk is MacroName macro && cost.HasValue && !fin)
-				{
-					costFin = true;
-					fin = true;
-					switch(macro.Macro)
-					{
-						case "Cu":
-							result = new(0, 0, cost.Value);
-						break;
-						case "Ag":
-							result = new(0, cost.Value, 0);
-							break;
-						case "Au":
-							result = new(cost.Value, 0, 0);
-							break;
-
-						default:
-							return false;
-					}
-				}
-				else
-					return false;
-			}
-
-			return fin;
-		}
-
-		public override string ToString()
-		{
-			var b = new StringBuilder();
-
-			if(Gold > 0)
-			{
-				b.Append(Gold);
-				b.Append('G');
-			}
-			if(Silver > 0)
-			{
-				if(b.Length > 0)
-					b.Append(' ');
-
-				b.Append(Silver);
-				b.Append('S');
-			}
-			if(Copper > 0 || b.Length == 0)
-			{
-				if(b.Length > 0)
-					b.Append(' ');
-
-				b.Append(Copper);
-				b.Append('C');
-			}
-
-			return b.ToString();
-		}
+	bad:
+		throw new FormatException($"Invalid amount: {str}");
 	}
 
+	private static Price parsePrice(Chain<Token> code)
+	{
+		int sum = 0;
+		var rest = code;
+
+		while(true)
+		{
+			var spl = rest.SplitOn(tk => tk is MacroName m && coinMacros.ContainsKey(m.Macro));
+
+			if(! spl.HasValue)
+			{
+				if(rest.Items().Any(tk => tk is not WhiteSpace))
+					goto bad;
+
+				return new(sum);
+			}
+
+			if(! int.TryParse(Lexer.Untokenize(spl.Value.left).Trim(), out var n))
+				goto bad;
+
+			sum += coinMacros[((MacroName)spl.Value.at).Macro] + n;
+			rest = spl.Value.right;
+		}
+
+		bad:
+		throw new FormatException($"Invalid price '{Lexer.Untokenize(code)}'");
+	}
+
+	/// <summary>
+	///  Extracts material definitions from a code line
+	/// </summary>
+	private static IEnumerable<Material> extractMaterial(MaterialManifest mf, Compiler comp, Chain<Token> line, string[]? ctx)
+	{
+		var cols = line.SplitBy(tk => tk is AlignTab, true).ToArray();
+
+		// collect names
+		var _names = line.extractInvocations("grMaterial").ToList();
+		// normal unit references
+		var unit = line.extractSingleInvocation("grUnit");
+		var otherUnit = line.extractSingleInvocation("grOtherUnit");
+		// variant reference
+		var variant = line.extractSingleInvocation("grVariants");
+
+		if(_names.Count > 0 && !unit.HasValue && !variant.HasValue)
+			throw new FormatException(@"Incomplete \grMaterial definition");
+		if(!unit.HasValue && otherUnit.HasValue)
+			throw new FormatException(@"Using \grOtherUnit without \grUnit");
+		if(unit.HasValue && variant.HasValue)
+			throw new FormatException(@"Mixing \grUnit and \grVariants");
+
+		var names = (_names.Count == 0 ? [cols[0]] : _names).Select(comp.ToString);
+
+		if(unit.HasValue)
+		{
+			var price = parsePrice(cols[2]);
+			var amt = parseAmount(comp.ToString(unit.Value));
+
+			if(otherUnit.HasValue)
+			{
+				var otherAmt = parseAmount(comp.ToString(otherUnit.Value));
+
+				if(mf.TryGetUnit(otherAmt.Unit, out var trUnit) && trUnit.Unit != MaterialManifest.DIMENSIONLESS_UNIT)
+					throw new FormatException($"Transient unit '{otherAmt.Unit}' is not dimensionless");
+
+				amt *= otherAmt.Number;
+				// TODO: preserve transient unit information in some way
+			}
+
+			return names.Select(n => new Material(n, amt, price));
+		}
+		else if(variant.HasValue)
+		{
+			if(ctx is null)
+				throw new FormatException(@"\grVariants without preceding \grDeclareVariants");
+
+			var pieces = cols[2].SplitBy(tk => tk is Character c && c.Char == VARIANT_SEPARATOR).ToList();
+
+			if(pieces.Count != ctx.Length)
+				throw new FormatException(@"Arity mismatch between \grVariants and preceding \grDeclareVariants");
+
+			return names.SelectMany(name => ctx.Zip(pieces)
+					.Select(xy => new Material($"{xy.First} {name}", Amount.ONE, parsePrice(xy.Second)))
+				);
+		}
+		else
+			return [];
+	}
+
+	private static void extractVariantDecl(Compiler comp, Chain<Token> line, ref string[]? ctx)
+	{
+		var inv = line.extractSingleInvocation("grDeclareVariants");
+
+		if(! inv.HasValue)
+			return;
+
+		ctx = inv.Value
+			.SplitBy(tk => tk is Character c && c.Char == VARIANT_SEPARATOR)
+			.Select(comp.ToString)
+			.ToArray();
+	}
 
 	private string processCastTime(string spell, string ct, ref bool reaction)
 	{
@@ -213,7 +235,25 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		return string.Join("", pieces);
 	}
 
-	public Spell ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
+	MaterialManifest IGame<Spell>.InitUnits()
+	{
+		var mf = new MaterialManifest();
+
+		// TODO: un-hardcode this
+		mf.AddBaseUnit("g");
+		mf.AddBaseUnit("drop");
+		mf.AddBaseUnit("cm");
+
+		mf.AddUnit("drops", new(1, "drop")); // alias
+		mf.AddUnit("kg", new(1000, "g"));
+		mf.AddUnit("ml", new(2, "drop"));
+		mf.AddUnit("l", new(1000, "ml"));
+		mf.AddUnit("m", new(100, "cm"));
+
+		return mf;
+	}
+
+	Spell IGame<Spell>.ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
 	{
 		if(body.parseArguments(ArgType.SimpleSignature(3)) is not [ var _name, var _tag, var _prop ])
 			throw new FormatException("Bad spell format, missing arguments to \\spell");
@@ -301,7 +341,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			prop["effect"], prop["crit"], prop["fail"], extra, book.Shorthand);
 	}
 
-	public ISource<Spell> Instantiate(Config.Source src)
+	ISource<Spell> IGame<Spell>.Instantiate(Config.Source src)
 	{
 		return src switch
 		{
@@ -313,49 +353,65 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		};
 	}
 
-	private static Token[] units = [
-		new MacroName("gr", default),
-		new MacroName("drop", default)
-	];
-
-	private static Regex unitRegex = new(@"([0-9]+)\s*\[([a-z]+)]");
-
-
-	public void LearnMaterials(Compiler comp, Chain<Token> body)
+	void IGame<Spell>.LearnMaterials(MaterialManifest mf, Compiler comp, Chain<Token> code)
 	{
-		// there is a headline at the very start
-		var veryFirstRow = true;
-
-		foreach(var table in body.extractEnvironments("tblr"))
+		foreach(var table in code.extractEnvironments("tblr"))
 		{
+			string[]? context = null;
 			var inner = table;
-			_ = inner.popArg();
+			_ = inner.popArg(); // remove colspec
 
-			// this table format is fucked up...
 			foreach(var row in inner.SplitBy(tk => tk is BackBack, true))
 			{
-				if(veryFirstRow)
+				try
 				{
-					veryFirstRow = false;
-					continue;
+					foreach(var mat in extractMaterial(mf, comp, row, context))
+					{
+						Log.Info(mat.ToString());
+						mf.AddMaterial(mat);
+					}
+				}
+				catch(FormatException ex)
+				{
+					Log.Warn($"Failed to parse material at {row[0].Pos}: {ex.Message}");
 				}
 
-				var cols = row
-					.SplitBy(tk => tk is AlignTab, true)
-					.ToList();
+				try
+				{
+					extractVariantDecl(comp, row, ref context);
+				}
+				catch(FormatException ex)
+				{
+					Log.Warn($"Failed to parse \\grDeclareVariants at {row[0].Pos}: {ex.Message}");
+				}
 
-				if(cols.Count != 3 || !Cost.TryParse(cols[2], out var cost))
-					continue;
 
-				var name = Regex.Replace(comp.ToString(cols[0]), @"(\n|\s)+", " ");
-				var descr = comp.ToString(cols[1]);
+				foreach(var _rule in row.extractInvocations("grPost", ArgType.SimpleSignature(4)))
+				{
+					try
+					{
+						if(_rule is null)
+							throw new FormatException("Missing arguments");
 
-				var um = unitRegex.Match(descr);
+						var rule = _rule.Select(Lexer.Untokenize).ToArray();
 
-				if(! um.Success)
-					continue;
+						if(! Glob.TryParse(rule[0], out var input))
+							throw new FormatException("Invalid input pattern: " + rule[0]);
 
-				Console.WriteLine($"\"{name}\" costs {cost} per {um.Groups[1]} {um.Groups[2]}");
+						var inAmt = parseAmount(rule[1]);
+
+						if(! Glob.TryParse(rule[2], out var output))
+							throw new FormatException("Invalid output pattern: " + rule[2]);
+
+						var outAmt = parseAmount(rule[3]);
+
+						mf.PostProcess(input, inAmt, output, outAmt);
+					}
+					catch(Exception ex)
+					{
+						Log.Warn($"Invalid \\grPost at {row[0].Pos}: {ex.Message}");
+					}
+				}
 			}
 		}
 	}

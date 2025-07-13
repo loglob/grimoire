@@ -1,5 +1,6 @@
 using Grimoire.Latex;
 using Grimoire.Util;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Grimoire;
 
@@ -10,17 +11,23 @@ public interface IGame<out TSpell>
 	public Log Log { get; }
 
 	/// <summary>
-	///  Extract a spell from LATEX code segment
+	///  Extract a spell from a LaTeX code segment
 	/// </summary>
 	TSpell ExtractLatexSpell(Compiler comp, Config.Book source, Chain<Token> code);
 
 	ISource<TSpell> Instantiate(Config.Source src);
 
-	void LearnMaterials(Compiler comp, Chain<Token> code)
-		=> throw new InvalidOperationException($"Game {Conf.Shorthand} doesn't support material parsing");
+	/// <summary>
+	/// Initializes a manifest with the populated with the game's units
+	/// </summary>
+	MaterialManifest InitUnits()
+		=> new();
 
-	void LearnMaterials(Compiler comp, IEnumerable<string> lines, string filename)
-		=> LearnMaterials(comp, new Lexer(Log).Tokenize(lines, filename));
+	/// <summary>
+	///  Extract materials from a LaTeX code segment
+	/// </summary>
+	void LearnMaterials(MaterialManifest mf, Compiler comp, Chain<Token> code)
+		=> throw new InvalidOperationException($"Game {Conf.Shorthand} doesn't support material parsing");
 }
 
 public interface ISpell
@@ -30,5 +37,16 @@ public interface ISpell
 
 public interface ISource<out TSpell>
 {
+	/// <summary>
+	///  Finds the spells defined by this source
+    ///  Should be pure.
+	/// </summary>
 	public IAsyncEnumerable<TSpell> Spells();
+
+	/// <summary>
+	///  Determines whether this source provides any materials
+	/// </summary>
+	/// <param name="manifest"> The manifest to write back to </param>
+	public Task<bool> HasMaterials(MaterialManifest manifest)
+		=> Task.FromResult(false);
 }

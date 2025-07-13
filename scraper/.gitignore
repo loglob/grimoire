@@ -4,6 +4,7 @@
 /db*
 /.vscode
 /olspy
-!*-example.json
 *.json
 *.tex
+!*-example.json
+!grimoire-meta.tex

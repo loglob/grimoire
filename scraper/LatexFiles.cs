@@ -31,11 +31,7 @@ public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : 
 				comp.LearnMacrosFrom(File.ReadLines(f), f);
 		}
 
-		if(files.Remove(Config.LatexOptions.MATERIAL_SOURCE_NAME, out var materialFiles))
-		{
-			foreach(var f in materialFiles)
-				Game.LearnMaterials(comp, File.ReadLines(f), f);
-		}
+		// TODO: parse materials
 
 		var segments = files
 			.SelectMany(kvp => kvp.Value.Select(file => (kvp.Key, file)))

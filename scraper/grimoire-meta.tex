@@ -1,0 +1,48 @@
+% TeX interface to the Grimoire material parser
+% On TeX side these commands don't do anything.
+% On Grimoire side, when used in a table, they feed necessary metadata to the material parser.
+%
+% When a unit is required, an abbreviaiton macro (i.e. \gr) or literal unit string (i.e. [g]) is allowed.
+% You can also omit the unit entirely with defaults to the dimensionless unit (1).
+%
+% A material line may contain exactly one of:
+% - one \grUnit and up to one \grOtherUnit
+% - one \grVariants
+% - one \grConversion (preceded by a \grDeclareVariants)
+
+% Declares a name for the material defined by this table row.
+% Usually optional, only required when one row defines multiple materials, or to overwrite the typeset name.
+% Does not typeset any content.
+% #1 - The material name
+\newcommand{\grMaterial}[1]{}
+
+% Declares the "packet size" of a material.
+% Defaults to dimensionless 1 if not given.
+% Typesets its argument unmodified.
+% #1 - A number followed by a unit, or just a number
+\newcommand{\grUnit}[1]{#1}
+
+% Declares a secondary unit. Used together with \grMainUnit.
+% Used like: " A pack of \grOtherUnit{12 flasks} with \grUnit{20 \ml} each " (order irrelevant)
+% Typesets its argument unmodified.
+% #1 - A number followed by a unit, or just a number
+\newcommand{\grOtherUnit}[1]{#1}
+
+% Sets up shorthanded /-separated variant lists
+% Used like " \grDeclareVariants{small/medium/large} \\ Rocks & \grVariants{ 1 \Cu/10 \Cu/2 \Ag } "
+% Typesets its argument unmodified
+% #1 - Names separated by '/'
+\newcommand{\grDeclareVariants}[1]{#1}
+
+% Applies the last \grDeclareVariants
+% Typesets its argument unmodified
+% #1 - Prices separated by the separator specifie din \grDeclareVariants
+\newcommand{\grVariants}[1]{#1}
+
+% Post-processes already emitted materials by applying conversion rules.
+% Doesn't typeset anything
+% #1 - A number and unit specifying how much of the input material is required.
+% #2 - A wildcard for the base material. Must contain exactly one '*'.
+% #3 - A number and unit specifying how much of the output material is produced.
+% #4 - A pattern for the resulting material. Must contain exactly one '*' which is substituted with the value * in #1.
+\newcommand{\grPost}[4]{}

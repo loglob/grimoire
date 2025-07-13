@@ -258,7 +258,7 @@ public static class Extensions
 	}
 
 	/// <summary>
-	///  Parses macro arguments
+	///  Parses macro arguments in-place
 	/// </summary>
 	/// <param name="args"> The signature to parse </param>
 	/// <param name="code"> The slice to read from. Updated with the remaining tokens. </param>
@@ -371,12 +371,44 @@ public static class Extensions
 			code = spL.Value.right;
 
 			var spR = code.SplitOn(x => x is EndEnv ee && ee.Env == env);
-			
+
 			if(! spR.HasValue)
 				throw new InvalidDataException($"Illegal slice unbalancing environments");
 
 			yield return spR.Value.left;
 			code = spR.Value.right;
 		}
+	}
+
+	/// <summary>
+	///  Iterates over every invocation of the macro `macroName`.
+	///  Yields the arguments to those invocations, or null if an invocation was incomplete
+	/// </summary>
+	/// <param name="code"> Code to search </param>
+	/// <param name="macroName"> The macro to look for </param>
+	/// <param name="args"> The arguments to each invocation </param>
+	public static IEnumerable<CodeSegment[]> extractInvocations(this CodeSegment code, string macroName, ArgType[] args)
+		=> code.Items()
+			.FindIndices(tk => tk is MacroName m && m.Macro == macroName)
+			.Select(ix =>
+			{
+				var from = code.Slice(ix + 1);
+				return from.parseArguments(args) ?? throw new FormatException($"Incomplete invocation of {macroName}");
+			});
+
+	private static readonly ArgType[] SINGLE_ARG = [new MandatoryArg()];
+
+	public static IEnumerable<CodeSegment> extractInvocations(this CodeSegment code, string macroName)
+		=> code.extractInvocations(macroName, SINGLE_ARG).Select(i => i[0]);
+
+	public static CodeSegment? extractSingleInvocation(this CodeSegment code, string macroName)
+	{
+		var all = code.extractInvocations(macroName).ToList();
+
+		return all.Count switch {
+			0 => null,
+			1 => all[0],
+			_ => throw new FormatException($"At {code[0].Pos}: Too many uses of \\{macroName}")
+		};
 	}
 }
