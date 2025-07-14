@@ -80,8 +80,11 @@ public sealed class MaterialManifest
 	/// <summary>
 	/// Every material processed so far
 	/// </summary>
-	public IEnumerable<Material> Materials
+	public IReadOnlyCollection<Material> Materials
 		=> materials.Values;
+
+	public IReadOnlyCollection<string> Units
+		=> allUnits.Keys;
 
 	public MaterialManifest()
 	{

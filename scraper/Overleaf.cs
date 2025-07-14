@@ -5,14 +5,15 @@ using System.Collections.Immutable;
 using System.Text.Json;
 
 using static Grimoire.Util.Extensions;
+using static Grimoire.Config.LatexOptions;
 using Code = Grimoire.Util.Chain<Grimoire.Latex.Token>;
 
 namespace Grimoire;
 
 public class Overleaf<TSpell> : ISource<TSpell>
 {
-	public readonly record struct InputFile(string source, Code contents);
-	public readonly record struct Context(Compiler compiler, List<Code> materialFiles, List<InputFile> codeFiles);
+	public readonly record struct InputFile(string path, string source, Code contents);
+	public readonly record struct Context(Compiler compiler, List<InputFile> materialFiles, List<InputFile> codeFiles);
 
 
 	private readonly Compiler latex;
@@ -102,14 +103,14 @@ public class Overleaf<TSpell> : ISource<TSpell>
 		}
 
 		List<string> missing = [];
-		List<Code> matFiles = [];
+		List<InputFile> matFiles = [];
 
-		if(files.Remove(Config.LatexOptions.MATERIAL_SOURCE_NAME, out var _matFiles))
+		if(files.Remove(MATERIAL_SOURCE_NAME, out var _matFiles))
 		{
 			foreach(var file in _matFiles)
 			{
 				if(byPath.TryGetValue(file, out var code))
-					matFiles.Add(code);
+					matFiles.Add(new(file, MATERIAL_SOURCE_NAME, code));
 				else
 					missing.Add(file);
 			}
@@ -122,7 +123,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			foreach(var file in kvp.Value)
 			{
 				if(byPath.TryGetValue(file, out var content))
-					input.Add(new(kvp.Key, content));
+					input.Add(new(file, kvp.Key, content));
 				else
 					missing.Add(file);
 			}
@@ -154,7 +155,15 @@ public class Overleaf<TSpell> : ISource<TSpell>
 			return false;
 
 		foreach(var f in ctx.materialFiles)
-			game.LearnMaterials(manifest, ctx.compiler, f);
+		{
+			int mCount = manifest.Materials.Count;
+			int uCount = manifest.Units.Count;
+
+			game.LearnMaterials(manifest, ctx.compiler, f.contents);
+
+			if(mCount == manifest.Materials.Count && uCount == manifest.Units.Count)
+				log.Warn($"File '{f.path}' does not define any materials");
+		}
 
 		return true;
 	}
