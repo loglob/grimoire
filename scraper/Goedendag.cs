@@ -106,7 +106,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			if(! int.TryParse(Lexer.Untokenize(spl.Value.left).Trim(), out var n))
 				goto bad;
 
-			sum += coinMacros[((MacroName)spl.Value.at).Macro] + n;
+			sum += coinMacros[((MacroName)spl.Value.at).Macro] * n;
 			rest = spl.Value.right;
 		}
 
@@ -366,10 +366,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				try
 				{
 					foreach(var mat in extractMaterial(mf, comp, row, context))
-					{
-						Log.Info(mat.ToString());
 						mf.AddMaterial(mat);
-					}
 				}
 				catch(FormatException ex)
 				{
@@ -386,24 +383,22 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				}
 
 
-				foreach(var _rule in row.extractInvocations("grPost", ArgType.SimpleSignature(4)))
+				foreach(var rule in row.extractInvocations("grPost", ArgType.SimpleSignature(4)))
 				{
 					try
 					{
-						if(_rule is null)
+						if(rule is null)
 							throw new FormatException("Missing arguments");
 
-						var rule = _rule.Select(Lexer.Untokenize).ToArray();
-
-						if(! Glob.TryParse(rule[0], out var input))
+						if(! Glob.TryParse(Lexer.Untokenize(rule[0]), out var input))
 							throw new FormatException("Invalid input pattern: " + rule[0]);
 
-						var inAmt = parseAmount(rule[1]);
+						var inAmt = parseAmount(comp.ToString(rule[1]));
 
-						if(! Glob.TryParse(rule[2], out var output))
+						if(! Glob.TryParse(Lexer.Untokenize(rule[2]), out var output))
 							throw new FormatException("Invalid output pattern: " + rule[2]);
 
-						var outAmt = parseAmount(rule[3]);
+						var outAmt = parseAmount(comp.ToString(rule[3]));
 
 						mf.PostProcess(input, inAmt, output, outAmt);
 					}
