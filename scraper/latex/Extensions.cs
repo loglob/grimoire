@@ -402,8 +402,14 @@ public static class Extensions
 		=> code.extractInvocations(macroName, SINGLE_ARG).Select(i => i[0]);
 
 	public static CodeSegment? extractSingleInvocation(this CodeSegment code, string macroName)
+		=> extractSingleInvocation(code, macroName, SINGLE_ARG) switch {
+			null => null,
+			var x => x[0]
+		};
+
+	public static CodeSegment[]? extractSingleInvocation(this CodeSegment code, string macroName, ArgType[] signature)
 	{
-		var all = code.extractInvocations(macroName).ToList();
+		var all = code.extractInvocations(macroName, signature).ToList();
 
 		return all.Count switch {
 			0 => null,

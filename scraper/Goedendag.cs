@@ -72,7 +72,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		var num = int.Parse(m.Groups[1].ValueSpan);
 		var unit = m.Groups[2].ValueSpan;
 
-		if(unit[0] == '[' || unit[^1] == ']')
+		if(unit.Length > 0 && (unit[0] == '[' || unit[^1] == ']'))
 		{
 			if(unit[0] != '[' || unit[^1] != ']')
 				goto bad;
@@ -114,6 +114,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		throw new FormatException($"Invalid price '{Lexer.Untokenize(code)}'");
 	}
 
+	private static readonly ArgType[] UNIT_SIGNATURE = [new StarArg(), new MandatoryArg()];
+
 	/// <summary>
 	///  Extracts material definitions from a code line
 	/// </summary>
@@ -124,28 +126,28 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		// collect names
 		var _names = line.extractInvocations("grMaterial").ToList();
 		// normal unit references
-		var unit = line.extractSingleInvocation("grUnit");
-		var otherUnit = line.extractSingleInvocation("grOtherUnit");
+		var unit = line.extractSingleInvocation("grUnit", UNIT_SIGNATURE);
+		var otherUnit = line.extractSingleInvocation("grOtherUnit", UNIT_SIGNATURE);
 		// variant reference
 		var variant = line.extractSingleInvocation("grVariants");
 
-		if(_names.Count > 0 && !unit.HasValue && !variant.HasValue)
-			throw new FormatException(@"Incomplete \grMaterial definition");
-		if(!unit.HasValue && otherUnit.HasValue)
+		if(_names.Count > 0 && unit is null && !variant.HasValue)
+			throw new FormatException(@"Incomplete material definition");
+		if(unit is null && otherUnit is not null)
 			throw new FormatException(@"Using \grOtherUnit without \grUnit");
-		if(unit.HasValue && variant.HasValue)
+		if(unit is not null && variant.HasValue)
 			throw new FormatException(@"Mixing \grUnit and \grVariants");
 
 		var names = (_names.Count == 0 ? [cols[0]] : _names).Select(comp.ToString);
 
-		if(unit.HasValue)
+		if(unit is not null)
 		{
 			var price = parsePrice(cols[2]);
-			var amt = parseAmount(comp.ToString(unit.Value));
+			var amt = parseAmount(comp.ToString(unit[1]));
 
-			if(otherUnit.HasValue)
+			if(otherUnit is not null)
 			{
-				var otherAmt = parseAmount(comp.ToString(otherUnit.Value));
+				var otherAmt = parseAmount(comp.ToString(otherUnit[1]));
 
 				if(mf.TryGetUnit(otherAmt.Unit, out var trUnit) && trUnit.Unit != MaterialManifest.DIMENSIONLESS_UNIT)
 					throw new FormatException($"Transient unit '{otherAmt.Unit}' is not dimensionless");

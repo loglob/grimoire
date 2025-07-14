@@ -2,13 +2,12 @@
 % On TeX side these commands don't do anything.
 % On Grimoire side, when used in a table, they feed necessary metadata to the material parser.
 %
-% When a unit is required, an abbreviaiton macro (i.e. \gr) or literal unit string (i.e. [g]) is allowed.
+% When a unit is required, an abbreviation macro (i.e. \gr) or literal unit string (i.e. [g]) is allowed.
 % You can also omit the unit entirely with defaults to the dimensionless unit (1).
 %
 % A material line may contain exactly one of:
 % - one \grUnit and up to one \grOtherUnit
 % - one \grVariants
-% - one \grConversion (preceded by a \grDeclareVariants)
 
 % Declares a name for the material defined by this table row.
 % Usually optional, only required when one row defines multiple materials, or to overwrite the typeset name.
@@ -18,15 +17,21 @@
 
 % Declares the "packet size" of a material.
 % Defaults to dimensionless 1 if not given.
-% Typesets its argument unmodified.
-% #1 - A number followed by a unit, or just a number
-\newcommand{\grUnit}[1]{#1}
+% Typesets its argument unmodified unless * is given.
+% #1 - (star) if given, don't typeset anything
+% #2 - A number followed by a unit, or just a number
+\NewDocumentCommand{\grUnit}{s m}{
+	\IfBooleanF{#1}{#2}
+}
 
 % Declares a secondary unit. Used together with \grMainUnit.
 % Used like: " A pack of \grOtherUnit{12 flasks} with \grUnit{20 \ml} each " (order irrelevant)
-% Typesets its argument unmodified.
-% #1 - A number followed by a unit, or just a number
-\newcommand{\grOtherUnit}[1]{#1}
+% Typesets its argument unmodified unless * is given.
+% #1 - (star) if given, don't typeset anything
+% #2 - A number followed by a name, or just a number
+\NewDocumentCommand{\grOtherUnit}{s m}{
+	\IfBooleanF{#1}{#2}
+}
 
 % Sets up shorthanded /-separated variant lists
 % Used like " \grDeclareVariants{small/medium/large} \\ Rocks & \grVariants{ 1 \Cu/10 \Cu/2 \Ag } "
