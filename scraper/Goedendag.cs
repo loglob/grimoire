@@ -161,7 +161,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			if(ctx is null)
 				throw new FormatException(@"\grVariants without preceding \grDeclareVariants");
 
-			var pieces = cols[2].SplitBy(tk => tk is Character c && c.Char == VARIANT_SEPARATOR).ToList();
+			var pieces = variant.Value.SplitBy(tk => tk is Character c && c.Char == VARIANT_SEPARATOR).ToList();
 
 			if(pieces.Count != ctx.Length)
 				throw new FormatException(@"Arity mismatch between \grVariants and preceding \grDeclareVariants");
@@ -243,6 +243,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		mf.AddBaseUnit("g");
 		mf.AddBaseUnit("drop");
 		mf.AddBaseUnit("cm");
+		mf.AddBaseUnit("cm^2");
 
 		mf.AddUnit("drops", new(1, "drop")); // alias
 		mf.AddUnit("kg", new(1000, "g"));
@@ -368,7 +369,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 					foreach(var mat in extractMaterial(mf, comp, row, context))
 						mf.AddMaterial(mat);
 				}
-				catch(FormatException ex)
+				catch(Exception ex)
 				{
 					Log.Warn($"Failed to parse material at {row[0].Pos}: {ex.Message}");
 				}
@@ -377,7 +378,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				{
 					extractVariantDecl(comp, row, ref context);
 				}
-				catch(FormatException ex)
+				catch(Exception ex)
 				{
 					Log.Warn($"Failed to parse \\grDeclareVariants at {row[0].Pos}: {ex.Message}");
 				}
