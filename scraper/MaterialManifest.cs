@@ -1,4 +1,5 @@
 using Grimoire.Util;
+using System.Text.Json;
 
 namespace Grimoire;
 
@@ -176,4 +177,38 @@ public sealed class MaterialManifest
 
 	public bool TryGetUnit(string name, out Amount definition)
 		=> allUnits.TryGetValue(name, out definition);
+
+	public void WriteJson(Utf8JsonWriter to)
+	{
+		to.WriteStartObject();
+
+		to.WriteStartObject("units");
+
+		foreach(var u in allUnits)
+		{
+			to.WriteStartArray(u.Key);
+
+			to.WriteNumberValue(u.Value.Number);
+			to.WriteStringValue(u.Value.Unit);
+
+			to.WriteEndArray();
+		}
+
+		to.WriteEndObject();
+		to.WriteStartObject("materials");
+
+		foreach(var m in Materials)
+		{
+			to.WriteStartObject(m.Name);
+
+			to.WriteString("unit", m.Amount.Unit);
+			to.WriteNumber("amount", m.Amount.Number);
+			to.WriteNumber("price", m.Price.CopperPieces);
+
+			to.WriteEndObject();
+		}
+
+		to.WriteEndObject(); // materials
+		to.WriteEndObject();
+	}
 }

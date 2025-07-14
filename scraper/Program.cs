@@ -1,4 +1,4 @@
-﻿using Grimoire.Util;
+﻿using System.Collections.Immutable;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -44,9 +44,11 @@ public class Program
 	private static async Task<(Config.Game game, int count)> processGame<TSpell>(IGame<TSpell> game) where TSpell : ISpell
 	{
 		var spellsByBook = game.Conf.Books.ToDictionary(x => x.Key, x => new List<TSpell>());
+		var materials = game.InitUnits(); // shouldn't throw even if unsupported
 		var warnedAbout = new HashSet<string>();
+		var sources = game.Conf.Sources.Select(s => game.Instantiate(s)).ToImmutableList();
 
-		foreach (var sp in (await Task.WhenAll(game.Conf.Sources.Select(s => game.Instantiate(s).Spells().ToListAsync().AsTask())))
+		foreach (var sp in (await Task.WhenAll(sources.Select(s => s.Spells().ToListAsync().AsTask())))
 										.SelectMany(x => x))
 		{
 			if(spellsByBook.TryGetValue(sp.Source, out var spells))
@@ -56,6 +58,16 @@ public class Program
 		}
 
 		Directory.CreateDirectory($"db/{game.Conf.Shorthand}");
+
+		if((await Task.WhenAll(sources.Select(s => s.HasMaterials(materials)))).Any(x => x))
+		{
+			// TODO
+			Log.DEFAULT.Emit($"Parsed {materials.Materials.Count} materials for {game.Conf.Shorthand}");
+
+			using var file = File.Create($"db/{game.Conf.Shorthand}/materials.json");
+			using var wr = new Utf8JsonWriter(file);
+			materials.WriteJson(wr);
+		}
 
 		int total = 0;
 
