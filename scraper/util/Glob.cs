@@ -28,7 +28,7 @@ public readonly record struct Glob(string prefix, string suffix)
 	[Pure]
 	public bool Test(string str, [MaybeNullWhen(false)]out string variable)
 	{
-		if(str.Length >= prefix.Length + suffix.Length && str.StartsWith(prefix) && str.EndsWith(suffix))
+		if(str.Length >= prefix.Length + suffix.Length && str.StartsWith(prefix, true, null) && str.EndsWith(suffix, true, null))
 		{
 			variable = str[prefix.Length .. ^suffix.Length];
 			return true;

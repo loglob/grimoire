@@ -123,12 +123,13 @@ public sealed class MaterialManifest
 
 	public void AddMaterial(Material mat)
 	{
-		if(materials.ContainsKey(mat.Name))
+		var key = mat.Name.ToLower();
+		if(materials.ContainsKey(key))
 			throw new ArgumentException($"Material '{mat.Name}' already exists");
 		if(! baseUnits.Contains(mat.Amount.Unit))
 			mat = new(mat.Name, Normalize(mat.Amount), mat.Price, mat.Reference);
 
-		materials[mat.Name] = mat;
+		materials[key] = mat;
 	}
 
 	/// <summary>
