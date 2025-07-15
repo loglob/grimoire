@@ -3,6 +3,7 @@
 namespace UI
 {
 	import IGame = Games.IGame
+	import Manifest = Material.Manifest
 
 	export class Index<TSpell extends Data.ISpell>
 	{
@@ -17,6 +18,20 @@ namespace UI
 			const ind = new Index(game, new Table(game, p.get("q"), p.get("sort")), game.books);
 
 			await ind.makeSourceSelector(p.has("from") ? p.getAll("from") : null)
+
+			const matCtx = await game.fetchMaterials();
+
+			if(matCtx !== null)
+			{
+				const button = document.getElementById("materials-view") as HTMLButtonElement;
+				button.style.display = "revert";
+				button.onclick = _ => {
+					ind.table.forEachDisplayed(spell => {
+						const mat = matCtx.extractMaterials(spell)
+						//console.log(`${spell.name}: ${JSON.stringify(mat.map(x => x.material + (x.consumed ? " (C)" : "")))}`)
+					})
+				}
+			}
 
 			return ind;
 		}

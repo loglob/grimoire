@@ -265,5 +265,11 @@ namespace UI
 
 			return arr;
 		}
+
+		/** Invokes a callback for each currently displayed spell */
+		forEachDisplayed(f : (spell : TSpell) => void)
+		{
+			this.display.forEach(x => f(x))
+		}
 	}
 }
