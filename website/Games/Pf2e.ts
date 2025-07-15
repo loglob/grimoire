@@ -177,11 +177,11 @@ namespace Games.Pf2e
 
 	export class Game extends IGame<Spell>
 	{
-		tableHeaders: (keyof Spell)[] = [
+		readonly tableHeaders = [
 			"level", "range", "castingTime", "components"
-		]
+		] as (keyof Spell)[]
 
-		customComparers = {
+		readonly customComparers = {
 			"castingTime": (x : Spell, y : Spell) =>  x.seconds - y.seconds,
 			"range": (x : Spell, y : Spell) => {
 				var diff = x.feet - y.feet
@@ -196,7 +196,8 @@ namespace Games.Pf2e
 
 				return l ? l : x.components.localeCompare(y.components)
 			}
-		};
+		} as const;
+
 		spellCard(spell: Spell, book: string): HTMLDivElement
 		{
 			const div = document.createElement("div");

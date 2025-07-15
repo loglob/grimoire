@@ -32,11 +32,11 @@ namespace Games.DnD5e
 
 	export class Game extends IGame<Spell>
 	{
-		tableHeaders: (keyof Spell)[] = [
+		readonly tableHeaders: (keyof Spell)[] = [
 			"level", "school", "castingTime", "ritual", "concentration", "source"
 		] as const
 
-		customComparers = {
+		readonly customComparers = {
 			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime)
 		} as const
 
