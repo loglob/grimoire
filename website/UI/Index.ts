@@ -19,21 +19,6 @@ namespace UI
 
 			await ind.makeSourceSelector(p.has("from") ? p.getAll("from") : null)
 
-			const matCtx = await game.fetchMaterials();
-
-			if(matCtx !== null)
-			{
-				const button = document.getElementById("materials-view") as HTMLButtonElement;
-				button.style.display = "revert";
-				button.onclick = _ => {
-					ind.table.forEachDisplayed(spell => {
-						const mat = matCtx.extractMaterials(spell)
-						const matDesc = mat.map(x => x === null ? "?" : `${x.amount.number} [${x.amount.unit}] ${x.material}${x.consumed ? " (C)" : ""}`)
-						console.log(spell.name + ": ", matDesc.join("; "))
-					})
-				}
-			}
-
 			return ind;
 		}
 
@@ -80,6 +65,7 @@ namespace UI
 			}
 
 			document.getElementById("spell-card-view").onclick = _ => window.location.href = `cards.html?${this.urlParams()}`;
+			document.getElementById("materials-view").onclick = _ => window.location.href = `materials.html?${this.urlParams()}`;
 		}
 
 

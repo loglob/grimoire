@@ -26,7 +26,7 @@ namespace Util
 			"i"
 			).test(haystack);
 	}
-	
+
 	/**
 	 * @returns A <b> element displaying the given HTML code
 	 */
@@ -86,7 +86,7 @@ namespace Util
 		const t1 = term.substring(1);
 		const t2 = term.substring(2);
 
-		return test.some(txt => 
+		return test.some(txt =>
 			txt && (term[1] === '/' ? infixWordOf(t2, txt) : infixOf(t1, txt))
 		);
 	}

@@ -83,7 +83,7 @@ namespace Games
 
 			if(totalCopper >= cuPerAu)
 			{
-				container.innerText += Math.floor(totalCopper / cuPerAu).toString()
+				container.appendChild(document.createTextNode(Math.floor(totalCopper / cuPerAu).toString()))
 				totalCopper %= cuPerAu;
 
 				var coin = document.createElement("b")
@@ -94,7 +94,7 @@ namespace Games
 
 			if(totalCopper >= this.denominations.silver)
 			{
-				container.innerText += Math.floor(totalCopper / this.denominations.silver).toString()
+				container.appendChild(document.createTextNode(Math.floor(totalCopper / this.denominations.silver).toString()))
 				totalCopper %= this.denominations.silver;
 
 				var coin = document.createElement("b")
@@ -105,7 +105,7 @@ namespace Games
 
 			if(totalCopper > 0 || wasZero)
 			{
-				container.innerText += totalCopper.toString()
+				container.appendChild(document.createTextNode(totalCopper.toString()))
 
 				var coin = document.createElement("b")
 				coin.className = "copper"

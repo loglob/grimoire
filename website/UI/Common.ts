@@ -105,6 +105,38 @@ namespace UI
 		}
 	}
 
+	/** Loads the spells requested by the page URL.
+	 * Looks either for the fields `from`, `q` and `game`,
+	 * or an URL fragment.
+	 *
+	 * @param callback Callback to run. Receives the game instance,
+	 * 					the requested spells (i.e. those matching the query or the prepared ones on the spell list),
+	 * 					and the selected spell list (if any)
+	 */
+	export async function withSelectedSpells<A>(callback : <T extends ISpell>(g : IGame<T>, spells : T[], l : Data.NamedSpellList | null) => Promise<A>) : Promise<A>
+	{
+		if(window.location.hash)
+		{
+			var list = getSpellList(window.location.hash.substring(1));
+			var prepared = new Set(list.prepared);
+
+			return await withGameNamed(list.game, async function(g) {
+				const spells = (await g.fetchSources(... list.sources)).filter(s => prepared.has(s.name))
+				return await callback(g, spells, list)
+			})
+		}
+		else
+		{
+			return await withGame(async function(g) {
+				const q = new URLSearchParams(window.location.search);
+				const f = Data.parseQuery(q.get("q"));
+				const spells = (await g.fetchSources(... q.getAll("from"))).filter(s => g.spellMatchesQuery(f, s));
+
+				return await callback(g, spells, null);
+			})
+		}
+	}
+
 	/**
 	 * @returns An element that displays a loading animations.
 	 */
