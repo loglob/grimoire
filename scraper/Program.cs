@@ -48,8 +48,7 @@ public class Program
 		var warnedAbout = new HashSet<string>();
 		var sources = game.Conf.Sources.Select(s => game.Instantiate(s)).ToImmutableList();
 
-		foreach (var sp in (await Task.WhenAll(sources.Select(s => s.Spells().ToListAsync().AsTask())))
-										.SelectMany(x => x))
+		foreach (var sp in (await Task.WhenAll(sources.Select(s => s.Spells().ToListAsync().AsTask()))).SelectMany(x => x))
 		{
 			if(spellsByBook.TryGetValue(sp.Source, out var spells))
 				spells.Add(sp);
@@ -61,7 +60,6 @@ public class Program
 
 		if((await Task.WhenAll(sources.Select(s => s.HasMaterials(materials)))).Any(x => x))
 		{
-			// TODO
 			Log.DEFAULT.Emit($"Parsed {materials.Materials.Count} materials for {game.Conf.Shorthand}");
 
 			using var file = File.Create($"db/{game.Conf.Shorthand}/materials.json");

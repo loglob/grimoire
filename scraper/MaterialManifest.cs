@@ -27,6 +27,16 @@ public readonly record struct Amount(int Number, string Unit)
 		}
 	}
 
+	public void WriteJson(Utf8JsonWriter to)
+	{
+		to.WriteStartObject();
+
+		to.WriteNumber(nameof(Number).ToLower(), Number);
+		to.WriteString(nameof(Unit).ToLower(), Unit);
+
+		to.WriteEndObject();
+	}
+
 	public static readonly Amount ONE = new(1, MaterialManifest.DIMENSIONLESS_UNIT);
 }
 
@@ -186,12 +196,8 @@ public sealed class MaterialManifest
 
 		foreach(var u in allUnits)
 		{
-			to.WriteStartArray(u.Key);
-
-			to.WriteNumberValue(u.Value.Number);
-			to.WriteStringValue(u.Value.Unit);
-
-			to.WriteEndArray();
+			to.WritePropertyName(u.Key);
+			u.Value.WriteJson(to);
 		}
 
 		to.WriteEndObject();
@@ -199,10 +205,10 @@ public sealed class MaterialManifest
 
 		foreach(var m in Materials)
 		{
-			to.WriteStartObject(m.Name);
+			to.WriteStartObject(m.Name.ToLower());
 
-			to.WriteString("unit", m.Amount.Unit);
-			to.WriteNumber("amount", m.Amount.Number);
+			to.WritePropertyName("amount");
+			m.Amount.WriteJson(to);
 			to.WriteNumber("price", m.Price.CopperPieces);
 
 			to.WriteEndObject();
