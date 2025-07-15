@@ -108,8 +108,14 @@ Displays details on the spell from the given source with the given name.
 ### /cards.html#\[list name]
 Displays spell cards for the local spell list with the given name.
 
-### /cards.html#?\[from=source ...]&\[<game=gd>]&\[<q=query>]&\[<sort=key>\]
+### /cards.html?\[from=source ...]&\[<game=gd>]&\[<q=query>]&\[<sort=key>\]
 Displays printable spell cards for all spells matching the given source and query.
+
+### /materials.html?\[from=source ...]&\[<game=gd>]&\[<q=query>]
+Displays spell material information for selected spells. Only available for games with material costs (i.e. Goedendag)
+
+### /materials.html#\[list name\]
+Displays spell material information for every prepared spell on a spell list.
 
 ### /search-help.html
 Static page that shows documentation on query syntax.

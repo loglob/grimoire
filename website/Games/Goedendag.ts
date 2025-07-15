@@ -201,23 +201,12 @@ namespace Games.Goedendag
 			return null
 		}
 
-		extractMaterials(spell: Spell): SpellMaterial[]
+		extractMaterials(spell: Spell): (SpellMaterial | null)[]
 		{
-			// JS considers (…|…) a capture group (?!) and also inserts capture groups into the result array (?!?!), `?:` suppresses this
-			var spl = spell.components.split(/\s*(?:,(?:\s+and\s)?|and\s)\s*/)
-			const out = []
-
-			for(let str of spl)
-			{
-				const mat = this.parseMaterial(str)
-
-				if(mat === null)
-					console.error("Invalid material: ", str)
-				else
-					out.push(mat);
-			}
-
-			return out
+			return spell.components
+			// JS considers (…|…) a capture group and also inserts capture groups into the result array (?!); `?:` suppresses this
+				.split(/\s*(?:,(?:\s+and\s)?|and\s)\s*/)
+				.map(str => this.parseMaterial(str));
 		}
 
 	}

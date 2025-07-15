@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<script src="js/site.js"></script>
+		<script>
+			window.onload = _ => UI.initMaterials();
+		</script>
+		<link rel="stylesheet" type="text/css" href="style.css" />
+		<link rel="shortcut icon" href="favicon.ico" />
+		<title>Material Sheet</title>
+	</head>
+	<body>
+		<table id="materials">
+			<tr id="material-headers">
+				<th class="left" id="name-header"> Spell </th>
+				<th id="tools-header"> Tools </th>
+				<th id="consumed-header"> Consumed </th>
+				<th id="count-header"> &#129518; </th>
+			</tr>
+		</table>
+		<span id="consumed-totals"> The consumed components for the  selected 0 total casts would cost 0 C </span>
+		<br/>
+		<span id="tool-totals"> The tools for every listed spell cost 0 C total. </span>
+
+		<footer>
+			grimoire is provided under the AGPL-3.0 license without warranty. Source code is available <a href="https://github.com/loglob/grimoire">here</a>.
+		</footer>
+	</body>
+</html>

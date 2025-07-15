@@ -72,7 +72,7 @@ namespace Games
 		}
 
 		/** Extracts the materials required by a spell */
-		abstract extractMaterials(spell : TSpell) : SpellMaterial[]
+		abstract extractMaterials(spell : TSpell) : (SpellMaterial | null)[]
 
 		/** Formats price according to `denominations` */
 		formatPrice(totalCopper : number) : HTMLElement

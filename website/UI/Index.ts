@@ -28,7 +28,8 @@ namespace UI
 				button.onclick = _ => {
 					ind.table.forEachDisplayed(spell => {
 						const mat = matCtx.extractMaterials(spell)
-						//console.log(`${spell.name}: ${JSON.stringify(mat.map(x => x.material + (x.consumed ? " (C)" : "")))}`)
+						const matDesc = mat.map(x => x === null ? "?" : `${x.amount.number} [${x.amount.unit}] ${x.material}${x.consumed ? " (C)" : ""}`)
+						console.log(spell.name + ": ", matDesc.join("; "))
 					})
 				}
 			}
