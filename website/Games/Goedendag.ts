@@ -156,18 +156,84 @@ namespace Games.Goedendag
 		return null;
 	}
 
+	function unmatchedPrefix(regex : RegExp, str : string) : string | null
+	{
+		const m = str.match(regex);
+
+		if(m === null)
+			return null;
+
+		return str.slice(0, m.index);
+	}
+
+	class MaterialContext extends IMaterialContext<Spell>
+	{
+		readonly denominations = { gold: 12, silver: 36 }
+
+		parseMaterial(field : string) : SpellMaterial | null
+		{
+			// strip off used tag
+			field = unmatchedPrefix(/\s*<sup>U<\/sup>\s*$/, field) ?? field
+			// strip off consumed tag
+			const isCon = unmatchedPrefix(/\s*<sup>C<\/sup>\s*$/, field)
+			field = isCon ?? field
+
+			const unitOf = field.match(/^([0-9]+)\s*\[(.*)\]\s*(of\s+)?(.+)$/)
+
+			if(unitOf !== null)
+				return { material: unitOf[4], amount: { number: parseInt(unitOf[1]), unit: unitOf[2] }, consumed: isCon !== null };
+
+			const aThing = field.match(/^(an?|1|one)\s+(.+)$/i)
+
+			if(aThing !== null)
+				return { material: aThing[2], amount: { number: 1, unit: "1" }, consumed: isCon !== null };
+
+			const manyThings = field.match(/^([0-9]+)\s+(.+)s?$/)
+
+			if(manyThings !== null)
+				return { material: manyThings[2], amount: { number: parseInt(manyThings[1]), unit: "1" }, consumed: isCon !== null };
+
+			const suffixUnit = field.match(/^(.*?)\s+\((\s*[0-9]+)\s*\[(.+)\]\s*\)$/)
+
+			if(suffixUnit !== null)
+				return { material: suffixUnit[1], amount: { number: parseInt(suffixUnit[2]), unit: suffixUnit[3] }, consumed: isCon !== null }
+
+			return null
+		}
+
+		extractMaterials(spell: Spell): SpellMaterial[]
+		{
+			// JS considers (…|…) a capture group (?!) and also inserts capture groups into the result array (?!?!), `?:` suppresses this
+			var spl = spell.components.split(/\s*(?:,(?:\s+and\s)?|and\s)\s*/)
+			const out = []
+
+			for(let str of spl)
+			{
+				const mat = this.parseMaterial(str)
+
+				if(mat === null)
+					console.error("Invalid material: ", str)
+				else
+					out.push(mat);
+			}
+
+			return out
+		}
+
+	}
+
 	export class Game extends IGame<Spell>
 	{
-		tableHeaders: (keyof Spell)[] = [
+		readonly tableHeaders: (keyof Spell)[] = [
 			"powerLevel", "arcanum", "castingTime", "distance", "combat", "reaction"
-		]
+		] as const
 
-		customComparers = {
+		readonly customComparers = {
 			"powerLevel": cmpPowerLevel,
 			"arcanum": cmpArcana,
 			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime),
 			"distance": (x : Spell, y : Spell) => Games.compareNorm(normalizeDistance, x.distance, y.distance)
-		};
+		} as const
 
 		spellCard(spell: Spell, _book: string): HTMLDivElement
 		{
@@ -253,6 +319,21 @@ namespace Games.Goedendag
 			{
 				child(div, "hr");
 				child(div, "div", "extra").innerHTML = spell.extra
+			}
+		}
+
+		async fetchMaterials(): Promise<IMaterialContext<Spell> | null>
+		{
+			try
+			{
+				const resp = await fetch(`db/${this.shorthand}/materials.json`);
+				const manifest : Material.Manifest = await resp.json();
+
+				return new MaterialContext(this, manifest);
+			}
+			catch(_)
+			{
+				return null;
 			}
 		}
 	}
