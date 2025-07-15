@@ -9,6 +9,7 @@
 	},
 	"files": [
 		"Data.ts",
+		"Material.ts",
 		"Util.ts",
 		"Games/IGame.ts",
 		"Games/DnD5e.ts",

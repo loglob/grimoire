@@ -1,5 +1,10 @@
 namespace Games
 {
+	/**
+	 * @param gold Number of silver pieces per gold piece
+	 * @param silver Number of copper pieces per silver piece
+	 */
+	export type Denominations = { readonly gold: number, readonly silver : number }
 	export type IsPrepared<TSpell> = ((sp : TSpell) => boolean)|null;
 
 	export function compareNorm(normalize : (s : string) => number|null, l : string, r : string) : number
@@ -48,6 +53,68 @@ namespace Games
 		}
 
 		return compareNorm(normalize, l, r);
+	}
+
+	export type SpellMaterial = Readonly<{ material: string, amount: Material.Amount, consumed: boolean }>
+
+	/** Context in which materials can be resolved to prices, respective to some spell type */
+	export abstract class IMaterialContext<TSpell extends Data.ISpell>
+	{
+		/** Gives the size of coin denominations for formatting */
+		abstract readonly denominations : Denominations
+		readonly game : IGame<TSpell>
+		readonly manifest : Material.Manifest
+
+		constructor(game : IGame<TSpell>, manifest : Material.Manifest)
+		{
+			this.game = game
+			this.manifest = manifest
+		}
+
+		/** Extracts the materials required by a spell */
+		abstract extractMaterials(spell : TSpell) : SpellMaterial[]
+
+		/** Formats price according to `denominations` */
+		formatPrice(totalCopper : number) : HTMLElement
+		{
+			const container = document.createElement("span")
+			const cuPerAu = this.denominations.gold * this.denominations.silver
+			const wasZero = totalCopper == 0
+
+			if(totalCopper >= cuPerAu)
+			{
+				container.innerText += Math.floor(totalCopper / cuPerAu).toString()
+				totalCopper %= cuPerAu;
+
+				var coin = document.createElement("b")
+				coin.className = "gold"
+				coin.innerText = "Ⓖ"
+				container.appendChild(coin)
+			}
+
+			if(totalCopper >= this.denominations.silver)
+			{
+				container.innerText += Math.floor(totalCopper / this.denominations.silver).toString()
+				totalCopper %= this.denominations.silver;
+
+				var coin = document.createElement("b")
+				coin.className = "silver"
+				coin.innerText = "Ⓢ"
+				container.appendChild(coin)
+			}
+
+			if(totalCopper > 0 || wasZero)
+			{
+				container.innerText += totalCopper.toString()
+
+				var coin = document.createElement("b")
+				coin.className = "copper"
+				coin.innerText = "Ⓒ"
+				container.appendChild(coin)
+			}
+
+			return container
+		}
 	}
 
 	/**
@@ -107,6 +174,12 @@ namespace Games
 		async fetchSources(...sources : string[]) : Promise<TSpell[]>
 		{
 			return (await Promise.all(sources.map(s => this.fetchSource(s)))).flat();
+		}
+
+		/** Constructs a material context for this spell, if the database has material definitions */
+		async fetchMaterials() : Promise<IMaterialContext<TSpell> | null>
+		{
+			return null
 		}
 
 		/** Generates a single spell card as a self-contained HTML element
