@@ -149,8 +149,13 @@ namespace UI
 			{
 				const cardView = document.getElementById("spell-card-view") as HTMLButtonElement;
 
-				cardView.onclick = _ =>
-					window.location.href = `cards.html#${this.name}`;
+				cardView.onclick = _ => window.location.href = `cards.html#${this.name}`;
+			}
+
+			{
+				const matView = document.getElementById("materials-view") as HTMLButtonElement;
+
+				matView.onclick = _ => window.location.href = `materials.html#${this.name}`;
 			}
 		}
 
