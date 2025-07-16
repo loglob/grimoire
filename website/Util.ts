@@ -37,6 +37,13 @@ namespace Util
 		return b;
 	}
 
+	export function wrap(tag : keyof HTMLElementTagNameMap, ...content : (string|Node)[]) : HTMLElement
+	{
+		const node = document.createElement(tag)
+		node.append(...content)
+		return node
+	}
+
 	/** Turns a number into a corresponding ordinal (1st, 2nd, 3rd etc.) */
 	export function ordinal(i : number) : string
 	{
