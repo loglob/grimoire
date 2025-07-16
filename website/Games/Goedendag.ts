@@ -4,6 +4,7 @@ namespace Games.Goedendag
 	import child = Util.child
 	import same = Util.same
 	import infixOf = Util.infixOf
+	import HtmlCode = Data.HtmlCode
 
 	export const Arcana = {
 		General: 0,
@@ -31,15 +32,15 @@ namespace Games.Goedendag
 		powerLevel : keyof (typeof PowerLevelDCs),
 		combat : boolean,
 		reaction : boolean,
-		distance : string,
-		duration : string,
-		castingTime : string,
-		components : string,
-		brief : string,
-		effect : string,
-		critSuccess : string,
-		critFail : string,
-		extra : string | undefined,
+		distance : HtmlCode,
+		duration : HtmlCode,
+		castingTime : HtmlCode,
+		components : HtmlCode,
+		brief : HtmlCode,
+		effect : HtmlCode,
+		critSuccess : HtmlCode,
+		critFail : HtmlCode,
+		extra : HtmlCode | undefined,
 		source : string
 	}
 

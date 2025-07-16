@@ -4,6 +4,7 @@ namespace Games.Pf2e
 	import child = Util.child
 	import same = Util.same
 	import infixOf = Util.infixOf
+	import HtmlCode = Data.HtmlCode
 
 	export const Traditions = {
 		Arcane: 1,
@@ -32,7 +33,7 @@ namespace Games.Pf2e
 		duration : string | null,
 		save : string | null,
 		tags : string[],
-		description : string,
+		description : HtmlCode,
 		page : number
 	}
 

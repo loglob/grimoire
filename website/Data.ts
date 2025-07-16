@@ -14,6 +14,9 @@ namespace Data
 		return { key: "name", reverse: true };
 	}
 
+	/** Explicitly annotates Html code strings */
+	export type HtmlCode = string;
+
 	export type SpellList =
 	{
 		/** The sources this list is built from */
