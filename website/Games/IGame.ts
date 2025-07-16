@@ -195,5 +195,11 @@ namespace Games
 
 		/** Formats a spell's details and embeds them into the given <div> */
 		abstract details(spell : TSpell, book : string, div : HTMLDivElement) : void;
+
+		/** @returns The URL for a spell's details page */
+		spellURL(spell : TSpell) : string
+		{
+			return `details.html?game=${this.shorthand}&from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`
+		}
 	};
 }

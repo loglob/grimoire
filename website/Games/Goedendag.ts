@@ -172,12 +172,19 @@ namespace Games.Goedendag
 
 		parseMaterial(field : string) : SpellMaterial
 		{
-			field = unmatchedPrefix(/\s*\./, field) ?? field // strip trailing full stop
+			// strip trailing full stop
+			field = unmatchedPrefix(/\s*\.$/, field) ?? field
 			// strip off used tag
 			field = unmatchedPrefix(/\s*\.?\s*<sup>U<\/sup>$/, field) ?? field
 			// strip off consumed tag
 			const isCon = unmatchedPrefix(/\s*\.?\s*<sup>C<\/sup>$/, field)
 			field = isCon ?? field
+
+			/// Strip out all HTML formatting and encoding
+			const desc = new DOMParser().parseFromString(field, "text/html").documentElement.innerText;
+			if(field != desc)
+				console.log(field, "->", desc)
+			field = desc
 
 			const unitOf = field.match(/^([0-9]+)\s*\[(.*)\]\s*(of\s+)?(.+)$/)
 

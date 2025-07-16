@@ -36,11 +36,10 @@ namespace Material
 	 */
 	export function solvePrice(mf : Manifest, name : string, amount : Amount) : number | null
 	{
-		const mat = mf.materials[name.toLowerCase()]
+		const mat = mf.materials[name.toLowerCase()];
 
 		if(mat === undefined)
 		{
-			console.log(`No such material '${name}'`)
 			return null
 		}
 

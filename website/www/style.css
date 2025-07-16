@@ -31,7 +31,7 @@
 	background-color: #ddd;
 }
 
-.main-table tr td:not(.left)
+#spells tr td:not(.left)
 {
 	text-align: center;
 }
@@ -190,4 +190,21 @@ footer
 img
 {
 	height: 1em;
+}
+
+.material-sep
+{
+	color: #AAA;
+	margin-right: 0.75em;
+}
+
+#materials input
+{
+	width: 4em;
+}
+
+#materials > tr >:first-child a
+{
+	text-decoration: none;
+	color: inherit;
 }
