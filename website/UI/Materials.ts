@@ -65,6 +65,24 @@ namespace UI
 		{
 			this.context = context;
 			this.game = game;
+
+			document.getElementById("incr-all").onclick = _ => this.stepAll(true);
+			document.getElementById("decr-all").onclick = _ => this.stepAll(false);
+		}
+
+		stepAll(incr : boolean)
+		{
+			for(const g of this.gadgets)
+			{
+				if(incr)
+					++g.castCount
+				else if(g.castCount > 0)
+					--g.castCount
+
+				g.input.value = g.castCount.toString()
+			}
+
+			this.recomputeTotals()
 		}
 
 		/** Formats a single material
