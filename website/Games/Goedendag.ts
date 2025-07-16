@@ -170,12 +170,13 @@ namespace Games.Goedendag
 	{
 		readonly denominations = { gold: 12, silver: 36 }
 
-		parseMaterial(field : string) : SpellMaterial | null
+		parseMaterial(field : string) : SpellMaterial
 		{
+			field = unmatchedPrefix(/\s*\./, field) ?? field // strip trailing full stop
 			// strip off used tag
-			field = unmatchedPrefix(/\s*<sup>U<\/sup>\s*$/, field) ?? field
+			field = unmatchedPrefix(/\s*\.?\s*<sup>U<\/sup>$/, field) ?? field
 			// strip off consumed tag
-			const isCon = unmatchedPrefix(/\s*<sup>C<\/sup>\s*$/, field)
+			const isCon = unmatchedPrefix(/\s*\.?\s*<sup>C<\/sup>$/, field)
 			field = isCon ?? field
 
 			const unitOf = field.match(/^([0-9]+)\s*\[(.*)\]\s*(of\s+)?(.+)$/)
