@@ -18,7 +18,14 @@ namespace UI
 			this.game = game;
 		}
 
-		formatMaterial(container : HTMLElement, material : SpellMaterial, prependSeparator : boolean) : void
+		/** Formats a single material
+		 * @param container An element to append content to
+		 * @param material The material to process
+		 * @param prependSeparator If true, puts a separator before the content
+		 * @returns The price of a single instance of the material
+		 * @returns null on parsing/unit error when calculating price
+		 */
+		formatMaterial(container : HTMLElement, material : SpellMaterial, prependSeparator : boolean) : number | null
 		{
 			if(prependSeparator)
 				child(container, "span", "material-sep").innerText = ","
@@ -42,31 +49,49 @@ namespace UI
 				priceElement.appendChild(this.context.formatPrice(price))
 
 			priceElement.appendChild(document.createTextNode(")"))
+
+			return price
 		}
 
-		formatMaterials(materials : SpellMaterial[]) : HTMLTableCellElement
+		formatMaterials(row : HTMLTableRowElement, materials : SpellMaterial[]) : { sum: number, hasUnknown: boolean }
 		{
-			const col = document.createElement("td")
+			const result = { sum: 0, hasUnknown: false }
+			const left = child(row, "td")
 
 			materials.forEach((m, ix) => {
-				this.formatMaterial(col, m, ix > 0)
+				const price = this.formatMaterial(left, m, ix > 0)
+
+				if(price === null)
+					result.hasUnknown = true
+				else
+					result.sum += price
 			});
 
-			return col
+			const right = child(row, "td")
+
+			if(result.sum > 0)
+			{
+				right.appendChild(this.context.formatPrice(result.sum))
+				if(result.hasUnknown)
+					right.appendChild(document.createTextNode("+?"))
+			}
+
+
+			return result
 		}
 
 		formatSpells(table : HTMLTableElement, spells : TSpell[])
 		{
 			for(const s of spells)
 			{
-				const row = child(table, "tr")
+				const row = child(table, "tr") as HTMLTableRowElement
 				const spellRef = child(child(row, "td"), "a") as HTMLLinkElement
 				spellRef.href = this.game.spellURL(s)
 				spellRef.innerText = s.name
 
 				const all = this.context.extractMaterials(s)
-				row.appendChild(this.formatMaterials(all.filter(m => m.consumed == false)))
-				row.appendChild(this.formatMaterials(all.filter(m => m.consumed == true)))
+				const persist = this.formatMaterials(row, all.filter(m => m.consumed == false))
+				const consumed = this.formatMaterials(row, all.filter(m => m.consumed == true))
 
 				const inp = child(child(row, "td"), "input") as HTMLInputElement
 				inp.type = "number"
