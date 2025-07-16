@@ -199,13 +199,14 @@ namespace Games.Goedendag
 			if(suffixUnit !== null)
 				return { material: suffixUnit[1], amount: { number: parseInt(suffixUnit[2]), unit: suffixUnit[3] }, consumed: isCon !== null }
 
-			return null
+			// no parse
+			return { material: field, amount: null, consumed: isCon !== null }
 		}
 
-		extractMaterials(spell: Spell): (SpellMaterial | null)[]
+		extractMaterials(spell: Spell): SpellMaterial[]
 		{
 			return spell.components
-			// JS considers (…|…) a capture group and also inserts capture groups into the result array (?!); `?:` suppresses this
+			// JS considers every use of (…) a capture group and also inserts capture groups into the result array (?!); `?:` suppresses this
 				.split(/\s*(?:,(?:\s+and\s)?|and\s)\s*/)
 				.map(str => this.parseMaterial(str));
 		}

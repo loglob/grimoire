@@ -55,7 +55,10 @@ namespace Games
 		return compareNorm(normalize, l, r);
 	}
 
-	export type SpellMaterial = Readonly<{ material: string, amount: Material.Amount, consumed: boolean }>
+	/** A single parsed spell material.
+	 * @param amount null on parsing failure
+	*/
+	export type SpellMaterial = Readonly<{ material: string, amount: Material.Amount | null, consumed: boolean }>
 
 	/** Context in which materials can be resolved to prices, respective to some spell type */
 	export abstract class IMaterialContext<TSpell extends Data.ISpell>
@@ -72,7 +75,7 @@ namespace Games
 		}
 
 		/** Extracts the materials required by a spell */
-		abstract extractMaterials(spell : TSpell) : (SpellMaterial | null)[]
+		abstract extractMaterials(spell : TSpell) : SpellMaterial[]
 
 		/** Formats price according to `denominations` */
 		formatPrice(totalCopper : number) : HTMLElement
