@@ -108,7 +108,7 @@ namespace Games
 
 			if(totalCopper > 0 || wasZero)
 			{
-				container.appendChild(document.createTextNode(totalCopper.toString()))
+				container.appendChild(document.createTextNode(totalCopper.toFixed(1).replace(".0", ""))) // wow JS
 
 				var coin = document.createElement("b")
 				coin.className = "copper"

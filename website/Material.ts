@@ -17,23 +17,6 @@ namespace Material
 		materials: { readonly [name: string]: Material }
 	}>
 
-	/** Divides two amounts
-	 * @returns null on unit mismatch or non-whole result
-	 * @returns a factor that scaled denom to num
-	 */
-	function divAmount(num : Amount, denom : Amount) : number | null
-	{
-		// TODO: unit conversion
-		if(num.unit !== denom.unit)
-			return null
-
-		// TODO: figure out fractional scaling
-		if(num.number % denom.number != 0)
-			return null
-
-		return num.number / denom.number
-	}
-
 	/** Converts an amount to base units (the smallest units of each dimension) */
 	export function normalizeAmount(mf : Manifest, amt : Amount) : Amount | null
 	{
@@ -61,7 +44,15 @@ namespace Material
 			return null
 		}
 
+		// TODO: maybe cache these somewhere
+		const matNorm = normalizeAmount(mf, mat.amount)
 		const norm = normalizeAmount(mf, amount)
+
+		if(matNorm === null)
+		{
+			console.error(`Material ${name} has ill-defined unit '${mat.amount.unit}'`)
+			return null
+		}
 
 		if(norm === null)
 		{
@@ -69,14 +60,12 @@ namespace Material
 			return null
 		}
 
-		const n = divAmount(norm, mat.amount)
-
-		if(n === null)
+		if(norm.unit != matNorm.unit)
 		{
-			console.log(`Material only comes in packs of ${mat.amount}, but ${norm} was requested`)
+			console.log(`Unit mismatch, material comes in ${matNorm.unit}, but ${norm.unit} requested`)
 			return null
 		}
 
-		return mat.price * n
+		return mat.price * norm.number / matNorm.number // return fractional prices
 	}
 }
