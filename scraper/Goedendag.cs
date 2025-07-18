@@ -1,6 +1,5 @@
 using Grimoire.Latex;
 using Grimoire.Util;
-using System.Security.Principal;
 
 namespace Grimoire;
 
@@ -29,6 +28,12 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
 
+	public readonly record struct Component(
+		string display,
+		bool consumed,
+		bool used
+	);
+
 	public readonly record struct Spell(
 		string name,
 		Arcanum arcanum,
@@ -38,7 +43,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string distance,
 		string duration,
 		string castingTime,
-		string components,
+		Component[] components,
 		string brief,
 		string effect,
 		string critSuccess,
@@ -95,6 +100,90 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		return string.Join("", pieces);
 	}
 
+	private readonly static Pattern COMPONENT_SEPARATOR = Pattern.Of(
+		Pattern.Of("", ",and", "#"),
+		Pattern.Of("", ", and", "#"), // whitespace should be squeezed so this matches properly
+		Pattern.Of(","),
+		Pattern.Of("#", "and", "#")
+	);
+
+	/// <summary>
+	///  Separates components by both ',' and 'and', trimmed and without empty entries.
+	/// </summary>
+	private static IEnumerable<Chain<Token>> separateComponents(Chain<Token> code)
+	{
+		var rest = code.Trim();
+
+		while(true)
+		{
+			var _spl = rest.SplitOn(COMPONENT_SEPARATOR, true);
+
+			if(! _spl.Bind(out var spl))
+				break;
+
+			var cur = spl.left.TrimEnd();
+
+			if(cur.IsNotEmpty)
+				yield return cur;
+
+			rest = spl.right.TrimStart();
+		}
+
+		if(rest.IsNotEmpty)
+			yield return rest;
+	}
+
+	private const string CONSUMED_MACRO = "Consumed";
+	private const string USED_MACRO = "Used";
+	private const string LEGACY_CONSUMED_MACRO = "con";
+	private const string LEGACY_USED_MACRO = "use";
+
+	private Component[] extractComponents(Compiler compiler, Chain<Token> code)
+		=> separateComponents(
+				code.Length > 2 && code[0] is OpenBrace && code[^1] is CloseBrace
+					? code.Slice(1, code.Length - 2) : code
+		).Select(piece => {
+			bool delta = true;
+			bool consumed = false;
+			bool used = false;
+
+			Log.Info(Lexer.Untokenize(piece));
+
+			while(delta)
+			{
+				delta = false;
+
+				if(piece.Length > 0 && piece[^1] is Character p && p.Char == '.')
+					piece = piece.Slice(0, piece.Length - 1).TrimEnd();
+
+				if(piece.Length > 0 && piece[^1] is MacroName c && (c.Macro == CONSUMED_MACRO || c.Macro == LEGACY_CONSUMED_MACRO))
+				{
+					delta = true;
+
+					if(consumed)
+						Log.Warn("Duplicate \\Consumed");
+
+					consumed = true;
+				}
+
+				if(piece.Length > 0 && piece[^1] is MacroName u && (u.Macro == USED_MACRO || u.Macro == LEGACY_USED_MACRO))
+				{
+					delta = true;
+
+					if(used)
+						Log.Warn("Duplicate \\Used");
+
+					used = true;
+				}
+
+				if(delta)
+					piece = piece.Slice(0, piece.Length - 1).TrimEnd();
+			}
+
+			return new Component(compiler.ToHTML(piece), consumed, used);
+		}).ToArray();
+
+
 	public Spell ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
 	{
 		if(body.parseArguments(ArgType.SimpleSignature(3)) is not [ var _name, var _tag, var _prop ])
@@ -146,29 +235,14 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			.Select(v => v
 				.SplitOn(tk => tk is Character c && c.Char == '=')
 				?? throw new FormatException("properties are not assignment list"))
-			.Select(x => (key: Lexer.Untokenize(x.left).Trim(), val: x.right))
-			.ToDictionary(
-				x => x.key,
-				x => (htmlKeys.Contains(x.key)
-					? comp.ToHTML(x.val)
-					: comp.ToSafeString(x.val)
-				).Trim()
-			);
+			.ToDictionary(x => Lexer.Untokenize(x.left).Trim(), x => x.right.Trim());
 
-		{
-			var missing = htmlKeys.Concat(plainKeys).Where(k => !prop.ContainsKey(k));
+		Func<string, Chain<Token>> getProp = p => prop.Remove(p, out var v) ? v : throw new FormatException($"Missing property '{p}'");
 
-			if(missing.Any())
-				throw new FormatException("Missing properties: " + missing.Show());
-
-			var unknown = prop.Keys.Where(pk => !htmlKeys.Contains(pk) && !plainKeys.Contains(pk));
-
-			if(unknown.Any()) // TODO: give this its own log prefix
-				comp.Log.Warn("Ignoring unknown properties: " + unknown.Show());
-		}
+		// FIXME: skip compiling here
+		var ct = processCastTime(name, comp.ToSafeString(getProp("casting-time")), ref reaction);
 
 		string? extra = null;
-
 		{
 			var e = comp.ToHTML(body);
 
@@ -176,11 +250,26 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				extra = e.Trim();
 		}
 
-		var ct = processCastTime(name, prop["casting-time"], ref reaction);
+		Spell spell = new(name, arcanum,
+			Enum.Parse<PowerLevel>(comp.ToSafeString(getProp("power-level"))),
+			combat,
+			reaction,
+			comp.ToSafeString(getProp("distance")),
+			comp.ToHTML(getProp("duration")),
+			ct,
+			extractComponents(comp, getProp("components")),
+			comp.ToHTML(getProp("brief")),
+			comp.ToHTML(getProp("effect")),
+			comp.ToHTML(getProp("crit")),
+			comp.ToHTML(getProp("fail")),
+			extra,
+			book.Shorthand
+		);
 
-		return new(name, arcanum, Enum.Parse<PowerLevel>(prop["power-level"]), combat, reaction,
-			prop["distance"], prop["duration"], ct, prop["components"], prop["brief"],
-			prop["effect"], prop["crit"], prop["fail"], extra, book.Shorthand);
+		if(prop.Count > 0) // TODO: give this its own log prefix
+			comp.Log.Warn("Ignoring unknown properties: " + prop.Keys.ToArray().Show());
+
+		return spell;
 	}
 
 	public ISource<Spell> Instantiate(Config.Source src)

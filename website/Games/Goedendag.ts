@@ -25,6 +25,14 @@ namespace Games.Goedendag
 		Ritual: 0
 	} as const;
 
+	export type Component =
+	{
+		/** Code to display this component, excluding consumed and used markers */
+		display : HtmlCode,
+		consumed : boolean,
+		used : boolean
+	}
+
 	export type Spell =
 	{
 		name : string,
@@ -35,7 +43,7 @@ namespace Games.Goedendag
 		distance : HtmlCode,
 		duration : HtmlCode,
 		castingTime : HtmlCode,
-		components : HtmlCode,
+		components : Component[],
 		brief : HtmlCode,
 		effect : HtmlCode,
 		critSuccess : HtmlCode,
@@ -54,7 +62,24 @@ namespace Games.Goedendag
 		return Arcana[a.arcanum] - Arcana[b.arcanum];
 	}
 
-	function fmtFields(spell : Spell) : [string, string][]
+	function fmtComponent(c : Component) : HtmlCode
+	{
+		return c.display + (c.consumed ? "<sup>C</sup>" : "") + (c.used ? "<sup>U</sup>" : "")
+	}
+
+	function fmtComponents(cs : Component[]) : HtmlCode
+	{
+		switch(cs.length)
+		{
+			case 0: return ""
+			case 1: return fmtComponent(cs[0])
+			case 2: return fmtComponent(cs[0]) + " and " + fmtComponent(cs[1])
+			default:
+				return cs.map((c, ix) => (ix + 1 == cs.length ? "and " : "") + fmtComponent(c)).join(", ")
+		}
+	}
+
+	function fmtFields(spell : Spell) : [string, HtmlCode][]
 	{
 		const dc = PowerLevelDCs[spell.powerLevel]
 
@@ -64,7 +89,7 @@ namespace Games.Goedendag
 			[ "Casting Time", spell.castingTime + (spell.reaction ? " (R)" : "") ],
 			[ "Distance", spell.distance ],
 			[ "Duration", spell.duration ],
-			[ "Components", spell.components ]
+			[ "Components", fmtComponents(spell.components) ]
 		]
 	}
 
@@ -221,7 +246,7 @@ namespace Games.Goedendag
 				|| [ s.arcanum, s.powerLevel, s.distance, s.duration, s.castingTime ].some(x => same(x, term))
 				|| Util.fieldTermMatch(s, term, "combat", "reaction")
 				|| (this.isPrepared && term === "prepared" && this.isPrepared(s))
-				|| (term[0] === '$' && s.components && infixOf(term1, s.components))
+				|| (term[0] === '$' && s.components.some(c => infixOf(term1, c.display)))
 				|| (term[0] === '\\' && same(s.name, term1))
 				|| Util.fullTextMatch(term, s.brief, s.effect, s.critSuccess, s.critFail, s.extra)
 		}

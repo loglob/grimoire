@@ -1,5 +1,6 @@
 using HtmlAgilityPack;
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace Grimoire.Util;
@@ -307,4 +308,19 @@ internal static class Extensions
 
 	public static T? Just<T>(this T x) where T : struct
 		=> x;
+
+	public static bool Bind<T>(this T? maybe, [MaybeNullWhen(false)] out T value) where T : struct
+	{
+		if(maybe.HasValue)
+		{
+			value = maybe.Value;
+			return true;
+		}
+		else
+		{
+			value = default;
+			return false;
+		}
+	}
+
 }

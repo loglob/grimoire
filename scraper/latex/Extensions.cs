@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-using CodeSegment = Grimoire.Util.Chain<Grimoire.Latex.Token>;
+using Code = Grimoire.Util.Chain<Grimoire.Latex.Token>;
 
 namespace Grimoire.Latex;
 
@@ -27,6 +27,31 @@ public static class Extensions
 		=> new ListWrapper<T>(chain);
 
 	/// <summary>
+	///  Iterates over all tokens on the base level (i.e. not inside braces).
+	///  Stops prematurely when a free-standing closing brace is reached, i.e. the base level is closed.
+    ///  Yields open braces on base level, but not the corresponding closing brace.
+    ///  If a closing brace is yielded, that brace closes the base level (and iteration stops immediately afterwards).
+	/// </summary>
+	private static IEnumerable<(int offset, Token token)> baseLevel(this IEnumerable<Token> tks)
+	{
+		int level = 0;
+		int offset = 0;
+
+		foreach (var t in tks)
+		{
+			if(level == 0)
+				yield return (offset, t);
+
+			if(t is OpenBrace)
+				++level;
+			else if(t is CloseBrace && --level < 0)
+				break;
+
+			++offset;
+		}
+	}
+
+	/// <summary>
 	///  Counts the amount of tokens until a token on the same level matches the given predicate.
 	///  Stops prematurely when a free-standing closing brace is reached, i.e. the positioned scope is closed.
 	/// </summary>
@@ -35,30 +60,73 @@ public static class Extensions
 	///  Doesn't count the accepting token itself.
 	/// </returns>
 	public static int FindOnSameLevel(this IEnumerable<Token> tks, Func<Token, bool> accept)
+		=> tks.baseLevel().FirstOrDefault((x) => accept(x.token), (offset: -1, null!)).offset;
+
+	public static (Code left, Code right)? SplitOn(this Code tokens, Pattern pattern, bool sameLevel)
 	{
-		int level = 0;
-		int count = 0;
+		if(pattern.MaxWidth == 0)
+			return null;
 
-		foreach (var t in tks)
+		// too lazy for DFA conversion
+		var buf = new Toroid<Token>(pattern.MaxWidth);
+		var expect = 0; // detects jumps from skipped groups
+		var ix0 = 0;
+
+		foreach(var (offset, token) in sameLevel ? tokens.Items().baseLevel() : tokens.Items().Select((tk,ix) => (offset: ix, token: tk)))
 		{
-			if(level == 0 && accept(t))
-				return count;
+			if(offset != expect)
+				buf.Clear();
 
-			if(t is OpenBrace)
-				++level;
-			else if(t is CloseBrace && --level < 0)
-				break;
+			expect = offset + 1;
 
-			++count;
+			if(buf.Count == 0)
+				ix0 = offset;
+			else if(buf.Count == buf.Capacity)
+				++ix0;
+
+			buf.Push(token);
+
+			if(pattern.MatchesWindow(buf, out var ixs))
+				return (tokens.Slice(0, ix0 + ixs.offset), tokens.Slice(ix0 + ixs.offset + ixs.length));
 		}
 
-		return -1;
+		while(buf.Pop(out _))
+		{
+			++ix0;
+
+			if(pattern.MatchesWindow(buf, out var ixs))
+				return (tokens.Slice(0, ix0 + ixs.offset), tokens.Slice(ix0 + ixs.offset + ixs.length));
+		}
+
+		return null;
 	}
+
+	public static int FindOnSameLevel(this IEnumerable<Token> tks, Token[] needle, Func<Token,Token,bool> same)
+	{
+		if(needle.Length == 0)
+			return -1;
+
+		// too lazy to implement KPM
+		var buf = new Toroid<Token>(needle.Length);
+		var expect = 0; // detects jumps from skipped groups
+
+		return tks.baseLevel().FirstOrDefault(x => {
+			if(x.offset != expect)
+				buf.Clear();
+			expect = x.offset + 1;
+			buf.Push(x.token);
+
+			return buf.Count == needle.Length && buf.Zip(needle).All(y => same(y.First, y.Second));
+		}, (offset: needle.Length - 2, null!)).offset - needle.Length + 1;
+	}
+
+	public static int FindOnSameLevel(this IEnumerable<Token> tks, Token[] needle)
+		=> FindOnSameLevel(tks, needle, (x, y) => x.IsSame(y));
 
 	/// <summary>
 	///  Finds the contents of the document environment
 	/// </summary>
-	public static CodeSegment? DocumentContents(this CodeSegment file)
+	public static Code? DocumentContents(this Code file)
 	{
 		var begin = file.Items().FirstIndexOf(x => x is BeginEnv b && b.Env == "document");
 
@@ -89,10 +157,10 @@ public static class Extensions
 		};
 	}
 
-	public static (CodeSegment left, Token sep, CodeSegment right)? SplitOn(this CodeSegment code, Func<Token, bool> sep, bool sameLevel)
+	public static (Code left, Token sep, Code right)? SplitOn(this Code code, Func<Token, bool> sep, bool sameLevel)
 		=> code.SplitOn(sameLevel ? checkLevel(sep) : sep);
 
-	public static IEnumerable<CodeSegment> SplitBy(this CodeSegment code, Func<Token, bool> sep, bool sameLevel)
+	public static IEnumerable<Code> SplitBy(this Code code, Func<Token, bool> sep, bool sameLevel)
 		=> code.SplitBy(sameLevel ? checkLevel(sep) : sep);
 
 	public static ArraySegment<Token> TrimStart(this ArraySegment<Token> code)
@@ -145,7 +213,7 @@ public static class Extensions
 	/// <summary>
 	///  Formats the coordinate range of a code segment
 	/// </summary>
-	public static string PosRange(this CodeSegment seg)
+	public static string PosRange(this Code seg)
 	{
 		if(seg.IsEmpty)
 			return "<empty>";
@@ -189,8 +257,22 @@ public static class Extensions
 	public static bool IsParBreak(this Token tk)
 		=> tk is Character c && c.Char == '\n';
 
-	public static CodeSegment TrimStart(this CodeSegment tokens)
+	public static Code TrimStart(this Code tokens)
 		=> tokens.DropWhile(t => t is WhiteSpace);
+
+	public static Code TrimEnd(this Code tokens)
+	{
+		int n = 0;
+		int l = tokens.Length;
+
+		while(n < l && tokens[^(n + 1)] is WhiteSpace)
+			++n;
+
+		return tokens.Slice(0, l - n);
+	}
+
+	public static Code Trim(this Code code)
+		=> code.TrimStart().TrimEnd();
 
 	/// <summary>
 	///  Removes the first `n` tokens IN-PLACE
@@ -206,7 +288,7 @@ public static class Extensions
 	/// <summary>
 	///  Pops a single optional argument IN-PLACE
 	/// </summary>
-	public static CodeSegment? popOptArg(ref this CodeSegment code)
+	public static Code? popOptArg(ref this Code code)
 	{
 		code = code.TrimStart();
 
@@ -232,7 +314,7 @@ public static class Extensions
 	///  Pops a single mandatory argument IN-PLACE
 	/// </summary>
 	/// <param ></param>
-	public static CodeSegment? popArg(ref this CodeSegment code, bool acceptUnbraced = true)
+	public static Code? popArg(ref this Code code, bool acceptUnbraced = true)
 	{
 		code = code.TrimStart();
 
@@ -263,9 +345,9 @@ public static class Extensions
 	/// <param name="args"> The signature to parse </param>
 	/// <param name="code"> The slice to read from. Updated with the remaining tokens. </param>
 	/// <returns> The argument values, or null if a mandatory argument is missing. </returns>
-	public static CodeSegment[]? parseArguments(ref this CodeSegment code, ArgType[] args)
+	public static Code[]? parseArguments(ref this Code code, ArgType[] args)
 	{
-		var result = new CodeSegment[args.Length];
+		var result = new Code[args.Length];
 
 		for (int i = 0; i < args.Length; i++)
 		{
