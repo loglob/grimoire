@@ -6,7 +6,7 @@ namespace UI
 	/** Generates spell cards for the given spells */
 	function spellCards<TSpell extends Data.ISpell>(game : IGame<TSpell>, spells : TSpell[])
 	{
-		const div = document.getElementById("spell-cards");
+		const div = Util.getElement("spell-cards");
 		const q = new URLSearchParams(window.location.search);
 
 		spells = game.cardOrder(spells);
@@ -37,7 +37,7 @@ namespace UI
 		}
 		else await withGame(async function(g) {
 			const q = new URLSearchParams(window.location.search);
-			const f = Data.parseQuery(q.get("q"));
+			const f = Data.parseQuery(q.get("q") ?? "");
 
 			return spellCards(g, (await g.fetchSources(... q.getAll("from"))).filter(s => g.spellMatchesQuery(f, s)) );
 		})

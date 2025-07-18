@@ -62,7 +62,7 @@ namespace Data
 	export function cmpSpell<TSpell extends ISpell>(game : Games.IGame<TSpell>, s : Sorting<TSpell>, l : TSpell, r : TSpell) : number
 	{
 		const cmp = (s.key in game.customComparers)
-			? game.customComparers[s.key](l, r)
+			? game.customComparers[s.key]!(l, r)
 			: (l[s.key] > r[s.key] ? -1 : l[s.key] < r[s.key] ? +1 : 0);
 
 		return (s.reverse ? -cmp : +cmp);

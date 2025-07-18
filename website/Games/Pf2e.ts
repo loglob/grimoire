@@ -1,6 +1,5 @@
 namespace Games.Pf2e
 {
-	import bold = Util.bold
 	import child = Util.child
 	import same = Util.same
 	import infixOf = Util.infixOf
@@ -26,7 +25,7 @@ namespace Games.Pf2e
 		seconds : number,
 		reaction : string | null,
 		components : string,
-		range : string | null,
+		range : string,
 		feet : number,
 		targets : string | null,
 		area : string | null,

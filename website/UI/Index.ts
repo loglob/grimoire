@@ -30,14 +30,14 @@ namespace UI
 
 			document.title = `Grimoire: ${game.fullName} Spells`
 
-			document.getElementById("static-link").onclick = _ => {
+			Util.getElement("static-link").onclick = _ => {
 				const url = `${window.location.origin}${window.location.pathname}?${this.urlParams()}`;
 				console.log(url);
 				navigator.clipboard.writeText(url)
 				return false;
 			}
 
-			document.getElementById("create-list").onclick = _ => this.makeSpellList({
+			Util.getElement("create-list").onclick = _ => this.makeSpellList({
 				query : table.query,
 				sources : this.selectedSources(),
 				prepared : [],
@@ -45,8 +45,8 @@ namespace UI
 			});
 
 			{
-				const uploadButton = document.getElementById("faux-upload-list") as HTMLButtonElement;
-				const uploadInput = document.getElementById("upload-list") as HTMLInputElement;
+				const uploadButton = Util.getElement("faux-upload-list") as HTMLButtonElement;
+				const uploadInput = Util.getElement("upload-list") as HTMLInputElement;
 
 				uploadButton.onclick = _ => uploadInput.click();
 				uploadButton.ondragover = ev => ev.preventDefault();
@@ -58,12 +58,15 @@ namespace UI
 
 					await this.filesToSpellList(ev.dataTransfer.files);
 				}
-				uploadInput.oninput = async ev => {
-					await this.filesToSpellList(uploadInput.files);
+				uploadInput.oninput = async _ => {
+					if(uploadInput.files === null)
+						console.error("input event fired but no file upload happened")
+					else
+						await this.filesToSpellList(uploadInput.files);
 				}
 			}
 
-			document.getElementById("spell-card-view").onclick = _ => window.location.href = `cards.html?${this.urlParams()}`;
+			Util.getElement("spell-card-view").onclick = _ => window.location.href = `cards.html?${this.urlParams()}`;
 		}
 
 
@@ -118,7 +121,7 @@ namespace UI
 				if(preload.some(x => x.toUpperCase() === id))
 				{
 					select.checked = true;
-					select.onchange(null);
+					select.onchange(null!);
 				}
 			}
 		}

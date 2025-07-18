@@ -26,7 +26,7 @@ namespace Util
 			"i"
 			).test(haystack);
 	}
-	
+
 	/**
 	 * @returns A <b> element displaying the given HTML code
 	 */
@@ -86,7 +86,7 @@ namespace Util
 		const t1 = term.substring(1);
 		const t2 = term.substring(2);
 
-		return test.some(txt => 
+		return test.some(txt =>
 			txt && (term[1] === '/' ? infixWordOf(t2, txt) : infixOf(t1, txt))
 		);
 	}
@@ -95,5 +95,57 @@ namespace Util
 	export function fieldTermMatch<T>(obj : T, term : string, ...fields : (keyof T)[]) : boolean
 	{
 		return fields.some(f => obj[f] && term === f);
+	}
+
+	export function letNull<T,R>(value : T | null, bind : (x : T) => R ) : R | null
+	{
+		return value !== null ? bind(value) : null;
+	}
+
+	export function letIn<T, R>(value : T, bind : (x : T) => R) : R | null
+	{
+		return bind(value);
+	}
+
+	/** null-aware multiplication */
+	export function nMul(...xs : (number | null)[]) : number | null
+	{
+		let acc = 1.0
+
+		for(const x of xs)
+		{
+			if(x === null)
+				return null
+
+			acc *= x
+		}
+
+		return acc
+	}
+
+	export function nDiv(x : number|null, ...ys : (number | null)[]) : number | null
+	{
+		if(x === null)
+			return null
+
+		for(const y of ys)
+		{
+			if(y === null)
+				return null
+
+			x /= y
+		}
+
+		return x
+	}
+
+	export function getElement(id : string) : HTMLElement
+	{
+		const e = document.getElementById(id)
+
+		if(e === null)
+			throw Error(`Essential DOM element '${id}' was not found`)
+
+		return e;
 	}
 }

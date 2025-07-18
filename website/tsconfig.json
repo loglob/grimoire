@@ -1,9 +1,18 @@
 {
 	"compilerOptions": {
+		"allowUnreachableCode": false,
+		"alwaysStrict": true,
 		"noImplicitAny": true,
-		"removeComments": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"noImplicitThis": true,
+		"noUncheckedIndexedAccess": false,
+		"noUnusedLocals": true,
 		"preserveConstEnums": true,
+		"removeComments": true,
 		"sourceMap": true,
+		"strict": true,
+		"useUnknownInCatchVariables": true,
 		"outFile": "www/js/site.js",
 		"lib": [ "DOM", "ES2022" ]
 	},

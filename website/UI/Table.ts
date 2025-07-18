@@ -4,6 +4,8 @@ namespace UI
 	import Query = Data.Query
 	import Sorting = Data.Sorting
 
+	type ColumnGenerator<in TSpell> = (s : TSpell) => HTMLTableCellElement[]
+
 	/** Encapsulates the state of the table that displays the currently filtered spells. */
 	export class Table<TSpell extends Data.ISpell>
 	{
@@ -25,32 +27,32 @@ namespace UI
 		private spells : TSpell[] = []
 		/** The HTML table that contains rows corresponding to `display` */
 		private readonly table : HTMLTableElement
-		private readonly customRowElements : (s : TSpell) => HTMLTableCellElement[] = null
+		private readonly customRowElements : ColumnGenerator<TSpell>
 
 		/** Initializes the table with the known headers, and sets up the search-field text input to filter the table
 			@param q The query to load on the table
 			@param initial The initial set of spells. Filtered by q.
 			@param customRowElements A callback for prepending custom row elements before each row
 		*/
-		constructor(game : IGame<TSpell>, q : string|null = null, sort : string|null = null, customRowElements : (s : TSpell) => HTMLTableCellElement[] = null)
+		constructor(game : IGame<TSpell>, q : string|null = null, sort : string|null = null, customRowElements : ColumnGenerator<TSpell>|null = null)
 		{
 			const UP_ARROW = "\u2191";
 			const DOWN_ARROW = "\u2193";
 			this.game = game;
-			this.searchField = document.getElementById("search-field") as HTMLInputElement;
+			this.searchField = Util.getElement("search-field") as HTMLInputElement;
 			this.sorting = sort ? Data.parseSorting(sort) : Data.defaultSorting()
-			this.table = document.getElementById("spells") as HTMLTableElement;
-			this.customRowElements = customRowElements;
+			this.table = Util.getElement("spells") as HTMLTableElement;
+			this.customRowElements = customRowElements ?? (() => []);
 
 			// the <tr> containing the headers
-			const tr = document.getElementById("spell-headers");
+			const tr = Util.getElement("spell-headers");
 
 			for (const h of game.tableHeaders.concat(["name"]) )
 			{
 				var th : HTMLElement
 
 				if(h === "name")
-					th = document.getElementById("name-header")
+					th = Util.getElement("name-header");
 				else
 				{
 					th = Util.child( tr, "th" );
@@ -70,7 +72,7 @@ namespace UI
 						this.sorting.reverse = !this.sorting.reverse;
 					else
 					{
-						document.getElementById(`${String(this.sorting.key)}-marker`).innerText = "";
+						Util.getElement(`${String(this.sorting.key)}-marker`).innerText = "";
 						this.sorting = { key: h, reverse: false };
 					}
 
@@ -88,7 +90,7 @@ namespace UI
 			if(q)
 			{
 				this.searchField.value = q;
-				this.searchField.oninput(null)
+				this.searchField.oninput(null!)
 			}
 		}
 
@@ -97,11 +99,8 @@ namespace UI
 		{
 			var row = document.createElement("tr");
 
-			if(this.customRowElements)
-			{
-				for (const cell of this.customRowElements(spell))
-					row.appendChild(cell);
-			}
+			for (const cell of this.customRowElements(spell))
+				row.appendChild(cell);
 
 			{
 				let cell = document.createElement("td");
@@ -124,7 +123,7 @@ namespace UI
 				if(typeof spell[h] === "boolean")
 					td(spell[h] ? "Yes" : "No")
 				else
-					td(spell[h].toString());
+					td(spell[h]?.toString() ?? "");
 			}
 
 			return row;
@@ -222,9 +221,10 @@ namespace UI
 				Data.sortSpells(this.game, this.sorting, this.spells);
 
 			this.display = this.spells.filter(s => this.game.spellMatchesQuery(this.query, s));
+			var toRemove
 
-			while(this.table.childElementCount > 1)
-				this.table.removeChild(this.table.lastChild);
+			while((toRemove = this.table.lastChild) !== null)
+				this.table.removeChild(toRemove);
 
 			for (const s of this.display)
 				this.table.appendChild(this.toRow(s));
@@ -258,8 +258,8 @@ namespace UI
 			for(let i = 0; i < n; ++i)
 			{
 				arr.push({
-					cells: Array.from(this.table.rows.item(i + 1).cells),
-					spell : this.display.at(i)
+					cells: Array.from(this.table.rows.item(i + 1)!.cells),
+					spell : this.display.at(i)!
 				});
 			}
 

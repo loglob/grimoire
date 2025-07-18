@@ -147,7 +147,7 @@ namespace Games.Goedendag
 			if(unit) switch(unit[2])
 			{
 				case "m": return normalizeDistance(unit[1].trim(), 3);
-				case "km": return 1000 * normalizeDistance(unit[1].trim(), 3);
+				case "km": return Util.nMul(1000, normalizeDistance(unit[1].trim(), 3));
 			}
 
 			// you need a unit of some kind
@@ -160,12 +160,12 @@ namespace Games.Goedendag
 			const mul = n.split(/·|&#183;|&#xB7;|&centerdot;/i)
 
 			if(mul.length > 1)
-				return mul.reduce((p,c) => p * normalizeDistance(c.trim(), 4), 1);
+				return mul.reduce((p,c) => Util.nMul(p, normalizeDistance(c.trim(), 4)), 1 as number|null);
 
 			const div = n.split('/', 2)
 
 			if(div.length == 2)
-				return normalizeDistance(div[0], 4) / normalizeDistance(div[1], 4);
+				return Util.nDiv(normalizeDistance(div[0], 4), normalizeDistance(div[1], 4));
 		}
 
 		// stage 4: variable/constant decision

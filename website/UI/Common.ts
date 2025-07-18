@@ -17,6 +17,12 @@ namespace UI
 	{
 		if(gameIndex === null)
 			gameIndex = await (await fetch(`db/index.json`)).json();
+		if(gameIndex === null)
+		{
+			alert("There is a problem with the database. Contact Administrator if this problem persists.")
+			window.location.reload()
+			throw Error("Page reload didn't fire correctly")
+		}
 
 		return gameIndex;
 	}
@@ -91,7 +97,7 @@ namespace UI
 			// maybe handle via a custom html page instead, to serve an actual error code
 			alert("That spell list doesn't exist! Did you clear browser data?");
 			window.location.href = "index.html";
-			return;
+			throw Error("Redirection didn't fire correctly")
 		}
 
 		const list = loadSpellList(JSON.parse(listJson));

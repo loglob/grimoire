@@ -91,7 +91,7 @@ namespace UI
 
 					for (const row of this.table.getRows())
 					{
-						const cb = row.cells.at(0).firstChild as HTMLInputElement
+						const cb = row.cells.at(0)!.firstChild as HTMLInputElement
 
 						if(this.isPrepared(row.spell) === wantState)
 							continue;
@@ -142,8 +142,16 @@ namespace UI
 			{
 				const downloadList = document.getElementById("download-list") as HTMLButtonElement;
 
-				downloadList.onclick = _ =>
-					window.open(`data:application/json,${encodeURIComponent(window.localStorage.getItem(this.name))}`);
+				downloadList.onclick = _ => {
+					const data = window.localStorage.getItem(this.name)
+
+					if(data === null)
+						alert("Unexpected error saving spell list. " +
+							"Your browser settings might prevent local storage (unlikely). " +
+							"File a bug report if problem persists")
+					else
+						window.open(`data:application/json,${encodeURIComponent(data)}`);
+				}
 			}
 
 			{
