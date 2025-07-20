@@ -140,6 +140,8 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 
 	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
 
+	public MaterialManifest Manifest { get; } = new();
+
 	private static readonly ArgType[] signature = [ new OptionalArg(), new MandatoryArg() ];
 
 	public Spell ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
@@ -189,7 +191,7 @@ public record DnD5e(Config.Game Conf) : IGame<DnD5e.Spell>
 	public ISource<Spell> Instantiate(Config.Source src)
 		=> src switch {
 			Config.CopySource c => new Copy<Spell>(this, c),
-			Config.DndWikiSource w => new DndWiki(Conf.Books.Values.ToArray(), w),
+			Config.DndWikiSource w => new DndWiki(this, Conf.Books.Values.ToArray(), w),
 			Config.LatexSource l => new LatexFiles<Spell>(this, l),
 			Config.OverleafSource o => new Overleaf<Spell>(this, o),
 			_ => throw new ArgumentException($"Illegal Source type for D&D 5e: {src}")

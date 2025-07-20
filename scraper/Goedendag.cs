@@ -70,6 +70,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
 
+	public MaterialManifest Manifest { get; } = initUnits();
+
 	private static Amount parseAmount(string str)
 	{
 		var m = amountRegex.Match(str);
@@ -122,12 +124,32 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		throw new FormatException($"Invalid price '{Lexer.Untokenize(code)}'");
 	}
 
+	private static MaterialManifest initUnits()
+	{
+		var mf = new MaterialManifest();
+
+		// TODO: un-hardcode this
+		mf.AddBaseUnit("g");
+		mf.AddBaseUnit("drop");
+		mf.AddBaseUnit("cm");
+		mf.AddBaseUnit("cm^2");
+
+		mf.AddUnit("drops", new(1, "drop")); // alias
+		mf.AddUnit("kg", new(1000, "g"));
+		mf.AddUnit("ml", new(2, "drop"));
+		mf.AddUnit("l", new(1000, "ml"));
+		mf.AddUnit("m", new(100, "cm"));
+
+		return mf;
+	}
+
+
 	private static readonly ArgType[] UNIT_SIGNATURE = [new StarArg(), new MandatoryArg()];
 
 	/// <summary>
 	///  Extracts material definitions from a code line
 	/// </summary>
-	private static IEnumerable<Material> extractMaterial(MaterialManifest mf, Compiler comp, Chain<Token> line, string[]? ctx)
+	private IEnumerable<Material> extractMaterial(Compiler comp, Chain<Token> line, string[]? ctx)
 	{
 		var cols = line.SplitBy(tk => tk is AlignTab, true).ToArray();
 
@@ -157,7 +179,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			{
 				var otherAmt = parseAmount(comp.ToString(otherUnit[1]));
 
-				if(mf.TryGetUnit(otherAmt.Unit, out var trUnit) && trUnit.Unit != MaterialManifest.DIMENSIONLESS_UNIT)
+				if(Manifest.TryGetUnit(otherAmt.Unit, out var trUnit) && trUnit.Unit != MaterialManifest.DIMENSIONLESS_UNIT)
 					throw new FormatException($"Transient unit '{otherAmt.Unit}' is not dimensionless");
 
 				amt *= otherAmt.Number;
@@ -328,25 +350,6 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			return new Component(compiler.ToHTML(piece), consumed, used);
 		}).ToArray();
 
-	MaterialManifest IGame<Spell>.InitUnits()
-	{
-		var mf = new MaterialManifest();
-
-		// TODO: un-hardcode this
-		mf.AddBaseUnit("g");
-		mf.AddBaseUnit("drop");
-		mf.AddBaseUnit("cm");
-		mf.AddBaseUnit("cm^2");
-
-		mf.AddUnit("drops", new(1, "drop")); // alias
-		mf.AddUnit("kg", new(1000, "g"));
-		mf.AddUnit("ml", new(2, "drop"));
-		mf.AddUnit("l", new(1000, "ml"));
-		mf.AddUnit("m", new(100, "cm"));
-
-		return mf;
-	}
-
 	Spell IGame<Spell>.ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
 	{
 		if(body.parseArguments(ArgType.SimpleSignature(3)) is not [ var _name, var _tag, var _prop ])
@@ -447,7 +450,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		};
 	}
 
-	void IGame<Spell>.LearnMaterials(MaterialManifest mf, Compiler comp, Chain<Token> code)
+	void IGame<Spell>.ExtractMaterials(Compiler comp, Chain<Token> code)
 	{
 		foreach(var table in code.extractEnvironments("tblr"))
 		{
@@ -459,8 +462,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			{
 				try
 				{
-					foreach(var mat in extractMaterial(mf, comp, row, context))
-						mf.AddMaterial(mat);
+					foreach(var mat in extractMaterial(comp, row, context))
+						Manifest.AddMaterial(mat);
 				}
 				catch(Exception ex)
 				{
@@ -494,7 +497,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 						var outAmt = parseAmount(comp.ToString(rule[3]));
 
-						mf.PostProcess(input, inAmt, output, outAmt);
+						Manifest.PostProcess(input, inAmt, output, outAmt);
 					}
 					catch(Exception ex)
 					{

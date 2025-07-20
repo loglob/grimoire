@@ -17,7 +17,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 
 	private readonly Compiler latex;
-	private readonly IGame<TSpell> game;
+	public IGame<TSpell> Game { get; }
 	private readonly Config.OverleafSource config;
 	private readonly Log log;
 	private readonly Cache cache;
@@ -25,7 +25,7 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 	public Overleaf(IGame<TSpell> game, Config.OverleafSource config)
 	{
-		this.game = game;
+		this.Game = game;
 		this.log = game.Log.AddTags(config.Discriminate("overleaf"));
 		this.cache = new(config.CacheLifetime, log, game.Conf.Shorthand, "overleaf", config.Auth.CacheID);
 
@@ -142,29 +142,27 @@ public class Overleaf<TSpell> : ISource<TSpell>
 
 		foreach(var f in ctx.codeFiles)
 		{
-			foreach(var spell in ctx.compiler.ExtractSpells(game, f.contents, f.source))
+			foreach(var spell in ctx.compiler.ExtractSpells(Game, f.contents, f.source))
 				yield return spell;
 		}
 	}
 
-	async Task<bool> ISource<TSpell>.HasMaterials(MaterialManifest manifest)
+	async Task ISource<TSpell>.LoadMaterials()
 	{
 		var ctx = await initialize();
 
 		if(ctx.materialFiles.Count == 0)
-			return false;
+			return;
 
 		foreach(var f in ctx.materialFiles)
 		{
-			int mCount = manifest.Materials.Count;
-			int uCount = manifest.Units.Count;
+			int mCount = Game.Manifest.Materials.Count;
+			int uCount = Game.Manifest.Units.Count;
 
-			game.LearnMaterials(manifest, ctx.compiler, f.contents);
+			Game.ExtractMaterials(ctx.compiler, f.contents);
 
-			if(mCount == manifest.Materials.Count && uCount == manifest.Units.Count)
+			if(mCount == Game.Manifest.Materials.Count && uCount == Game.Manifest.Units.Count)
 				log.Warn($"File '{f.path}' does not define any materials");
 		}
-
-		return true;
 	}
 }

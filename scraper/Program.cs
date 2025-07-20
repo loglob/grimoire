@@ -44,10 +44,18 @@ public class Program
 	private static async Task<(Config.Game game, int count)> processGame<TSpell>(IGame<TSpell> game) where TSpell : ISpell
 	{
 		var spellsByBook = game.Conf.Books.ToDictionary(x => x.Key, x => new List<TSpell>());
-		var materials = game.InitUnits(); // shouldn't throw even if unsupported
 		var warnedAbout = new HashSet<string>();
-		var sources = game.Conf.Sources.Select(s => game.Instantiate(s)).ToImmutableList();
+		var sources = game.Conf.Sources.Select(game.Instantiate).ToImmutableList();
 
+		// load materials
+		await Parallel.ForEachAsync(sources.GroupBy(s => s.Game), async (g, _) => {
+			foreach(var s in g)
+				await s.LoadMaterials();
+
+			g.Key.Log.Emit($"Loaded {g.Key.Manifest.Materials.Count} materials and {g.Key.Manifest.Units.Count} units");
+		});
+
+		// actually parse spells
 		foreach (var sp in (await Task.WhenAll(sources.Select(s => s.Spells().ToListAsync().AsTask()))).SelectMany(x => x))
 		{
 			if(spellsByBook.TryGetValue(sp.Source, out var spells))
@@ -57,15 +65,6 @@ public class Program
 		}
 
 		Directory.CreateDirectory($"db/{game.Conf.Shorthand}");
-
-		if((await Task.WhenAll(sources.Select(s => s.HasMaterials(materials)))).Any(x => x))
-		{
-			Log.DEFAULT.Emit($"Parsed {materials.Materials.Count} materials for {game.Conf.Shorthand}");
-
-			using var file = File.Create($"db/{game.Conf.Shorthand}/materials.json");
-			using var wr = new Utf8JsonWriter(file);
-			materials.WriteJson(wr);
-		}
 
 		int total = 0;
 

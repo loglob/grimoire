@@ -187,34 +187,4 @@ public sealed class MaterialManifest
 
 	public bool TryGetUnit(string name, out Amount definition)
 		=> allUnits.TryGetValue(name, out definition);
-
-	public void WriteJson(Utf8JsonWriter to)
-	{
-		to.WriteStartObject();
-
-		to.WriteStartObject("units");
-
-		foreach(var u in allUnits)
-		{
-			to.WritePropertyName(u.Key);
-			u.Value.WriteJson(to);
-		}
-
-		to.WriteEndObject();
-		to.WriteStartObject("materials");
-
-		foreach(var m in Materials)
-		{
-			to.WriteStartObject(m.Name.ToLower());
-
-			to.WritePropertyName("amount");
-			m.Amount.WriteJson(to);
-			to.WriteNumber("price", m.Price.CopperPieces);
-
-			to.WriteEndObject();
-		}
-
-		to.WriteEndObject(); // materials
-		to.WriteEndObject();
-	}
 }

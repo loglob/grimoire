@@ -8,8 +8,11 @@ public class Copy<TSpell> : ISource<TSpell>
 	readonly string[] files;
 	readonly Log log;
 
+	public IGame<TSpell> Game { get; }
+
 	public Copy(IGame<TSpell> game, Config.CopySource conf)
 	{
+		this.Game = game;
 		this.log = game.Log.AddTags(conf.Discriminate("copy"));
 		this.files = conf.From.ToArray();
 	}
@@ -23,7 +26,7 @@ public class Copy<TSpell> : ISource<TSpell>
 		{
 			await using var o = File.OpenRead(f);
 			bool warnedNull = false;
-			
+
 			await foreach (var spell in JsonSerializer.DeserializeAsyncEnumerable<TSpell>(o, Program.JsonOptions))
 			{
 				if(spell is null)

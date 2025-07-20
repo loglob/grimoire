@@ -7,11 +7,12 @@ using static Grimoire.Util.Extensions;
 
 namespace Grimoire;
 
-public record DndWiki(Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<Spell>
+public record DndWiki(DnD5e Game, Config.Book[] Books, Config.DndWikiSource Cfg) : ISource<Spell>
 {
 	private readonly ScraperClient client = new("http://dnd5e.wikidot.com", Cfg.RateLimit);
 	private static readonly Log log = Log.DEFAULT.AddTags("dndwiki");
 	private readonly Cache cache = new(Cfg.CacheLifetime, log, "dndwiki");
+	IGame<Spell> ISource<Spell>.Game => Game;
 
 	public ValueTask<string[]> SpellNames()
 		=> cache.CacheFunc("names", async() =>

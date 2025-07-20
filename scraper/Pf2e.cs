@@ -35,6 +35,7 @@ public record class Pf2e(Config.Game Conf) : IGame<Pf2e.Spell>
 		string ISpell.Source => source;
 	}
 
+	public MaterialManifest Manifest { get; } = new();
 
 	Spell IGame<Spell>.ExtractLatexSpell(Compiler comp, Config.Book source, Chain<Token> code)
 		=> throw new NotImplementedException("Latex not supported on Pf2e");
@@ -42,7 +43,7 @@ public record class Pf2e(Config.Game Conf) : IGame<Pf2e.Spell>
 	ISource<Spell> IGame<Spell>.Instantiate(Config.Source src)
 		=> src switch {
 			Config.CopySource c => new Copy<Spell>(this, c),
-			Config.NethysSource n => new AoN(Conf.Books.Values.ToArray(), n),
+			Config.NethysSource n => new AoN(this, Conf.Books.Values.ToArray(), n),
 			_ => throw new ArgumentException($"Illegal Source type for pf2e: {src}")
 		};
 

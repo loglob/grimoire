@@ -9,22 +9,24 @@ using static Grimoire.Pf2e;
 namespace Grimoire;
 #pragma warning disable SYSLIB1045
 
-public record AoN(Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.Spell>
+public record AoN(Pf2e Game, Config.Book[] books, Config.NethysSource Cfg) : ISource<Pf2e.Spell>
 {
 	private static readonly Log log = Log.DEFAULT.AddTags("AoN");
 	private readonly Cache cache = new(Cfg.CacheLifetime, log, "AoN");
 
+	IGame<Spell> ISource<Spell>.Game => Game;
+
 	/// <summary>
-    ///  The record returned by the elasticsearch API
-    /// </summary>
-    /// <param name="actions"> A plain string describing the casting time </param>
-    /// <param name="actions_number"> Number of seconds for cast </param>
-    /// <param name="bloodline"> The Sorcerer subclasses with access to the spell </param>
-    /// <param name="component"> The components required </param>
-    /// <param name="patron_theme"> The Witch subclasses with access to the spell </param>
-    /// <param name="primary_source_raw"> Book name with page number </param>
-    /// <param name="range_raw"> The raw range text </param>
-    /// <param name=""></param>
+	///  The record returned by the elasticsearch API
+	/// </summary>
+	/// <param name="actions"> A plain string describing the casting time </param>
+	/// <param name="actions_number"> Number of seconds for cast </param>
+	/// <param name="bloodline"> The Sorcerer subclasses with access to the spell </param>
+	/// <param name="component"> The components required </param>
+	/// <param name="patron_theme"> The Witch subclasses with access to the spell </param>
+	/// <param name="primary_source_raw"> Book name with page number </param>
+	/// <param name="range_raw"> The raw range text </param>
+	/// <param name=""></param>
 	private record SpellData(
 		string actions, int actions_number,
 		string[]? bloodline,
