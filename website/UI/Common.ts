@@ -17,6 +17,12 @@ namespace UI
 	{
 		if(gameIndex === null)
 			gameIndex = await (await fetch(`db/index.json`)).json();
+		if(gameIndex === null)
+		{
+			alert("There is a problem with the database. Contact Administrator if this problem persists.")
+			window.location.reload()
+			throw Error("Page reload didn't fire correctly")
+		}
 
 		return gameIndex;
 	}
@@ -37,9 +43,7 @@ namespace UI
 				return await f(new Games.Pf2e.Game(id, games[id], books));
 		}
 
-		alert(`Invalid game ID: '${id}'. Either the URL is wrong or your browser cache is outdated.`);
-		window.location.href = "/";
-		throw "bad game ID";
+		Util.backToIndex(`Invalid game ID: '${id}'. Either the URL is wrong or your browser cache is outdated.`, null)
 	}
 
 	/** Invokes a function that is generic over all games */
@@ -87,12 +91,8 @@ namespace UI
 		const listJson = window.localStorage.getItem(name)
 
 		if(listJson === null)
-		{
 			// maybe handle via a custom html page instead, to serve an actual error code
-			alert("That spell list doesn't exist! Did you clear browser data?");
-			window.location.href = "index.html";
-			return;
-		}
+			Util.backToIndex("That spell list doesn't exist! Did you clear browser data?")
 
 		const list = loadSpellList(JSON.parse(listJson));
 
@@ -129,7 +129,7 @@ namespace UI
 		{
 			return await withGame(async function(g) {
 				const q = new URLSearchParams(window.location.search);
-				const f = Data.parseQuery(q.get("q"));
+				const f = Data.parseQuery(q.get("q") ?? "");
 				const spells = (await g.fetchSources(... q.getAll("from"))).filter(s => g.spellMatchesQuery(f, s));
 
 				return await callback(g, spells, null);

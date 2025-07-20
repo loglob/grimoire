@@ -1,15 +1,23 @@
 {
 	"compilerOptions": {
+		"allowUnreachableCode": false,
+		"alwaysStrict": true,
 		"noImplicitAny": true,
-		"removeComments": true,
+		"noImplicitOverride": true,
+		"noImplicitReturns": true,
+		"noImplicitThis": true,
+		"noUncheckedIndexedAccess": false,
+		"noUnusedLocals": true,
 		"preserveConstEnums": true,
+		"removeComments": true,
 		"sourceMap": true,
+		"strict": true,
+		"useUnknownInCatchVariables": true,
 		"outFile": "www/js/site.js",
 		"lib": [ "DOM", "ES2022" ]
 	},
 	"files": [
 		"Data.ts",
-		"Material.ts",
 		"Util.ts",
 		"Games/IGame.ts",
 		"Games/DnD5e.ts",

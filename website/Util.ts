@@ -103,4 +103,83 @@ namespace Util
 	{
 		return fields.some(f => obj[f] && term === f);
 	}
+
+	export function letNull<T,R>(value : T | null, bind : (x : T) => R ) : R | null
+	{
+		return value !== null ? bind(value) : null;
+	}
+
+	export function letIn<T, R>(value : T, bind : (x : T) => R) : R | null
+	{
+		return bind(value);
+	}
+
+	/** null-aware multiplication */
+	export function nMul(...xs : (number | null)[]) : number | null
+	{
+		let acc = 1.0
+
+		for(const x of xs)
+		{
+			if(x === null)
+				return null
+
+			acc *= x
+		}
+
+		return acc
+	}
+
+	export function nDiv(x : number|null, ...ys : (number | null)[]) : number | null
+	{
+		if(x === null)
+			return null
+
+		for(const y of ys)
+		{
+			if(y === null)
+				return null
+
+			x /= y
+		}
+
+		return x
+	}
+
+	export function getElement(id : string) : HTMLElement
+	{
+		const e = document.getElementById(id)
+
+		if(e === null)
+			throw Error(`Essential DOM element '${id}' was not found`)
+
+		return e;
+	}
+
+	/** Navigates back to the index page and (optionally) issues an alert().
+	 * @param error The alert message to show. `undefined` to skip.
+	 * @param game The game ID to display on the index.
+	 * 				`undefined` to open the current game again,
+	 * 				`null` to go to the default game.
+	 * @returns
+	 */
+	export function backToIndex(error ?: string, game ?: string | null) : never
+	{
+		if(game === undefined)
+		{
+			// grab game index from current URL
+			game = new URLSearchParams(window.location.search).get("game") ?? null;
+		}
+
+		return changeLocation(game ? `index.html?game=${game}` : "index.html", error)
+	}
+
+	export function changeLocation(newPage : string, errorMessage ?: string) : never
+	{
+		if(errorMessage !== undefined)
+			alert(errorMessage)
+
+		window.location.href = newPage
+		throw Error("Redirection didn't fire correctly")
+	}
 }

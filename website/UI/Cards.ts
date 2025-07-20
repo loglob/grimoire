@@ -1,8 +1,6 @@
 /** Handles the cards.html UI for spellcard print view */
 namespace UI
 {
-	import IGame = Games.IGame
-
 	/** Initialized the spell card UI.
 	 * Must be called from cards.html on document load.
 	 */
@@ -12,7 +10,7 @@ namespace UI
 			if(list !== null)
 				document.title = `Spell cards - ${list.name}`
 
-			const div = document.getElementById("spell-cards");
+			const div = Util.getElement("spell-cards");
 			const q = new URLSearchParams(window.location.search);
 
 			spells = game.cardOrder(spells);

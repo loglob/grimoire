@@ -9,32 +9,21 @@ namespace UI
 		const spell = p.get("spell");
 
 		if(!from || !spell)
-		{
-			window.location.href = "index.html";
-			return;
-		}
+			Util.backToIndex();
 
 		await withGame(async function(g) {
-			const book = g.books[from]
+			const book = g.books[from];
 
 			if(! book)
-			{
-				alert(`No source '${g.shorthand}/${from}' exists!`);
-				window.location.href = "index.html";
-				return;
-			}
+				Util.backToIndex(`No source '${g.shorthand}/${from}' exists!`);
 
 			const sp = (await g.fetchSource(from)).find(s => Util.same(s.name, spell));
 
 			if(!sp)
-			{
-				alert(`No spell named ${spell} in source ${book}!`);
-				window.location.href = "index.html";
-				return;
-			}
+				Util.backToIndex(`No spell named ${spell} in source ${book}!`)
 
 			document.title = sp.name;
-			document.getElementById("spell-name").innerText = sp.name;
+			Util.getElement("spell-name").innerText = sp.name;
 
 			g.details(sp, book, document.getElementById("spell-details") as HTMLDivElement);
 		});

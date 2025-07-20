@@ -4,6 +4,7 @@ namespace Games.Goedendag
 	import child = Util.child
 	import same = Util.same
 	import infixOf = Util.infixOf
+	import HtmlCode = Data.HtmlCode
 
 	export const Arcana = {
 		General: 0,
@@ -24,6 +25,16 @@ namespace Games.Goedendag
 		Ritual: 0
 	} as const;
 
+	export type Component =
+	{
+		/** Code to display this component, excluding consumed and used markers */
+		display : HtmlCode,
+		consumed : boolean,
+		used : boolean,
+		price : number | null,
+		reference : string | null
+	}
+
 	export type Spell =
 	{
 		name : string,
@@ -31,15 +42,15 @@ namespace Games.Goedendag
 		powerLevel : keyof (typeof PowerLevelDCs),
 		combat : boolean,
 		reaction : boolean,
-		distance : string,
-		duration : string,
-		castingTime : string,
-		components : string,
-		brief : string,
-		effect : string,
-		critSuccess : string,
-		critFail : string,
-		extra : string | undefined,
+		distance : HtmlCode,
+		duration : HtmlCode,
+		castingTime : HtmlCode,
+		components : Component[],
+		brief : HtmlCode,
+		effect : HtmlCode,
+		critSuccess : HtmlCode,
+		critFail : HtmlCode,
+		extra : HtmlCode | undefined,
 		source : string
 	}
 
@@ -53,7 +64,24 @@ namespace Games.Goedendag
 		return Arcana[a.arcanum] - Arcana[b.arcanum];
 	}
 
-	function fmtFields(spell : Spell) : [string, string][]
+	function fmtComponent(c : Component) : HtmlCode
+	{
+		return c.display + (c.consumed ? "<sup>C</sup>" : "") + (c.used ? "<sup>U</sup>" : "")
+	}
+
+	function fmtComponents(cs : Component[]) : HtmlCode
+	{
+		switch(cs.length)
+		{
+			case 0: return ""
+			case 1: return fmtComponent(cs[0])
+			case 2: return fmtComponent(cs[0]) + " and " + fmtComponent(cs[1])
+			default:
+				return cs.map((c, ix) => (ix + 1 == cs.length ? "and " : "") + fmtComponent(c)).join(", ")
+		}
+	}
+
+	function fmtFields(spell : Spell) : [string, HtmlCode][]
 	{
 		const dc = PowerLevelDCs[spell.powerLevel]
 
@@ -63,7 +91,7 @@ namespace Games.Goedendag
 			[ "Casting Time", spell.castingTime + (spell.reaction ? " (R)" : "") ],
 			[ "Distance", spell.distance ],
 			[ "Duration", spell.duration ],
-			[ "Components", spell.components ]
+			[ "Components", fmtComponents(spell.components) ]
 		]
 	}
 
@@ -121,7 +149,7 @@ namespace Games.Goedendag
 			if(unit) switch(unit[2])
 			{
 				case "m": return normalizeDistance(unit[1].trim(), 3);
-				case "km": return 1000 * normalizeDistance(unit[1].trim(), 3);
+				case "km": return Util.nMul(1000, normalizeDistance(unit[1].trim(), 3));
 			}
 
 			// you need a unit of some kind
@@ -134,12 +162,12 @@ namespace Games.Goedendag
 			const mul = n.split(/·|&#183;|&#xB7;|&centerdot;/i)
 
 			if(mul.length > 1)
-				return mul.reduce((p,c) => p * normalizeDistance(c.trim(), 4), 1);
+				return mul.reduce((p,c) => Util.nMul(p, normalizeDistance(c.trim(), 4)), 1 as number|null);
 
 			const div = n.split('/', 2)
 
 			if(div.length == 2)
-				return normalizeDistance(div[0], 4) / normalizeDistance(div[1], 4);
+				return Util.nDiv(normalizeDistance(div[0], 4), normalizeDistance(div[1], 4));
 		}
 
 		// stage 4: variable/constant decision
@@ -156,84 +184,39 @@ namespace Games.Goedendag
 		return null;
 	}
 
-	function unmatchedPrefix(regex : RegExp, str : string) : string | null
+	export class MaterialContext extends IMaterialContext<Spell, Component>
 	{
-		const m = str.match(regex);
+		override readonly denominations = { gold: 12, silver: 36 } as const
 
-		if(m === null)
-			return null;
-
-		return str.slice(0, m.index);
-	}
-
-	class MaterialContext extends IMaterialContext<Spell>
-	{
-		readonly denominations = { gold: 12, silver: 36 }
-
-		parseMaterial(field : string) : SpellMaterial
-		{
-			// strip trailing full stop
-			field = unmatchedPrefix(/\s*\.$/, field) ?? field
-			// strip off used tag
-			field = unmatchedPrefix(/\s*\.?\s*<sup>U<\/sup>$/, field) ?? field
-			// strip off consumed tag
-			const isCon = unmatchedPrefix(/\s*\.?\s*<sup>C<\/sup>$/, field)
-			field = isCon ?? field
-
-			/// Strip out all HTML formatting and encoding
-			const desc = new DOMParser().parseFromString(field, "text/html").documentElement.innerText;
-			if(field != desc)
-				console.log(field, "->", desc)
-			field = desc
-
-			const unitOf = field.match(/^([0-9]+)\s*\[(.*)\]\s*(of\s+)?(.+)$/)
-
-			if(unitOf !== null)
-				return { material: unitOf[4], amount: { number: parseInt(unitOf[1]), unit: unitOf[2] }, consumed: isCon !== null };
-
-			const aThing = field.match(/^(an?|1|one)\s+(.+)$/i)
-
-			if(aThing !== null)
-				return { material: aThing[2], amount: { number: 1, unit: "1" }, consumed: isCon !== null };
-
-			const manyThings = field.match(/^([0-9]+)\s+(.+)s?$/)
-
-			if(manyThings !== null)
-				return { material: manyThings[2], amount: { number: parseInt(manyThings[1]), unit: "1" }, consumed: isCon !== null };
-
-			const suffixUnit = field.match(/^(.*?)\s+\((\s*[0-9]+)\s*\[(.+)\]\s*\)$/)
-
-			if(suffixUnit !== null)
-				return { material: suffixUnit[1], amount: { number: parseInt(suffixUnit[2]), unit: suffixUnit[3] }, consumed: isCon !== null }
-
-			// no parse
-			return { material: field, amount: null, consumed: isCon !== null }
-		}
-
-		extractMaterials(spell: Spell): SpellMaterial[]
+		override getMaterials(spell: Spell): Component[]
 		{
 			return spell.components
-			// JS considers every use of (…) a capture group and also inserts capture groups into the result array (?!); `?:` suppresses this
-				.split(/\s*(?:,(?:\s+and\s)?|and\s)\s*/)
-				.map(str => this.parseMaterial(str));
+		}
+
+		override formatMaterial(mat: Component, rich: boolean): HTMLElement
+		{
+			const span = document.createElement("span");
+			span.innerHTML = mat.display + (mat.consumed ? "<sup>C</sup>" : "") + (mat.used ? "<sup>U</sup>" : "");
+
+			return span
 		}
 
 	}
 
 	export class Game extends IGame<Spell>
 	{
-		readonly tableHeaders: (keyof Spell)[] = [
+		override readonly tableHeaders: (keyof Spell)[] = [
 			"powerLevel", "arcanum", "castingTime", "distance", "combat", "reaction"
 		] as const
 
-		readonly customComparers = {
+		override readonly customComparers = {
 			"powerLevel": cmpPowerLevel,
 			"arcanum": cmpArcana,
 			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime),
 			"distance": (x : Spell, y : Spell) => Games.compareNorm(normalizeDistance, x.distance, y.distance)
 		} as const
 
-		spellCard(spell: Spell, _book: string): HTMLDivElement
+		override spellCard(spell: Spell, _book: string): HTMLDivElement
 		{
 			const div = document.createElement("div");
 			child(div, "hr");
@@ -276,7 +259,7 @@ namespace Games.Goedendag
 			return div;
 		}
 
-		spellMatchesTerm(term: string, s: Spell): boolean
+		override spellMatchesTerm(term: string, s: Spell): boolean
 		{
 			const term1 = term.substring(1);
 
@@ -284,18 +267,18 @@ namespace Games.Goedendag
 				|| [ s.arcanum, s.powerLevel, s.distance, s.duration, s.castingTime ].some(x => same(x, term))
 				|| Util.fieldTermMatch(s, term, "combat", "reaction")
 				|| (this.isPrepared && term === "prepared" && this.isPrepared(s))
-				|| (term[0] === '$' && s.components && infixOf(term1, s.components))
+				|| (term[0] === '$' && s.components.some(c => infixOf(term1, c.display)))
 				|| (term[0] === '\\' && same(s.name, term1))
 				|| Util.fullTextMatch(term, s.brief, s.effect, s.critSuccess, s.critFail, s.extra)
 		}
 
-		cardOrder(spells: Spell[]): Spell[]
+		override cardOrder(spells: Spell[]): Spell[]
 		{
 			return spells
 				.sort((a,b) => a.name > b.name ? +1 : -1)
 		}
 
-		details(spell: Spell, _book : string, div: HTMLDivElement): void
+		override details(spell: Spell, _book : string, div: HTMLDivElement): void
 		{
 			child(div, "p", "subtle").innerHTML = spell.brief;
 
@@ -320,19 +303,9 @@ namespace Games.Goedendag
 			}
 		}
 
-		async fetchMaterials(): Promise<IMaterialContext<Spell> | null>
+		override withMaterials<A>(consumer: (ctx: MaterialContext) => A): A
 		{
-			try
-			{
-				const resp = await fetch(`db/${this.shorthand}/materials.json`);
-				const manifest : Material.Manifest = await resp.json();
-
-				return new MaterialContext(this, manifest);
-			}
-			catch(_)
-			{
-				return null;
-			}
+			return consumer(new MaterialContext(this));
 		}
 	}
 }

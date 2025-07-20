@@ -1,9 +1,9 @@
 namespace Games.Pf2e
 {
-	import bold = Util.bold
 	import child = Util.child
 	import same = Util.same
 	import infixOf = Util.infixOf
+	import HtmlCode = Data.HtmlCode
 
 	export const Traditions = {
 		Arcane: 1,
@@ -25,14 +25,14 @@ namespace Games.Pf2e
 		seconds : number,
 		reaction : string | null,
 		components : string,
-		range : string | null,
+		range : string,
 		feet : number,
 		targets : string | null,
 		area : string | null,
 		duration : string | null,
 		save : string | null,
 		tags : string[],
-		description : string,
+		description : HtmlCode,
 		page : number
 	}
 

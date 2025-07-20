@@ -16,7 +16,7 @@ public class Program
 		Converters = {
 			new JsonStringEnumConverter()
 		},
-		DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+		DefaultIgnoreCondition = JsonIgnoreCondition.Never,
 		Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
 		UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
 		RespectNullableAnnotations = true,

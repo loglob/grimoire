@@ -5,20 +5,20 @@ namespace Games.DnD5e
 	import child = Util.child
 	import same = Util.same
 	import infixOf = Util.infixOf
+	import HtmlCode = Data.HtmlCode
 
-	export type Spell =
-	{
+	export type Spell = Readonly<{
 		name : string, source : string,
 		school : string, level : number,
-		castingTime : string, reaction : string, ritual : boolean,
-		range : string,
+		castingTime : HtmlCode, reaction : HtmlCode, ritual : boolean,
+		range : HtmlCode,
 		verbal : boolean, somatic : boolean, materials : string|null,
-		concentration : boolean, duration : string,
-		description : string, upcast : string|null,
-		classes : string[],
-		statBlock : string|null,
-		hint : string|null
-	}
+		concentration : boolean, duration : HtmlCode,
+		description : HtmlCode, upcast : HtmlCode|null,
+		classes : HtmlCode[],
+		statBlock : HtmlCode|null,
+		hint : HtmlCode|null
+	}>
 
 	const timeUnits : { [k : string] : number } = {
 		"reaction": 1,

@@ -55,27 +55,65 @@ namespace Games
 		return compareNorm(normalize, l, r);
 	}
 
-	/** A single parsed spell material.
-	 * @param amount null on parsing failure
-	*/
-	export type SpellMaterial = Readonly<{ material: string, amount: Material.Amount | null, consumed: boolean }>
-
 	/** Context in which materials can be resolved to prices, respective to some spell type */
-	export abstract class IMaterialContext<TSpell extends Data.ISpell>
+	export abstract class IMaterialContext<TSpell extends Data.ISpell, TMaterial extends Data.IMaterial>
 	{
 		/** Gives the size of coin denominations for formatting */
 		abstract readonly denominations : Denominations
 		readonly game : IGame<TSpell>
-		readonly manifest : Material.Manifest
 
-		constructor(game : IGame<TSpell>, manifest : Material.Manifest)
+		constructor(game : IGame<TSpell>)
 		{
 			this.game = game
-			this.manifest = manifest
 		}
 
 		/** Extracts the materials required by a spell */
-		abstract extractMaterials(spell : TSpell) : SpellMaterial[]
+		abstract getMaterials(spell : TSpell) : TMaterial[]
+
+		/** Formats a single material
+		 * @param rich If true, applies extra formatting, otherwise generate a plain span
+		 */
+		abstract formatMaterial(mat : TMaterial, rich : boolean) : HTMLElement
+
+		/** Formats an entire material list as a comma-separated list */
+		formatMaterials(materials : TMaterial[], rich : boolean, withPrice : boolean) : HTMLElement
+		{
+			const container = document.createElement("span")
+
+			materials.forEach((m, ix) => {
+				if(ix > 0)
+				{
+					var sep = "";
+
+					if(materials.length > 2)
+						sep = ",";
+					if(ix + 1 == materials.length)
+						sep += " and";
+
+					if(rich)
+						Util.child(container, "span", "material-sep").innerText = sep;
+					else
+						container.append(sep + ' ');
+				}
+
+				container.append(this.formatMaterial(m, rich));
+
+				if(withPrice)
+				{
+					const priceContainer = rich ? Util.child(container, "b") : container;
+					priceContainer.append(' (')
+
+					if(m.price !== null)
+						priceContainer.append(this.formatPrice(m.price))
+					else
+						priceContainer.append('?')
+
+					priceContainer.append(')')
+				}
+			});
+
+			return container
+		}
 
 		/** Formats price according to `denominations` */
 		formatPrice(totalCopper : number) : HTMLElement
@@ -179,12 +217,6 @@ namespace Games
 			return (await Promise.all(sources.map(s => this.fetchSource(s)))).flat();
 		}
 
-		/** Constructs a material context for this spell, if the database has material definitions */
-		async fetchMaterials() : Promise<IMaterialContext<TSpell> | null>
-		{
-			return null
-		}
-
 		/** Generates a single spell card as a self-contained HTML element
 			@param book The full name of the source
 		*/
@@ -200,6 +232,12 @@ namespace Games
 		spellURL(spell : TSpell) : string
 		{
 			return `details.html?game=${this.shorthand}&from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`
+		}
+
+		/** Finds this game's material context, or returns `null` if no context  */
+		withMaterials<A>(consumer : <TMaterial extends Data.IMaterial>(ctx : IMaterialContext<TSpell, TMaterial>) => A) : A | null
+		{
+			return null
 		}
 	};
 }

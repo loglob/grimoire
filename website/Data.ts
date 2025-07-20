@@ -14,6 +14,9 @@ namespace Data
 		return { key: "name", reverse: true };
 	}
 
+	/** Explicitly annotates Html code strings */
+	export type HtmlCode = string;
+
 	export type SpellList =
 	{
 		/** The sources this list is built from */
@@ -28,10 +31,27 @@ namespace Data
 
 	export type NamedSpellList = SpellList & { name : string };
 
+	/** A generic material component */
+	export interface IMaterial
+	{
+		/** Displayable code for this entire component
+		 * Depending on game, other fields may be encoded or separate.
+		 */
+		readonly display : HtmlCode,
+		/** Whether this component is consumed */
+		readonly consumed : boolean,
+		/** The price of this component, or null if unknown */
+		readonly price : number | null,
+		/** A reference for the price.
+		 * May be present independently of price.
+		 */
+		readonly reference : string | null
+	}
+
 	export interface ISpell
 	{
-		name : string,
-		source : string
+		readonly name : string
+		readonly source : string
 	}
 
 	/** Normalizes a query. Resolves operators and squeezes whitespace. */
@@ -59,7 +79,7 @@ namespace Data
 	export function cmpSpell<TSpell extends ISpell>(game : Games.IGame<TSpell>, s : Sorting<TSpell>, l : TSpell, r : TSpell) : number
 	{
 		const cmp = (s.key in game.customComparers)
-			? game.customComparers[s.key](l, r)
+			? game.customComparers[s.key]!(l, r)
 			: (l[s.key] > r[s.key] ? -1 : l[s.key] < r[s.key] ? +1 : 0);
 
 		return (s.reverse ? -cmp : +cmp);
