@@ -1,6 +1,7 @@
 using Grimoire.Util;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
 
@@ -66,7 +67,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		}
 	}
 
-	public enum KnownEnvironments
+	public enum KnownEnvironment
 	{
 		Itemize,
 		Tabular,
@@ -85,7 +86,15 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	private static Macro tagWrap(string tag)
 	{
 		var pos = new Position("builtin/tagWrap", 0, 0);
-		return new([ new MandatoryArg() ], [ new HtmlChunk($"<{tag}>", pos), new ArgumentRef(1, pos), new HtmlChunk($"</{tag}>", pos) ]);
+		return new([ new MandatoryArg() ], [
+			new ToggleMode(OutputMode.HTML_ONLY, pos),
+			new HtmlChunk($"<{tag}>", pos),
+			new ToggleMode(OutputMode.NORMAL, pos),
+			new ArgumentRef(1, pos),
+			new ToggleMode(OutputMode.HTML_ONLY, pos),
+			new HtmlChunk($"</{tag}>", pos),
+			new ToggleMode(OutputMode.NORMAL, pos)
+		]);
 	}
 
 	private static Macro translate(char c)
@@ -158,19 +167,33 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	///  Maps an environment token onto its corresponding enum entry.
 	///  Utilizes the Config environment map.
 	/// </summary>
-	private KnownEnvironments envKind(EnvToken tk)
+	private KnownEnvironment envKind(EnvToken tk)
 	{
-		string env;
-		switch(env = Conf.Environments.GetValueOrDefault(tk.Env, tk.Env))
+		if(! TryGetEnvironment(tk.Env, out var kind))
+			Log.Warn($"Unknown environment '{tk.Env}' referenced by {tk.At}");
+
+		return kind;
+	}
+
+	public bool TryGetEnvironment(string name, [MaybeNullWhen(false)] out KnownEnvironment kind)
+	{
+		switch(Conf.Environments.GetValueOrDefault(name, name))
 		{
-			case "tabular": return KnownEnvironments.Tabular;
-			case "itemize": return KnownEnvironments.Itemize;
-			case "div": return KnownEnvironments.Div;
+			case "tabular":
+				kind = KnownEnvironment.Tabular;
+				return true;
+			case "itemize":
+				kind = KnownEnvironment.Itemize;
+				return true;
+			case "div":
+				kind = KnownEnvironment.Div;
+				return true;
 
 			default:
-				Log.Warn($"Unknown environment '{env}' referenced by {tk.At}");
-			return KnownEnvironments.Div;
+				kind = KnownEnvironment.Div;
+				return false;
 		}
+
 	}
 
 
@@ -682,7 +705,7 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	public string ToHTML(IEnumerable<Token> chain, bool trackRow = false)
 	{
 		StringBuilder doc = new();
-		Stack<KnownEnvironments> envs = new();
+		Stack<KnownEnvironment> envs = new();
 		int row = 0;
 		// if true, swallow the next macro argument
 		bool skipNextArg = false;
@@ -743,9 +766,9 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 				doc.Append(hc.Data);
 			else if(tk is BackBack b)
 			{
-				doc.Append((envs.TryPeek(out var x) ? x : KnownEnvironments.Div) switch {
-					KnownEnvironments.Itemize => "</li><li>" ,
-					KnownEnvironments.Tabular => "</td></tr><tr><td>" ,
+				doc.Append((envs.TryPeek(out var x) ? x : KnownEnvironment.Div) switch {
+					KnownEnvironment.Itemize => "</li><li>" ,
+					KnownEnvironment.Tabular => "</td></tr><tr><td>" ,
 					_ => "<br/>"
 				});
 			}
@@ -754,31 +777,31 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 				var x = envKind(be);
 				envs.Push(x);
 
-				if(x == KnownEnvironments.Tabular)
+				if(x == KnownEnvironment.Tabular)
 				{
 					skipNextArg = true;
 					skipDepth = 0;
 				}
 
 				doc.Append(x switch {
-					KnownEnvironments.Itemize => $"<ul class=\"{WebUtility.HtmlEncode(be.Env)}\"> <li>",
-					KnownEnvironments.Tabular => $"<table class=\"{WebUtility.HtmlEncode(be.Env)}\"> <tr> <td>",
-					KnownEnvironments.Div => $"<div class=\"{WebUtility.HtmlEncode(be.Env)}\">" ,
+					KnownEnvironment.Itemize => $"<ul class=\"{WebUtility.HtmlEncode(be.Env)}\"> <li>",
+					KnownEnvironment.Tabular => $"<table class=\"{WebUtility.HtmlEncode(be.Env)}\"> <tr> <td>",
+					KnownEnvironment.Div => $"<div class=\"{WebUtility.HtmlEncode(be.Env)}\">" ,
 					_ => throw new UnreachableException()
 				});
 			}
 			else if(tk is EndEnv)
 			{
 				doc.Append(envs.Pop() switch {
-					KnownEnvironments.Itemize => "</li> </ul>",
-					KnownEnvironments.Tabular => "</td> </tr> </table>",
-					KnownEnvironments.Div     => "</div>" ,
+					KnownEnvironment.Itemize => "</li> </ul>",
+					KnownEnvironment.Tabular => "</td> </tr> </table>",
+					KnownEnvironment.Div     => "</div>" ,
 					_ => throw new UnreachableException()
 				});
 			}
 			else if(tk is AlignTab)
 			{
-				if(envs.TryPeek(out var x) && x == KnownEnvironments.Tabular)
+				if(envs.TryPeek(out var x) && x == KnownEnvironment.Tabular)
 					doc.Append("</td> <td>");
 				else
 					Log.Warn($"Dropping superfluous alignment tab at {tk.Pos}");

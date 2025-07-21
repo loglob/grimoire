@@ -1,4 +1,5 @@
 using Grimoire.Util;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Grimoire;
@@ -143,13 +144,28 @@ public sealed class MaterialManifest
 		materials[key] = mat;
 	}
 
+	public bool TryNormalize(Amount amount, [MaybeNullWhen(false)] out Amount normalized)
+	{
+		if(allUnits.TryGetValue(amount.Unit, out var definition))
+		{
+			normalized = definition * amount.Number;
+			return true;
+		}
+		else
+		{
+			normalized = default;
+			return false;
+		}
+	}
+
+	public bool TryGetMaterial(string name, [MaybeNullWhen(false)] out Material material)
+		=> materials.TryGetValue(name.ToLower(), out material);
+
 	/// <summary>
 	/// Brings an amount into canonical form, i.e. in terms of base units
 	/// </summary>
 	public Amount Normalize(Amount amt)
-		=> allUnits.TryGetValue(amt.Unit, out var def)
-			? amt.Number * def
-			: throw new ArgumentException($"No such unit '{amt.Unit}'");
+		=> TryNormalize(amt, out var norm) ? norm : throw new ArgumentException($"No such unit '{amt.Unit}'");
 
 	/// <summary>
 	///  Runs a post-processing step on the already defined materials
@@ -185,6 +201,6 @@ public sealed class MaterialManifest
 			materials[m.Name] = m;
 	}
 
-	public bool TryGetUnit(string name, out Amount definition)
+	public bool TryGetUnit(string name, [MaybeNullWhen(false)] out Amount definition)
 		=> allUnits.TryGetValue(name, out definition);
 }

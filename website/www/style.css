@@ -211,6 +211,6 @@ img
 
 #materials td:nth-child(3), #materials td:nth-child(5)
 {
-	text-align: right;
+	text-align: center;
 	font-weight: bold;
 }

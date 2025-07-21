@@ -37,7 +37,7 @@ public class Program
 	private static string conjugate(int count)
 		=> count == 1 ? "" : "s";
 
-	private static string conjugate<T>(ICollection<T> xs)
+	private static string conjugate<T>(IReadOnlyCollection<T> xs)
 		=> conjugate(xs.Count);
 
 
@@ -48,12 +48,16 @@ public class Program
 		var sources = game.Conf.Sources.Select(game.Instantiate).ToImmutableList();
 
 		// load materials
-		await Parallel.ForEachAsync(sources.GroupBy(s => s.Game), async (g, _) => {
+		await Task.WhenAll(sources.GroupBy(s => s.Game).Select(async g => {
 			foreach(var s in g)
 				await s.LoadMaterials();
 
-			g.Key.Log.Emit($"Loaded {g.Key.Manifest.Materials.Count} materials and {g.Key.Manifest.Units.Count} units");
-		});
+			var mc = g.Key.Manifest.Materials.Count;
+			var uc = g.Key.Manifest.Units.Count;
+
+			if(mc > 0 || uc > 1)
+				g.Key.Log.Emit($"Loaded {mc} material{conjugate(mc)} and {uc} unit{conjugate(uc)}");
+		}));
 
 		// actually parse spells
 		foreach (var sp in (await Task.WhenAll(sources.Select(s => s.Spells().ToListAsync().AsTask()))).SelectMany(x => x))

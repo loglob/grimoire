@@ -45,6 +45,6 @@
 \newcommand{\frac}[2]{#1 / #2}
 \newcommand{\nicefrac}[2]{#1 / #2}
 
-\newcommand{\textsuperscript}[1]{\<<sup>\>#1\<</sup>\>}
-\forcenewcommand{\coin}[2]{\<<b class="\>#1\<"/>\>#2\<</b>\>}
+\newcommand{\textsuperscript}[1]{\IFHTML{\<<sup>\>#1\<</sup>\>}[{#1}]}
+\forcenewcommand{\coin}[2]{\IFHTML{\<<b class="\>#1\<"/>\>#2\<</b>\>}[{#2}]}
 \forcenewcommand{\unitref}[2]{#2}

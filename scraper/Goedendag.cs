@@ -33,7 +33,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string display,
 		bool consumed,
 		bool used,
-		int? price = null,
+		double? price = null,
 		string? reference = null
 	);
 
@@ -305,6 +305,74 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 	private const string LEGACY_CONSUMED_MACRO = "con";
 	private const string LEGACY_USED_MACRO = "use";
 
+	/// <summary>
+	/// CG[1] = number, CG[2] = unit name (sans brackets), CG[3] = discard, CG[4] = material name
+	/// </summary>
+	private static readonly Regex UNIT_REGEX = new(@"^\s*([0-9]+)\s*\[([^\]]+)\]\s+(of\s)?(.+)$", RegexOptions.IgnoreCase);
+	/// <summary>
+	/// CG[1] = discard, CG[2] = material name
+	/// </summary>
+	private static readonly Regex ARTICLE_REGEX = new(@"^\s*(an?|1|one)\s(.+)$", RegexOptions.IgnoreCase);
+	/// <summary>
+	/// CG[1] = number, CG[2] = material name
+	/// </summary>
+	private static readonly Regex NUMBERED_REGEX = new(@"^\s*([0-9]+)\s(.+)$", RegexOptions.IgnoreCase);
+	/// <summary>
+	/// CG[1] = material name, CG[2] = discard, CG[3] = number, CG[4] = unit name
+	/// </summary>
+	private static readonly Regex SUFFIX_UNIT_REGEX = new("^(.+)" + @"(\(\s*|\W)" + "([0-9]+)" + @"\s+\[([^\]]+)\]" + @"\s*\)?$", RegexOptions.IgnoreCase);
+
+	private static (Amount amount, string of) extractMaterial(string component)
+	{
+		{
+			var bracketedUnit = UNIT_REGEX.Match(component);
+
+			if(bracketedUnit.Success)
+			{
+				int n = int.Parse(bracketedUnit.Groups[1].ValueSpan);
+				string unit = bracketedUnit.Groups[2].Value;
+				string of = bracketedUnit.Groups[4].Value.Trim();
+
+				return (new(n, unit), of);
+			}
+		}
+
+		{
+			var articledUnit = ARTICLE_REGEX.Match(component);
+
+			if(articledUnit.Success)
+				return (Amount.ONE, articledUnit.Groups[1].Value.Trim());
+		}
+
+		{
+			var numbered = NUMBERED_REGEX.Match(component);
+
+			if(numbered.Success)
+			{
+				int n = int.Parse(numbered.Groups[1].ValueSpan);
+				string of = numbered.Groups[2].Value.Trim();
+
+				return (new(n, MaterialManifest.DIMENSIONLESS_UNIT), of);
+			}
+		}
+
+		{
+			var suffixed = SUFFIX_UNIT_REGEX.Match(component);
+
+			if(suffixed.Success)
+			{
+				string of = suffixed.Groups[1].Value.Trim();
+				int n = int.Parse(suffixed.Groups[3].ValueSpan);
+				string unit = suffixed.Groups[4].Value;
+
+				return (new(n, unit), of);
+			}
+		}
+
+
+		return (Amount.ONE, component.Trim());
+	}
+
 	private Component[] extractComponents(Compiler compiler, Chain<Token> code)
 		=> separateComponents(
 				code.Length > 2 && code[0] is OpenBrace && code[^1] is CloseBrace
@@ -314,8 +382,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			bool consumed = false;
 			bool used = false;
 
-			// Log.Info(Lexer.Untokenize(piece));
-
+			// strip off consumes and used markers
 			while(delta)
 			{
 				delta = false;
@@ -347,7 +414,31 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 					piece = piece.Slice(0, piece.Length - 1).TrimEnd();
 			}
 
-			return new Component(compiler.ToHTML(piece), consumed, used);
+			var display = compiler.ToHTML(piece);
+			var txt = compiler.ToString(piece);
+			var (amount, matName) = extractMaterial(txt);
+
+			if(! Manifest.TryNormalize(amount, out var normAmount))
+			{
+				Log.Warn($"Reference to unknown unit '{amount.Unit}' at {piece.PosRange()}");
+				return new Component(display, consumed, used);
+			}
+			if(! Manifest.TryGetMaterial(matName, out var material))
+			{
+				if(amount != Amount.ONE) // don't warn about unitless items (i.e. quest components)
+					Log.Warn($"Reference to unknown material '{matName}' at {piece.PosRange()}");
+				return new Component(display, consumed, used);
+			}
+
+			if(material.Amount.Unit != normAmount.Unit)
+			{
+				Log.Warn($"At {piece.PosRange()}: Unit mismatch for material '{material.Name}' specified in [{material.Amount.Unit}], but spell requires [{amount.Unit}] (AKA [{normAmount.Unit}])");
+				return new Component(display, consumed, used, null, material.Reference);
+			}
+
+			var price = (material.Price.CopperPieces * normAmount.Number) / (double)material.Amount.Number;
+
+			return new Component(compiler.ToHTML(piece), consumed, used, price, material.Reference);
 		}).ToArray();
 
 	Spell IGame<Spell>.ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
@@ -452,7 +543,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 	void IGame<Spell>.ExtractMaterials(Compiler comp, Chain<Token> code)
 	{
-		foreach(var table in code.extractEnvironments("tblr"))
+		foreach(var table in code.extractEnvironments(env => comp.TryGetEnvironment(env.Env, out var k) && k == Compiler.KnownEnvironment.Tabular))
 		{
 			string[]? context = null;
 			var inner = table;
