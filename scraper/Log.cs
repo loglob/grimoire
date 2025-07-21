@@ -1,4 +1,7 @@
 
+using Grimoire.Latex;
+using Grimoire.Util;
+
 namespace Grimoire;
 
 public abstract class Log
@@ -64,7 +67,7 @@ public abstract class Log
 	public abstract void Pin(string message);
 
 	private static readonly Endpoint _DEFAULT = new Endpoint(Console.Out);
-	public static Log DEFAULT => _DEFAULT; 
+	public static Log DEFAULT => _DEFAULT;
 	public static void disablePins()
 		=> _DEFAULT.disablePins = true;
 
@@ -86,14 +89,19 @@ public abstract class Log
 	public void Emit(string message)
 		=> write("", message);
 
-	public Log AddTags(params string[] tags)
-	{
-		var pfx = string.Join("", tags.Select(x => "[" + x + "]"));
-
-		return this switch {
+	private Log withPrefix(string pfx)
+		=> this switch {
 			Endpoint e => new Prefixed(e, pfx) ,
 			Prefixed t => new Prefixed(t.End, t.Prefix + pfx) ,
 			_ => throw new InvalidDataException()
 		};
-	}
+
+	public Log AddTags(params string[] tags)
+		=> withPrefix(string.Join("", tags.Select(x => "[" + x + "]")));
+
+	public Log At(Position pos)
+		=> withPrefix($"At {pos}: ");
+
+	public Log At(Chain<Token> code)
+		=> withPrefix($"At {code.PosRange()}: ");
 }

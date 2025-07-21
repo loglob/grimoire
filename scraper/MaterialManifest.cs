@@ -203,4 +203,37 @@ public sealed class MaterialManifest
 
 	public bool TryGetUnit(string name, [MaybeNullWhen(false)] out Amount definition)
 		=> allUnits.TryGetValue(name, out definition);
+
+	public (double? price, string? reference) ResolveComponent(Log log, Amount amount, string of)
+	{
+		if(! TryNormalize(amount, out var normAmount))
+		{
+			log.Warn($"Reference to unknown unit '{amount.Unit}'");
+			return (null, null);
+		}
+
+		if(! TryGetMaterial(of, out var material))
+		{
+			// attempt to de-pluralize
+			if(amount.Unit == DIMENSIONLESS_UNIT && of.EndsWith('s') && TryGetMaterial(of[..^1], out material))
+				goto recovered;
+
+			if(amount != Amount.ONE) // don't warn about unitless items (i.e. quest components)
+				log.Warn($"Reference to unknown material '{of}'");
+
+			return (null, null);
+		}
+
+		recovered:
+		if(material.Amount.Unit != normAmount.Unit)
+		{
+			log.Warn($"Unit mismatch for material '{material.Name}' specified in [{material.Amount.Unit}], but spell requires [{amount.Unit}] (i.e. [{normAmount.Unit}])");
+			return (null, material.Reference);
+		}
+
+		return (
+			(material.Price.CopperPieces * normAmount.Number) / (double)material.Amount.Number,
+			material.Reference
+		);
+	}
 }

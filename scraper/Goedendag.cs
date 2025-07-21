@@ -418,27 +418,9 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			var txt = compiler.ToString(piece);
 			var (amount, matName) = extractMaterial(txt);
 
-			if(! Manifest.TryNormalize(amount, out var normAmount))
-			{
-				Log.Warn($"Reference to unknown unit '{amount.Unit}' at {piece.PosRange()}");
-				return new Component(display, consumed, used);
-			}
-			if(! Manifest.TryGetMaterial(matName, out var material))
-			{
-				if(amount != Amount.ONE) // don't warn about unitless items (i.e. quest components)
-					Log.Warn($"Reference to unknown material '{matName}' at {piece.PosRange()}");
-				return new Component(display, consumed, used);
-			}
+			var (price, reference) = Manifest.ResolveComponent(Log.At(piece), amount, matName);
 
-			if(material.Amount.Unit != normAmount.Unit)
-			{
-				Log.Warn($"At {piece.PosRange()}: Unit mismatch for material '{material.Name}' specified in [{material.Amount.Unit}], but spell requires [{amount.Unit}] (AKA [{normAmount.Unit}])");
-				return new Component(display, consumed, used, null, material.Reference);
-			}
-
-			var price = (material.Price.CopperPieces * normAmount.Number) / (double)material.Amount.Number;
-
-			return new Component(compiler.ToHTML(piece), consumed, used, price, material.Reference);
+			return new Component(display, consumed, used, price, reference);
 		}).ToArray();
 
 	Spell IGame<Spell>.ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
