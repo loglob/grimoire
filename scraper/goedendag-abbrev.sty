@@ -47,27 +47,44 @@
 
 % Rules ________________________________________________________________________________
 \newcommand{\DV}{\unitref{dv}{DV}\xspace}%{Difficulty Value, must be exceeded to succeed}}
-\newcommand{\Sk}{\unitref{skill}{Sk}\xspace}%{The bonus of that skill}}
-\newcommand{\B}{\unitref{bonus}{B}\xspace}%{Any additional bonus}}
+\newcommand{\Skill}{\unitref{skill}{Sk}\xspace}%{The bonus of that skill}}
+\newcommand{\Bonus}{\unitref{bonus}{B}\xspace}%{Any additional bonus}}
 \newcommand{\IP}{\unitref{ip}{IP}\xspace}%{Improvement Points}}
 \newcommand{\GM}{\unitref{gm}{GM}\xspace}%{Game Master (The person running the game)}}
 
 % Combat ________________________________________________________________________________
 \newcommand{\AP}{\unitref{ap}{\includegraphics[height=0.9em]{img/AP_Symbol.png}}\xspace}%{Armor Points}}
 \newcommand{\AcP}{{\action}\xspace}
-\newcommand{\R}{\unitref{r}{\gdSection(R)}\xspace}
-\newcommand{\Com}{\unitref{comb}{\gdSection(C)}\xspace}
-\newcommand{\p}{\unitref{p}{\gdSection(P)}\xspace}
-\newcommand{\RE}{\unitref{re}{\gdSection(Re)}\xspace}
-\newcommand{\LE}{\unitref{le}{\gdSection(Le)}\xspace}
-\newcommand{\VA}{\unitref{va}{\gdSection(Va)}\xspace}
+\newcommand{\Reaction}{\unitref{reaction}{\gdSection(R)}\xspace}
+\newcommand{\Piercing}{\unitref{piercing}{\gdSection(P)}\xspace}
+\newcommand{\Reach}{\unitref{reach}{\gdSection(Re)}\xspace}
+\newcommand{\Lethal}{\unitref{lethal}{\gdSection(Le)}\xspace}
+\newcommand{\Variant}{\unitref{variant}{\gdSection(Va)}\xspace}
+\newcommand{\Water}{{\gdSection(W)}\xspace}
 
 % Spells ________________________________________________________________________________
-\newcommand{\con}{\unitref{con}{\gdTitle\textsuperscript{C}}\xspace}
-\newcommand{\use}{\unitref{use}{\gdTitle\textsuperscript{U}}\xspace}
-\newcommand{\comb}{\unitref{comb}{\gdSection(C)}\xspace}
+\newcommand{\Consumed}{\unitref{consumed}{\gdTitle\textsuperscript{C}}\xspace}
+\newcommand{\Used}{\unitref{used}{\gdTitle\textsuperscript{U}}\xspace}
+\newcommand{\Combat}{\unitref{combat}{\gdSection(C)}\xspace}
 
 % Rule Books ________________________________________________________________________
-\newcommand{\CR}{\unitref{cr}{{\gdTitle CR}}\xspace}
-\newcommand{\TOC}{\unitref{toc}{{\gdTitle ToC}}\xspace}
-\newcommand{\ANA}{\unitref{ana}{{\gdTitle A\&A}}\xspace}
+\newcommand{\CR}{\unitref{cr}{{\gdTitle\textsuperscript{CR}}}\xspace}
+\newcommand{\TOC}{\unitref{toc}{{\gdTitle\textsuperscript{ToC}}}\xspace}
+\newcommand{\ANA}{\unitref{ana}{{\gdTitle\textsuperscript{A\&A}}}\xspace}
+\newcommand{\SNF}{\unitref{snf}{{\gdTitle\textsuperscript{S\&F}}}\xspace}
+\newcommand{\MOTM}{\unitref{motm}{{\gdTitle\textsuperscript{MotM}}}\xspace}
+
+
+% LEGACY
+\newcommand{\R}{\Reaction}
+\newcommand{\Com}{\Combat}
+\newcommand{\comb}{\Combat} % duplicate
+\newcommand{\p}{\Piercing}
+\newcommand{\RE}{\Reach}
+\newcommand{\LE}{\Lethal}
+\newcommand{\VA}{\Variant}
+\newcommand{\con}{\Consumed}
+\newcommand{\use}{\Used}
+
+\newcommand{\Sk}{\Skill}
+\newcommand{\B}{\Bonus}
