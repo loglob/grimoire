@@ -193,10 +193,10 @@ namespace Games.Goedendag
 			return spell.components
 		}
 
-		override formatMaterial(mat: Component, rich: boolean): HTMLElement
+		override formatMaterial(mat: Component, materialsPage : boolean): HTMLElement
 		{
 			const span = document.createElement("span");
-			span.innerHTML = mat.display + (mat.consumed ? "<sup>C</sup>" : "") + (mat.used ? "<sup>U</sup>" : "");
+			span.innerHTML = mat.display + (materialsPage ? '' : (mat.consumed ? "<sup>C</sup>" : "") + (mat.used ? "<sup>U</sup>" : ""));
 
 			return span
 		}

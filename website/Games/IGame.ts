@@ -71,36 +71,39 @@ namespace Games
 		abstract getMaterials(spell : TSpell) : TMaterial[]
 
 		/** Formats a single material
-		 * @param rich If true, applies extra formatting, otherwise generate a plain span
+		 * @param materialsPage If true, the output format is for the materials page
 		 */
-		abstract formatMaterial(mat : TMaterial, rich : boolean) : HTMLElement
+		abstract formatMaterial(mat : TMaterial, materialsPage : boolean) : HTMLElement
 
-		/** Formats an entire material list as a comma-separated list */
-		formatMaterials(materials : TMaterial[], rich : boolean, withPrice : boolean) : HTMLElement
+		/** Formats an entire material list as a comma-separated list
+		 * @param materialsPage If true, the output format is for the materials page,
+		 * 						applies CSS formatting to separators and doesn't use `and` as separator,
+		 * 						and appends a formatted price
+		 */
+		formatMaterials(materials : TMaterial[], materialsPage : boolean) : HTMLElement
 		{
 			const container = document.createElement("span")
 
 			materials.forEach((m, ix) => {
 				if(ix > 0)
 				{
-					var sep = "";
-
-					if(materials.length > 2)
-						sep = ",";
-					if(ix + 1 == materials.length)
-						sep += " and";
-
-					if(rich)
-						Util.child(container, "span", "material-sep").innerText = sep;
+					if(materialsPage)
+						Util.child(container, "span", "material-sep").innerText = ",";
 					else
+					{
+						var sep = (materials.length > 2) ? ',' : '';
+						if(ix + 1 == materials.length)
+							sep += " and";
+
 						container.append(sep + ' ');
+					}
 				}
 
-				container.append(this.formatMaterial(m, rich));
+				container.append(this.formatMaterial(m, materialsPage));
 
-				if(withPrice)
+				if(materialsPage)
 				{
-					const priceContainer = rich ? Util.child(container, "b") : container;
+					const priceContainer = Util.child(container, "b");
 					priceContainer.append(' (')
 
 					if(m.price !== null)

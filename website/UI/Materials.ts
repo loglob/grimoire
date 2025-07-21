@@ -122,12 +122,12 @@ namespace UI
 				const persistent = all.filter(m => !m.consumed)
 				const consumed = all.filter(m => m.consumed)
 
-				child(row, "td").appendChild(this.context.formatMaterials(persistent, true, true))
+				child(row, "td").appendChild(this.context.formatMaterials(persistent, true))
 
 				const pSum = sumPrices(...persistent.map(m => m.price))
 				child(row, "td").append(...this.formatPriceSum(pSum))
 
-				child(row, "td").appendChild(this.context.formatMaterials(consumed, true, true))
+				child(row, "td").appendChild(this.context.formatMaterials(consumed, true))
 
 				const cSum = sumPrices(...consumed.map(m => m.price))
 				child(row, "td").append(... this.formatPriceSum(cSum))
