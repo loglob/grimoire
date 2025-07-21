@@ -183,10 +183,14 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 					throw new FormatException($"Transient unit '{otherAmt.Unit}' is not dimensionless");
 
 				amt *= otherAmt.Number;
-				// TODO: preserve transient unit information in some way
-			}
 
-			return names.Select(n => new Material(n, amt, price));
+				return names.SelectMany<string, Material>(n => [
+					new Material(n, amt, price),
+					new Material(otherAmt.Unit + " of " + n, new(otherAmt.Number, MaterialManifest.DIMENSIONLESS_UNIT), price)
+				]);
+			}
+			else
+				return names.Select(n => new Material(n, amt, price));
 		}
 		else if(variant.HasValue)
 		{
