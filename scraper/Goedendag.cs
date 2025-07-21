@@ -59,13 +59,15 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 	///  The character that separates variant in \grVariants
 	/// </summary>
 	private const char VARIANT_SEPARATOR = '/';
+	private const int COPPER_PER_SILVER = 36;
+	private const int SILVER_PER_GOLD = 12;
 
 	private static readonly Regex amountRegex = new(@"\s*([0-9]+)\s*(\S*)\s*");
 
 	private static readonly ImmutableDictionary<string, int> coinMacros = new Dictionary<string, int>() {
 		{ "Cu", 1 },
-		{ "Ag", 36 },
-		{ "Au", 12*36 }
+		{ "Ag", COPPER_PER_SILVER },
+		{ "Au", COPPER_PER_SILVER*SILVER_PER_GOLD }
 	}.ToImmutableDictionary();
 
 	public Log Log { get; } = Log.DEFAULT.AddTags(Conf.Shorthand);
@@ -139,6 +141,10 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		mf.AddUnit("ml", new(2, "drop"));
 		mf.AddUnit("l", new(1000, "ml"));
 		mf.AddUnit("m", new(100, "cm"));
+
+		mf.AddMaterial("Ⓖ coin", Amount.ONE, new(COPPER_PER_SILVER*SILVER_PER_GOLD));
+		mf.AddMaterial("Ⓢ coin", Amount.ONE, new(COPPER_PER_SILVER));
+		mf.AddMaterial("Ⓒ coin", Amount.ONE, new(1));
 
 		return mf;
 	}
