@@ -563,14 +563,19 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 						if(! Glob.TryParse(Lexer.Untokenize(rule[0]), out var input))
 							throw new FormatException("Invalid input pattern: " + rule[0]);
 
-						var inAmt = parseAmount(comp.ToString(rule[1]));
 
 						if(! Glob.TryParse(Lexer.Untokenize(rule[2]), out var output))
 							throw new FormatException("Invalid output pattern: " + rule[2]);
 
-						var outAmt = parseAmount(comp.ToString(rule[3]));
+						if(rule[1].IsEmpty && rule[3].IsEmpty)
+							Manifest.Alias(input, output);
+						else
+						{
+							var inAmt = parseAmount(comp.ToString(rule[1]));
+							var outAmt = parseAmount(comp.ToString(rule[3]));
 
-						Manifest.PostProcess(input, inAmt, output, outAmt);
+							Manifest.PostProcess(input, inAmt, output, outAmt);
+						}
 					}
 					catch(Exception ex)
 					{

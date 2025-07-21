@@ -45,9 +45,10 @@
 \newcommand{\grVariants}[1]{#1}
 
 % Post-processes already emitted materials by applying conversion rules.
-% Doesn't typeset anything
-% #1 - A number and unit specifying how much of the input material is required.
-% #2 - A wildcard for the base material. Must contain exactly one '*'.
-% #3 - A number and unit specifying how much of the output material is produced.
-% #4 - A pattern for the resulting material. Must contain exactly one '*' which is substituted with the value * in #1.
+% Doesn't typeset anything.
+% BOTH units may be blank to perform unit-preserving renaming.
+% #1 - A wildcard for the base material. Must contain exactly one '*'.
+% #2 - A number and unit specifying how much of the input material is required.
+% #3 - A pattern for the resulting material. Must contain exactly one '*' which is substituted with the value of * in #1.
+% #4 - A number and unit specifying how much of the output material is produced.
 \newcommand{\grPost}[4]{}

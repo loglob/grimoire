@@ -170,23 +170,44 @@ public sealed class MaterialManifest
 	/// <summary>
 	///  Runs a post-processing step on the already defined materials
 	/// </summary>
-	public void PostProcess(Glob input, Amount inAmount, Glob output, Amount outAmount)
+	private void postProcess(Func<Material, Material?> processor)
 	{
-		var buf = new List<Material>();
-		inAmount = Normalize(inAmount);
-		outAmount = Normalize(outAmount);
+		var buf = new List<(string key, Material entry)>();
 
 		foreach(var material in Materials)
 		{
-			if(! input.Test(material.Name, out var v))
+			if(! processor(material).Unpack(out var result))
 				continue;
+
+			var key = result.Name.ToLower();
+
+			if(materials.ContainsKey(key))
+				throw new ArgumentException($"Post-processing '{material.Name}' produced already existent material '{result.Name}'");
+			if(buf.Any(m => m.key == key))
+				throw new ArgumentException($"Post-processing produced '{result.Name}' twice");
+
+			buf.Add((key, result));
+		}
+
+		foreach(var (key, entry) in buf)
+			materials[key] = entry;
+	}
+
+	/// <summary>
+	///  Post-processes by performing a """crafting""" step
+	/// </summary>
+	public void PostProcess(Glob input, Amount inAmount, Glob output, Amount outAmount)
+	{
+		inAmount = Normalize(inAmount);
+		outAmount = Normalize(outAmount);
+
+		postProcess(material =>
+		{
+			if(! input.Test(material.Name, out var v))
+				return null;
 
 			var name = output.Insert(v);
 
-			if(materials.ContainsKey(name))
-				throw new ArgumentException($"Post-processing '{material.Name}' produced already existent material '{name}'");
-			if(buf.Any(m => m.Name == name))
-				throw new ArgumentException($"Post-processing produced '{name}' twice");
 			if(material.Amount.Unit != inAmount.Unit)
 				throw new ArgumentException($"Cannot apply rule to '{material.Name}' due to unit mismatch; Expected {inAmount.Unit} but got {material.Amount.Unit}");
 
@@ -194,11 +215,22 @@ public sealed class MaterialManifest
 			int numPurchases = material.Amount.Number / gcd;
 			int numApplications = inAmount.Number / gcd;
 
-			buf.Add(new(name, numApplications * outAmount, numPurchases * material.Price));
-		}
+			return new Material(name, numApplications * outAmount, numPurchases * material.Price);
+		});
+	}
 
-		foreach(var m in buf)
-			materials[m.Name] = m;
+	/// <summary>
+	///  Post-processes by aliasing materials
+	/// </summary>
+	public void Alias(Glob input, Glob output)
+	{
+		postProcess(material =>
+		{
+			if(! input.Test(material.Name, out var v))
+				return null;
+
+			return material with { Name = output.Insert(v) };
+		});
 	}
 
 	public bool TryGetUnit(string name, [MaybeNullWhen(false)] out Amount definition)
