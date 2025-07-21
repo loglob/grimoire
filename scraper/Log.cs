@@ -100,8 +100,8 @@ public abstract class Log
 		=> withPrefix(string.Join("", tags.Select(x => "[" + x + "]")));
 
 	public Log At(Position pos)
-		=> withPrefix($"At {pos}: ");
+		=> withPrefix($" At {pos}:");
 
 	public Log At(Chain<Token> code)
-		=> withPrefix($"At {code.PosRange()}: ");
+		=> withPrefix($" At {code.PosRange()}:");
 }
