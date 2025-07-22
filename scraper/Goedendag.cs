@@ -166,6 +166,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		var otherUnit = line.extractSingleInvocation("grOtherUnit", UNIT_SIGNATURE);
 		// variant reference
 		var variant = line.extractSingleInvocation("grVariants");
+		// variant reference
+		var _price = line.extractSingleInvocation("grPrice");
 
 		if(_names.Count > 0 && unit is null && !variant.HasValue)
 			throw new FormatException(@"Incomplete material definition");
@@ -173,12 +175,14 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			throw new FormatException(@"Using \grOtherUnit without \grUnit");
 		if(unit is not null && variant.HasValue)
 			throw new FormatException(@"Mixing \grUnit and \grVariants");
+		if(unit is null && _price is not null)
+			throw new FormatException(@"Using \grPrice without \grUnit");
 
 		var names = (_names.Count == 0 ? [cols[0]] : _names).Select(comp.ToString);
 
 		if(unit is not null)
 		{
-			var price = parsePrice(cols[2]);
+			var price = parsePrice(_price ?? cols[2]);
 			var amt = parseAmount(comp.ToString(unit[1]));
 
 			if(otherUnit is not null)

@@ -20,8 +20,8 @@
 % Typesets its argument unmodified unless * is given.
 % #1 - (star) if given, don't typeset anything
 % #2 - A number followed by a unit, or just a number
-\NewDocumentCommand{\grUnit}{s m}{
-	\IfBooleanF{#1}{#2}
+\NewDocumentCommand{\grUnit}{s m}{%
+	\IfBooleanF{#1}{#2}%
 }
 
 % Declares a secondary unit. Used together with \grMainUnit.
@@ -29,8 +29,16 @@
 % Typesets its argument unmodified unless * is given.
 % #1 - (star) if given, don't typeset anything
 % #2 - A number followed by a name, or just a number
-\NewDocumentCommand{\grOtherUnit}{s m}{
-	\IfBooleanF{#1}{#2}
+\NewDocumentCommand{\grOtherUnit}{s m}{%
+	\IfBooleanF{#1}{#2}%
+}
+
+% Explicitly marks the price of a material.
+% Only required if extra formatting is applies to the price, or the column format is weird.
+% #1 - (star) if given, don't typeset anything
+% #2 - A price using \Cu, \Ag and \Au without extra formatting
+\NewDocumentCommand{\grPrice}{s m}{%
+	\IfBooleanF{#1}{#2}%
 }
 
 % Sets up shorthanded /-separated variant lists
