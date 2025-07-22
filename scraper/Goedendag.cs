@@ -575,11 +575,13 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 							throw new FormatException("Missing arguments");
 
 						if(! Glob.TryParse(Lexer.Untokenize(rule[0]), out var input))
-							throw new FormatException("Invalid input pattern: " + rule[0]);
-
+							throw new FormatException("Invalid input pattern: " + Lexer.Untokenize(rule[0]));
 
 						if(! Glob.TryParse(Lexer.Untokenize(rule[2]), out var output))
-							throw new FormatException("Invalid output pattern: " + rule[2]);
+							throw new FormatException("Invalid output pattern: " + Lexer.Untokenize(rule[2]));
+
+						if(input.Arity != output.Arity)
+							throw new FormatException("Arity (amount of *s) mismatch between input and output");
 
 						if(rule[1].IsEmpty && rule[3].IsEmpty)
 							Manifest.Alias(input, output);
