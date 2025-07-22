@@ -16,6 +16,10 @@ namespace UI
 			const p = new URLSearchParams(window.location.search);
 			const ind = new Index(game, new Table(game, p.get("q"), p.get("sort")), game.books);
 
+			game.withMaterials(_ => {
+				setHidden(Util.getElement("materials-view"), false)
+			});
+
 			await ind.makeSourceSelector(p.has("from") ? p.getAll("from") : null)
 
 			return ind;

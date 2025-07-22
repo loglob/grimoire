@@ -30,6 +30,10 @@ namespace UI
 
 		static async init<TSpell extends ISpell>(game : IGame<TSpell>, data : Data.NamedSpellList) : Promise<List<TSpell>>
 		{
+			game.withMaterials(_ => {
+				setHidden(Util.getElement("materials-view"), false)
+			});
+
 			const sp = await game.fetchSources(... data.sources);
 			return new List(game, data, sp)
 		}
