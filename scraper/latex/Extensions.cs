@@ -441,7 +441,7 @@ public static class Extensions
 	public static bool like(this IEnumerable<Token> xs, IEnumerable<Token> ys)
 		=> xs.GetEnumerator().like(ys.GetEnumerator());
 
-	public static IEnumerable<Code> extractEnvironments(this Code code, Func<BeginEnv, bool> predicate)
+	public static IEnumerable<Code> ExtractEnvironments(this Code code, Func<BeginEnv, bool> predicate)
 	{
 		for(;;)
 		{
@@ -460,24 +460,56 @@ public static class Extensions
 
 	/// <summary>
 	///  Iterates over every invocation of the macro `macroName`.
-	///  Yields the arguments to those invocations, or null if an invocation was incomplete
 	/// </summary>
 	/// <param name="code"> Code to search </param>
 	/// <param name="macroName"> The macro to look for </param>
 	/// <param name="args"> The arguments to each invocation </param>
-	public static IEnumerable<Code[]> extractInvocations(this Code code, string macroName, ArgType[] args)
+	public static IEnumerable<Code[]> ExtractInvocations(this Code code, string macroName, ArgType[] args)
+		=> ExtractInvocations(code, x => x == macroName ? args : null).Select(pair => pair.args);
+
+	/// <summary>
+	///  Iterates over every selected macro invocation.
+	/// </summary>
+	/// <param name="select"> Returns null to skip a macro, and a signature to extract a macro invocation. </param>
+	public static IEnumerable<(MacroName macro, Code[] args)> ExtractInvocations(this Code code, Func<string, ArgType[]?> select)
 		=> code.Items()
-			.FindIndices(tk => tk is MacroName m && m.Macro == macroName)
-			.Select(ix =>
+			.Select((tk,ix) => (tk, ix))
+			.Where(v => v.tk is MacroName)
+			.Select(v => (tk: (MacroName)v.tk, v.ix, sig: select(((MacroName)v.tk).Macro)))
+			.Where(v => v.sig is not null)
+			.Select(v =>
 			{
-				var from = code.Slice(ix + 1);
-				return from.parseArguments(args) ?? throw new FormatException($"Incomplete invocation of {macroName}");
+				var from = code.Slice(v.ix + 1);
+				var args = from.parseArguments(v.sig!) ?? throw new FormatException($"Incomplete invocation of {v.tk.Macro}");
+				return (v.tk, args);
 			});
+
+	/// <summary>
+	///  Argument to \chapter, \section, \subsection, \subsubsection
+	/// </summary>
+	private static readonly ArgType[] SECTION_ARGS = [new StarArg(), new OptionalArg(), new MandatoryArg()];
+
+	/// <summary>
+	///  Finds the last label (more specifically hypertarget) in a code block, or null if no labels are defined
+	/// </summary>
+	public static string? LastLabel(this Code code)
+		=> code
+			.ExtractInvocations(macro => macro switch {
+				// label is #2 (optional)
+				"part" or "chapter" or "section" or "subsection" or "subsubsection" => SECTION_ARGS,
+				// label is #1 (mandatory)
+				"hypertarget" or "gdLabel" => ArgType.SimpleSignature(2),
+				_ => null
+			})
+			.Select(inv => inv.args[^2])
+			.Where(l => l.IsNotEmpty)
+			.Select(Lexer.Untokenize)
+			.LastOrDefault(defaultValue: null);
 
 	private static readonly ArgType[] SINGLE_ARG = [new MandatoryArg()];
 
 	public static IEnumerable<Code> extractInvocations(this Code code, string macroName)
-		=> code.extractInvocations(macroName, SINGLE_ARG).Select(i => i[0]);
+		=> code.ExtractInvocations(macroName, SINGLE_ARG).Select(i => i[0]);
 
 	public static Code? extractSingleInvocation(this Code code, string macroName)
 		=> extractSingleInvocation(code, macroName, SINGLE_ARG) switch {
@@ -487,7 +519,7 @@ public static class Extensions
 
 	public static Code[]? extractSingleInvocation(this Code code, string macroName, ArgType[] signature)
 	{
-		var all = code.extractInvocations(macroName, signature).ToList();
+		var all = code.ExtractInvocations(macroName, signature).ToList();
 
 		return all.Count switch {
 			0 => null,

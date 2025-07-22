@@ -215,7 +215,7 @@ public sealed class MaterialManifest
 			int numPurchases = material.Amount.Number / gcd;
 			int numApplications = inAmount.Number / gcd;
 
-			return new Material(name, numApplications * outAmount, numPurchases * material.Price);
+			return new Material(name, numApplications * outAmount, numPurchases * material.Price, material.Reference);
 		});
 	}
 

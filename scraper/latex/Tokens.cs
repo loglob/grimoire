@@ -6,6 +6,12 @@ public readonly record struct Position(string File, int Row, int Col)
 {
 	public override string ToString()
 		=> $"{File.Quote()}:{Row}:{Col}";
+
+	public static bool operator <(Position lt, Position gt)
+		=> lt.Row < gt.Row || (lt.Row == gt.Row && lt.Col < gt.Col);
+
+	public static bool operator >(Position gt, Position lt)
+		=> lt < gt;
 }
 
 public abstract record Token(Position Pos)

@@ -537,10 +537,25 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		};
 	}
 
+	private static string? getReferenceTo(Compiler comp, Chain<Token> code, Token target)
+	{
+		if(comp.Conf.Pdf is null)
+			return null;
+
+		var label = code.TakeWhile(tk => tk.Pos < target.Pos).LastLabel();
+
+		if(label is null)
+			return null;
+
+		return comp.Conf.Pdf + "#nameddest=" + label;
+	}
+
 	void IGame<Spell>.ExtractMaterials(Compiler comp, Chain<Token> code)
 	{
-		foreach(var table in code.extractEnvironments(env => comp.TryGetEnvironment(env.Env, out var k) && k == Compiler.KnownEnvironment.Tabular))
+		foreach(var table in code.ExtractEnvironments(env => comp.TryGetEnvironment(env.Env, out var k) && k == Compiler.KnownEnvironment.Tabular))
 		{
+			string? reference = getReferenceTo(comp, code, table[0]);
+
 			string[]? context = null;
 			var inner = table;
 			_ = inner.popArg(); // remove colspec
@@ -550,7 +565,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				try
 				{
 					foreach(var mat in extractMaterial(comp, row, context))
-						Manifest.AddMaterial(mat);
+						Manifest.AddMaterial(mat with { Reference = reference });
 				}
 				catch(Exception ex)
 				{
@@ -567,7 +582,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				}
 
 
-				foreach(var rule in row.extractInvocations("grPost", ArgType.SimpleSignature(4)))
+				foreach(var rule in row.ExtractInvocations("grPost", ArgType.SimpleSignature(4)))
 				{
 					try
 					{
