@@ -355,7 +355,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			var articledUnit = ARTICLE_REGEX.Match(component);
 
 			if(articledUnit.Success)
-				return (Amount.ONE, articledUnit.Groups[1].Value.Trim());
+				return (Amount.ONE, articledUnit.Groups[2].Value.Trim());
 		}
 
 		{
