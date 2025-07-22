@@ -25,15 +25,18 @@ namespace UI
 		/** @returns Whether all *shown* spells are prepared */
 		allPrepared() : boolean
 		{
-			return this.table.getRows().every(s => this.isPrepared(s.spell));
+			var result = true;
+
+			this.table.forEachDisplayed(s => {
+				if(! this.isPrepared(s))
+					result = false;
+			})
+
+			return result;
 		}
 
 		static async init<TSpell extends ISpell>(game : IGame<TSpell>, data : Data.NamedSpellList) : Promise<List<TSpell>>
 		{
-			game.withMaterials(_ => {
-				setHidden(Util.getElement("materials-view"), false)
-			});
-
 			const sp = await game.fetchSources(... data.sources);
 			return new List(game, data, sp)
 		}
@@ -158,17 +161,17 @@ namespace UI
 				}
 			}
 
+			game.withMaterials(_ => {
+				const materialView = Util.getElement("materials-view") as HTMLButtonElement;
+				setHidden(materialView, false);
+				materialView.onclick = _ => window.location.href = `materials.html#${this.name}`;
+			});
+
 			{
 				const cardView = document.getElementById("spell-card-view") as HTMLButtonElement;
-
 				cardView.onclick = _ => window.location.href = `cards.html#${this.name}`;
 			}
 
-			{
-				const matView = document.getElementById("materials-view") as HTMLButtonElement;
-
-				matView.onclick = _ => window.location.href = `materials.html#${this.name}`;
-			}
 		}
 
 		private includeSpell(s : TSpell)
