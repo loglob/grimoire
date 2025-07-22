@@ -221,10 +221,9 @@ namespace UI
 				Data.sortSpells(this.game, this.sorting, this.spells);
 
 			this.display = this.spells.filter(s => this.game.spellMatchesQuery(this.query, s));
-			var toRemove
 
-			while((toRemove = this.table.lastChild) !== null)
-				this.table.removeChild(toRemove);
+			while(this.table.childElementCount > 1)
+				this.table.removeChild(this.table.lastChild!);
 
 			for (const s of this.display)
 				this.table.appendChild(this.toRow(s));
