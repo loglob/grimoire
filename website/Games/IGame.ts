@@ -103,7 +103,15 @@ namespace Games
 
 				if(materialsPage)
 				{
-					const priceContainer = Util.child(container, "b");
+					var priceContainer = Util.child(container, "b");
+
+					if(m.reference)
+					{
+						const linkContainer = Util.child(priceContainer, "a") as HTMLLinkElement
+						linkContainer.href = m.reference
+						priceContainer = linkContainer
+					}
+
 					priceContainer.append(' (')
 
 					if(m.price !== null)
