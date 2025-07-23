@@ -197,7 +197,7 @@ namespace UI
 	export async function initList()
 	{
 		if(!window.location.hash)
-			window.location.href = "index.html";
+			Util.changeLocation('list-index.html');
 
 		const list = getSpellList(decodeURIComponent(window.location.hash.substring(1)));
 

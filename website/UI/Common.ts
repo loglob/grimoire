@@ -92,7 +92,7 @@ namespace UI
 
 		if(listJson === null)
 			// maybe handle via a custom html page instead, to serve an actual error code
-			Util.backToIndex("That spell list doesn't exist! Did you clear browser data?")
+			Util.changeLocation('list-index.html', "That spell list doesn't exist! Did you mistype or clear browser data?")
 
 		const list = loadSpellList(JSON.parse(listJson));
 

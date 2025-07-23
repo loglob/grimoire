@@ -99,6 +99,9 @@ Then, start any webserver on the `website/www/` directory.
 ### /index.html?\[from=source ...]&\[<game=gd>]&\[<q=query>]&\[<sort=key>\]
 Displays the spell index, using the sources given as `from` parameters, and filtering with the given query.
 
+### /list-index.html
+Displays all existing spell lists
+
 ### /list.html#\[list name]
 Displays the local spell list with the given name.
 

@@ -214,3 +214,28 @@ img
 	text-align: center;
 	font-weight: bold;
 }
+
+#list-index-container
+{
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+}
+
+.list-item
+{
+	flex-basis: 16%;
+	background-color: #ddd;
+	border-radius: .1em;
+	padding: .2em;
+	margin: .2em;
+	display: block;
+	text-decoration: none;
+	color: black;
+}
+
+.list-title
+{
+	font-size: x-large;
+	font-weight: bold;
+}

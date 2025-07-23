@@ -25,10 +25,11 @@
 		"Games/Pf2e.ts",
 		"UI/Common.ts",
 		"UI/Cards.ts",
+		"UI/Table.ts",
 		"UI/Details.ts",
 		"UI/Index.ts",
-		"UI/Table.ts",
 		"UI/List.ts",
+		"UI/ListIndex.ts",
 		"UI/Materials.ts"
 	]
 }
