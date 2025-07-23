@@ -30,10 +30,15 @@ namespace UI
 			keys.push(key)
 		}
 
+		const filter = new URLSearchParams(window.location.search).getAll("game");
+
 		for(const key of keys.sort())
 		{
-
 			const list = JSON.parse(localStorage.getItem(key)!!) as Data.SpellList;
+
+			if(filter.length > 0 && filter.every(g => g != list.game))
+				continue;
+
 			const entry = Util.child(container, "a", "list-item") as HTMLLinkElement;
 			entry.href = `list.html#${key}`;
 
