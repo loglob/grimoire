@@ -6,11 +6,15 @@ namespace UI
 	import IGame = Games.IGame;
 	import IMaterialContext = Games.IMaterialContext;
 
+	/** A fractional price that may contain unknown variables */
 	class Price
 	{
+		/** The definitely known portion of the price */
 		public readonly value : number
+		/** The components we don't have prices for */
 		public readonly unsureAbout : readonly string[]
 
+		/** Whether this price has an unknown factor */
 		public get unsure() : boolean
 		{
 			return this.unsureAbout.length > 0
@@ -63,13 +67,17 @@ namespace UI
 		}
 	}
 
-	/** State container for observing  */
+	/** State container for observing casting count changes, representing a single spell */
 	class SumGadget<TSpell extends Data.ISpell, TMaterial extends Data.IMaterial>
 	{
 		readonly parent : Materials<TSpell, TMaterial>;
+		/** Total price of all consumed components */
 		public readonly consumed : Price;
+		/** Total price of all persistent components */
 		public readonly persistent : Price;
+		/** The number input that gives the number of casts to calculate */
 		readonly input : HTMLInputElement;
+		/** Holds last observed `input` value */
 		castCount : number = 0;
 
 		constructor(parent : Materials<TSpell, TMaterial>, persistent : Price, consumed : Price, input : HTMLInputElement)
@@ -82,7 +90,8 @@ namespace UI
 			input.onchange = _ => this.listener();
 		}
 
-		listener()
+		/** Called when the value of `input` changes by user action. Triggers re-computation of the total prices. */
+		private listener()
 		{
 			const newValue = parseInt(this.input.value)
 
@@ -94,10 +103,13 @@ namespace UI
 		}
 	}
 
+	/** Container for the Materials UI */
 	class Materials<TSpell extends Data.ISpell, TMaterial extends Data.IMaterial>
 	{
+		/** Provides game-specific material information */
 		readonly context : IMaterialContext<TSpell, TMaterial>
 		readonly game : IGame<TSpell>
+		/** Gadgets for every displayed spell */
 		readonly gadgets : SumGadget<TSpell, TMaterial>[] = []
 
 		constructor(game : IGame<TSpell>, context : IMaterialContext<TSpell, TMaterial>)
@@ -109,6 +121,7 @@ namespace UI
 			Util.getElement("decr-all").onclick = _ => this.stepAll(false);
 		}
 
+		/** In-/decrements every single gadget counter by one */
 		stepAll(incr : boolean)
 		{
 			for(const g of this.gadgets)
@@ -124,6 +137,7 @@ namespace UI
 			this.recomputeTotals()
 		}
 
+		/** Displays an uncertain price (does not list the unknown variables) */
 		formatPriceSum(p : Price) : (string|Node)[]
 		{
 			if(p.unsureAbout.length && p.value == 0)
@@ -133,6 +147,7 @@ namespace UI
 			return p.unsureAbout.length ? [price, "+?"] : [price]
 		}
 
+		/** Formats the main spell table */
 		formatSpells(table : HTMLTableElement, spells : TSpell[])
 		{
 			for(const s of spells)
@@ -165,6 +180,7 @@ namespace UI
 			}
 		}
 
+		/** (WIP) Formats the unknown materials */
 		formatUnsure(sum : Price) : (string | Node)[]
 		{
 			// TODO: turn this into a table & maybe parse out the actual material

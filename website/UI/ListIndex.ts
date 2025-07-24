@@ -14,7 +14,7 @@ namespace UI
 		}
 	}
 
-	/** Initialized the spell list UI. Must be called from lists.html on page load. */
+	/** Initialized the spell list UI. Must be called from listIndex.html on page load. */
 	export async function initListIndex()
 	{
 		const container = Util.getElement("list-index-container");
