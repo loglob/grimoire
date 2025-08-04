@@ -46,7 +46,7 @@
 	cursor: pointer;
 }
 
-#spells a
+table a, .price>a
 {
 	text-decoration: none;
 	color: inherit;
@@ -201,12 +201,6 @@ img
 #materials input
 {
 	width: 4em;
-}
-
-#materials a
-{
-	text-decoration: none;
-	color: inherit;
 }
 
 #materials td:nth-child(3), #materials td:nth-child(5)

@@ -71,39 +71,27 @@ namespace Games
 		abstract getMaterials(spell : TSpell) : TMaterial[]
 
 		/** Formats a single material
-		 * @param materialsPage If true, the output format is for the materials page
+		 * @param withTags If true, also put tags (consumed etc.)
+		 * @param withPrice If true, also append the material price
 		 */
-		abstract formatMaterial(mat : TMaterial, materialsPage : boolean) : HTMLElement
+		abstract formatMaterial(mat : TMaterial, withTags : boolean) : HTMLElement
 
-		/** Formats an entire material list as a comma-separated list
-		 * @param materialsPage If true, the output format is for the materials page,
-		 * 						applies CSS formatting to separators and doesn't use `and` as separator,
-		 * 						and appends a formatted price
+		/** Formats a full material list
+		 * @param materials The materials to format
+		 * @param withTags Whether to include tags (i.e. consumed)
+		 * @param forcePrice If true, always place price even if unknown
+		 * @param richSep Whether to use the `material-sep` CSS class for separators
+		 * @returns HTML objects for the formatted material list
 		 */
-		formatMaterials(materials : TMaterial[], materialsPage : boolean) : HTMLElement
+		formatMaterials(materials : TMaterial[], withTags : boolean, forcePrice : boolean, richSep : boolean) : Data.HtmlContent
 		{
-			const container = document.createElement("span")
+			const formatted = materials.map(m => {
+				const html = this.formatMaterial(m, withTags)
 
-			materials.forEach((m, ix) => {
-				if(ix > 0)
+				if(forcePrice || m.price !== null)
 				{
-					if(materialsPage)
-						Util.child(container, "span", "material-sep").innerText = ",";
-					else
-					{
-						var sep = (materials.length > 2) ? ',' : '';
-						if(ix + 1 == materials.length)
-							sep += " and";
-
-						container.append(sep + ' ');
-					}
-				}
-
-				container.append(this.formatMaterial(m, materialsPage));
-
-				if(materialsPage)
-				{
-					var priceContainer = Util.child(container, "b");
+					var priceContainer = Util.child(html, "b");
+					priceContainer.className = "price";
 
 					if(m.reference)
 					{
@@ -121,9 +109,16 @@ namespace Games
 
 					priceContainer.append(')')
 				}
+
+				return html
 			});
 
-			return container
+			return richSep ? Util.intercalate(formatted, _ => {
+				const e = document.createElement("span")
+				e.className = "material-sep"
+				e.innerText = ","
+				return [e]
+			}) : Util.join(formatted)
 		}
 
 		/** Formats price according to `denominations` */

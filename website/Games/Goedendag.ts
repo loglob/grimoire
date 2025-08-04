@@ -1,10 +1,10 @@
 namespace Games.Goedendag
 {
-	import bold = Util.bold
 	import child = Util.child
 	import same = Util.same
 	import infixOf = Util.infixOf
 	import HtmlCode = Data.HtmlCode
+	import HtmlContent = Data.HtmlContent
 
 	export const Arcana = {
 		General: 0,
@@ -62,37 +62,6 @@ namespace Games.Goedendag
 	function cmpArcana(a : Spell, b : Spell) : number
 	{
 		return Arcana[a.arcanum] - Arcana[b.arcanum];
-	}
-
-	function fmtComponent(c : Component) : HtmlCode
-	{
-		return c.display + (c.consumed ? "<sup>C</sup>" : "") + (c.used ? "<sup>U</sup>" : "")
-	}
-
-	function fmtComponents(cs : Component[]) : HtmlCode
-	{
-		switch(cs.length)
-		{
-			case 0: return ""
-			case 1: return fmtComponent(cs[0])
-			case 2: return fmtComponent(cs[0]) + " and " + fmtComponent(cs[1])
-			default:
-				return cs.map((c, ix) => (ix + 1 == cs.length ? "and " : "") + fmtComponent(c)).join(", ")
-		}
-	}
-
-	function fmtFields(spell : Spell) : [string, HtmlCode][]
-	{
-		const dc = PowerLevelDCs[spell.powerLevel]
-
-		return [
-			[ "Arcanum", spell.arcanum ],
-			[ "Power Level", spell.powerLevel + (dc > 0 ? ` (DV ${dc})` : "") + (spell.combat ? " (C)" : "") ],
-			[ "Casting Time", spell.castingTime + (spell.reaction ? " (R)" : "") ],
-			[ "Distance", spell.distance ],
-			[ "Duration", spell.duration ],
-			[ "Components", fmtComponents(spell.components) ]
-		]
 	}
 
 	const timeUnits : { [k : string] : number } = {
@@ -193,10 +162,10 @@ namespace Games.Goedendag
 			return spell.components
 		}
 
-		override formatMaterial(mat: Component, materialsPage : boolean): HTMLElement
+		override formatMaterial(mat: Component, withTags : boolean): HTMLElement
 		{
 			const span = document.createElement("span");
-			span.innerHTML = mat.display + (materialsPage ? '' : (mat.consumed ? "<sup>C</sup>" : "") + (mat.used ? "<sup>U</sup>" : ""));
+			span.innerHTML = mat.display + (withTags ? (mat.consumed ? "<sup>C</sup>" : "") + (mat.used ? "<sup>U</sup>" : "") : '');
 
 			return span
 		}
@@ -216,6 +185,22 @@ namespace Games.Goedendag
 			"distance": (x : Spell, y : Spell) => Games.compareNorm(normalizeDistance, x.distance, y.distance)
 		} as const
 
+		readonly materialCtx : MaterialContext = new MaterialContext(this)
+
+		private fmtFields(spell : Spell) : [string, HtmlContent][]
+		{
+			const dc = PowerLevelDCs[spell.powerLevel]
+
+			return [
+				[ "Arcanum", [ Util.parseHtml(spell.arcanum) ] ],
+				[ "Power Level", [ Util.parseHtml( spell.powerLevel + (dc > 0 ? ` (DV ${dc})` : "") + (spell.combat ? " (C)" : "") ) ] ],
+				[ "Casting Time", [ Util.parseHtml( spell.castingTime + (spell.reaction ? " (R)" : "") ) ] ],
+				[ "Distance", [ Util.parseHtml( spell.distance ) ] ],
+				[ "Duration", [ Util.parseHtml( spell.duration ) ] ],
+				[ "Components", this.materialCtx.formatMaterials(spell.components, true, false, false) ]
+			]
+		}
+
 		override spellCard(spell: Spell, _book: string): HTMLDivElement
 		{
 			const div = document.createElement("div");
@@ -227,11 +212,11 @@ namespace Games.Goedendag
 			const p = child(div, "p");
 			var fst = true;
 
-			for (const kvp of fmtFields(spell)) {
+			for (const kvp of this.fmtFields(spell)) {
 				if(! fst)
 					child(p, "br");
 
-				p.append( kvp[0] + ": ", bold(kvp[1]) )
+				p.append( kvp[0] + ": ", Util.wrap("b", ... kvp[1]) )
 				fst = false;
 			}
 
@@ -284,11 +269,11 @@ namespace Games.Goedendag
 
 			const prop =  child(div, "table");
 
-			for (const kvp of fmtFields(spell))
+			for (const kvp of this.fmtFields(spell))
 			{
 				const r = child(prop, "tr");
-				child(r, "th").innerHTML = kvp[0];
-				child(r, "td").innerHTML = kvp[1];
+				child(r, "th").innerText = kvp[0];
+				child(r, "td").append(... kvp[1]);
 			}
 
 			child(div, "hr");
@@ -305,7 +290,7 @@ namespace Games.Goedendag
 
 		override withMaterials<A>(consumer: (ctx: MaterialContext) => A): A
 		{
-			return consumer(new MaterialContext(this));
+			return consumer(this.materialCtx);
 		}
 	}
 }

@@ -16,6 +16,8 @@ namespace Data
 
 	/** Explicitly annotates Html code strings */
 	export type HtmlCode = string;
+	/** Already decoded HTML content */
+	export type HtmlContent = (Node | string)[];
 
 	export type SpellList =
 	{

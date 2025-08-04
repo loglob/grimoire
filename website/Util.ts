@@ -37,7 +37,7 @@ namespace Util
 		return b;
 	}
 
-	export function wrap(tag : keyof HTMLElementTagNameMap, ...content : (string|Node)[]) : HTMLElement
+	export function wrap(tag : keyof HTMLElementTagNameMap, ...content : Data.HtmlContent) : HTMLElement
 	{
 		const node = document.createElement(tag)
 		node.append(...content)
@@ -181,5 +181,51 @@ namespace Util
 
 		window.location.href = newPage
 		throw Error("Redirection didn't fire correctly")
+	}
+
+	export function intercalate<T>(values : readonly T[], sep : (leftIx : number, left : T, right : T) => readonly T[]) : T[]
+	{
+		const out : T[] = [];
+		var left : T
+		var ix = 0
+
+		for (const right of values)
+		{
+			if(ix > 0)
+				out.push(... sep(ix, left!, right));
+
+			out.push(right);
+
+			left = right;
+			++ix;
+		}
+
+		return out
+	}
+
+	/** natural language join of arbitrary data
+	 * @param fields Values to join
+	 * @param op Operator to apply on final separator, 'and' by default.
+	 */
+	export function join<T>(fields : readonly T[], op ?: string) : (T|string)[]
+	{
+		op ??= "and";
+
+		switch(fields.length)
+		{
+			case 0: return [];
+			case 1: return [ fields[0] ];
+			case 2: return [ fields[0], ` ${op} `, fields[1] ];
+			default: return intercalate<T|string>(fields, ix => [ (ix == fields.length - 1) ? `, ${op} ` : ', ' ])
+		}
+	}
+
+	export function parseHtml(code : string, tag ?: string) : HTMLElement
+	{
+		tag ??= "span";
+		const e = document.createElement(tag);
+		e.innerHTML = code;
+
+		return e
 	}
 }
