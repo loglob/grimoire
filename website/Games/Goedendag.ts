@@ -25,12 +25,20 @@ namespace Games.Goedendag
 		Ritual: 0
 	} as const;
 
+	export const ComponentTag = {
+		QUEST: 0,
+		NATURAL: 1,
+		FORAGE: 2,
+		MISC: 3,
+	} as const
+
 	export type Component =
 	{
 		/** Code to display this component, excluding consumed and used markers */
 		display : HtmlCode,
 		consumed : boolean,
 		used : boolean,
+		tag : keyof (typeof ComponentTag),
 		price : number | null,
 		reference : string | null
 	}
@@ -162,12 +170,32 @@ namespace Games.Goedendag
 			return spell.components
 		}
 
+		private formatTags(mat : Component)
+		{
+			var tags = "";
+
+			if(mat.tag != "MISC")
+				tags += `<sup>${mat.tag[0]}</sup>`
+
+			if(mat.consumed)
+				tags += "<sup>C</sup>";
+			if(mat.used)
+				tags += "<sup>U</sup>";
+
+			return tags
+		}
+
 		override formatMaterial(mat: Component, withTags : boolean): HTMLElement
 		{
 			const span = document.createElement("span");
-			span.innerHTML = mat.display + (withTags ? (mat.consumed ? "<sup>C</sup>" : "") + (mat.used ? "<sup>U</sup>" : "") : '');
+			span.innerHTML = mat.display + (withTags ? this.formatTags(mat) : '');
 
 			return span
+		}
+
+		override priceless(mat: Component): boolean
+		{
+			return mat.tag != "MISC";
 		}
 
 	}

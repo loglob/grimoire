@@ -76,6 +76,12 @@ namespace Games
 		 */
 		abstract formatMaterial(mat : TMaterial, withTags : boolean) : HTMLElement
 
+		/** @returns Whether the given material has no price attached (skips putting price) */
+		priceless(mat : TMaterial) : boolean
+		{
+			return false
+		}
+
 		/** Formats a full material list
 		 * @param materials The materials to format
 		 * @param withTags Whether to include tags (i.e. consumed)
@@ -88,7 +94,7 @@ namespace Games
 			const formatted = materials.map(m => {
 				const html = this.formatMaterial(m, withTags)
 
-				if(forcePrice || m.price !== null)
+				if((forcePrice || m.price !== null) && !this.priceless(m))
 				{
 					var priceContainer = Util.child(html, "b");
 					priceContainer.className = "price";
