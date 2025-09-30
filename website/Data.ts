@@ -1,7 +1,7 @@
 /** The datatypes for interacting with the scraper database */
 namespace Data
 {
-	export type BookIndex = { [id : string] : string };
+	export type BookIndex = { [id : string] : { title: string, tag: string } };
 
 	export type GameIndex = { [id : string]: BookIndex; };
 

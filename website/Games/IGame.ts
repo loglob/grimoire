@@ -214,7 +214,8 @@ namespace Games
 		/** @returns All spells from that source */
 		async fetchSource(source : string) : Promise<TSpell[]>
 		{
-			return await (await fetch(`db/${this.shorthand}/${source}.json`)).json();
+			const tag = this.books[source].tag
+			return await (await fetch(`db/${this.shorthand}/${source}-${tag}.json`)).json();
 		}
 
 		/** @returns All spells from those sources */

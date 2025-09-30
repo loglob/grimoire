@@ -25,7 +25,7 @@ namespace UI
 			document.title = sp.name;
 			Util.getElement("spell-name").innerText = sp.name;
 
-			g.details(sp, book, document.getElementById("spell-details") as HTMLDivElement);
+			g.details(sp, book.title, document.getElementById("spell-details") as HTMLDivElement);
 		});
 	}
 }

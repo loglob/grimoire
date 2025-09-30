@@ -98,7 +98,7 @@ namespace UI
 			for (const id in this.books)
 			{
 				let container = document.createElement("div");
-				container.innerText = this.books[id];
+				container.innerText = this.books[id].title;
 
 				let l = loading();
 				setHidden(l, true);

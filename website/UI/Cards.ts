@@ -20,7 +20,7 @@ namespace UI
 				Data.sortSpells(game, Data.parseSorting(s), spells)
 
 			for (const spell of spells)
-				div.appendChild(game.spellCard(spell, game.books[spell.source]));
+				div.appendChild(game.spellCard(spell, game.books[spell.source].title));
 		})
 	}
 }
