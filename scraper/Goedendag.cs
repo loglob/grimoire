@@ -3,6 +3,7 @@ using Grimoire.Util;
 using HtmlAgilityPack;
 using System.Collections.Immutable;
 using System.Data;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace Grimoire;
@@ -506,6 +507,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 			if(priceHint.HasValue)
 				return new Component(display, consumed, used, tag, priceHint.Value.CopperPieces);
+			if(tag != ComponentTag.MISC)
+				return new Component(display, consumed, used, tag, 0);
 
 			var (amount, matName) = extractMaterial(txt);
 			var (price, reference) = Manifest.ResolveComponent(Log.At(piece), amount, matName);
