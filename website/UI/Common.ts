@@ -16,7 +16,12 @@ namespace UI
 	export async function getGameIndex() : Promise<Data.GameIndex>
 	{
 		if(gameIndex === null)
-			gameIndex = await (await fetch(`db/index.json`)).json();
+		{
+			gameIndex = await (await fetch(`db/index.json`, {
+				cache: "no-store"
+			})).json();
+		}
+
 		if(gameIndex === null)
 		{
 			alert("There is a problem with the database. Contact Administrator if this problem persists.")
