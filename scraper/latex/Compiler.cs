@@ -153,7 +153,13 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		{ "newpage", discard() },
 		{ "rowstyle", discard() },
 		{ "hyperref", hyperref(Conf) },
-		{ "newline", new([], [ new BackBack(new("builtin/newline", 0, 0)) ]) }
+		{ "newline", new([], [ new BackBack(new("builtin/newline", 0, 0)) ]) },
+		// only expanded on material misparse (TODO: emit log message)
+		{ "grPrice", new([ new StarArg(), new MandatoryArg() ], [  ]) },
+		// not implemented
+		{ "vspace", discard() },
+		// TODO
+		{ "Calc", discard() }
 	};
 
 	internal readonly Token[]? upcastAnchor = Conf.UpcastAnchor is string ua ? new Lexer(Log).TokenizeUnchecked([ua], "builtin/upcast anchor") : null;

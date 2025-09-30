@@ -1,5 +1,6 @@
 using Grimoire.Latex;
 using Grimoire.Util;
+using HtmlAgilityPack;
 using System.Collections.Immutable;
 using System.Data;
 using System.Text.RegularExpressions;
@@ -33,6 +34,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string display,
 		bool consumed,
 		bool used,
+		ComponentTag tag,
 		double? price = null,
 		string? reference = null
 	);
@@ -54,6 +56,14 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		string? extra,
 		string Source
 	) : ISpell;
+
+	public enum ComponentTag
+	{
+		QUEST,
+		NATURAL,
+		FORAGE,
+		MISC,
+	}
 
 	/// <summary>
 	///  The character that separates variant in \grVariants
@@ -318,6 +328,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 	private const string USED_MACRO = "Used";
 	private const string LEGACY_CONSUMED_MACRO = "con";
 	private const string LEGACY_USED_MACRO = "use";
+	private const string PRICE_MACRO = "grPrice";
 
 	/// <summary>
 	/// CG[1] = number, CG[2] = unit name (sans brackets), CG[3] = discard, CG[4] = material name
@@ -387,6 +398,48 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		return (Amount.ONE, component.Trim());
 	}
 
+	/// <summary>
+	///  Cuts out a price hint from a component definition
+	/// </summary>
+	private Price? extractPriceHint(ref Chain<Token> code)
+	{
+		var spl = code.SplitOn(tk => tk is MacroName m && m.Macro == PRICE_MACRO);
+
+		if(! spl.HasValue)
+			return null;
+
+		var (left, m, args) = spl.Value;
+
+		if(args.Length == 0)
+		{
+			code = left;
+			goto incomplete;
+		}
+
+		var starred = args[0] is Character s && s.Char == '*';
+
+		if(starred)
+			args = args.Slice(1);
+		
+		if(args.Length == 0)
+		{
+			code = left;
+			goto incomplete;
+		}
+
+		var price = args.popArg(false);
+		code = left + args;
+
+		if(price is null)
+			goto incomplete;
+
+		return parsePrice(price.Value);
+
+	incomplete:
+		Log.Warn($"Incomplete \\grPrice at {m.Pos}");
+		return null;
+	}
+
 	private Component[] extractComponents(Compiler compiler, Chain<Token> code)
 		=> separateComponents(
 				code.Length > 2 && code[0] is OpenBrace && code[^1] is CloseBrace
@@ -395,6 +448,9 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			bool delta = true;
 			bool consumed = false;
 			bool used = false;
+			ComponentTag tag = ComponentTag.MISC;
+
+			var priceHint = extractPriceHint(ref piece);
 
 			// strip off consumes and used markers
 			while(delta)
@@ -404,24 +460,41 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 				if(piece.Length > 0 && piece[^1] is Character p && p.Char == '.')
 					piece = piece.Slice(0, piece.Length - 1).TrimEnd();
 
-				if(piece.Length > 0 && piece[^1] is MacroName c && (c.Macro == CONSUMED_MACRO || c.Macro == LEGACY_CONSUMED_MACRO))
+				if(piece.Length > 0 && piece[^1] is MacroName macro) switch(macro.Macro)
 				{
-					delta = true;
+					case CONSUMED_MACRO:
+					case LEGACY_CONSUMED_MACRO:
+						delta = true;
 
-					if(consumed)
-						Log.Warn("Duplicate \\Consumed");
+						if(consumed)
+							Log.Warn("Duplicate \\Consumed");
 
-					consumed = true;
-				}
+						consumed = true;
+					break;
 
-				if(piece.Length > 0 && piece[^1] is MacroName u && (u.Macro == USED_MACRO || u.Macro == LEGACY_USED_MACRO))
-				{
-					delta = true;
+					case USED_MACRO:
+					case LEGACY_USED_MACRO:
+						delta = true;
 
-					if(used)
-						Log.Warn("Duplicate \\Used");
+						if(used)
+							Log.Warn("Duplicate \\Used");
 
-					used = true;
+						used = true;
+					break;
+
+					case "Quest":
+					case "Natural":
+					case "Forage":
+						delta = true;
+
+						if(tag != ComponentTag.MISC)
+							Log.Warn("Duplicate component tag");
+
+						tag = macro.Macro == "Quest" ? ComponentTag.QUEST :
+							macro.Macro == "Natural" ? ComponentTag.NATURAL :
+							ComponentTag.FORAGE;
+					break;
+
 				}
 
 				if(delta)
@@ -430,11 +503,14 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 
 			var display = compiler.ToHTML(piece);
 			var txt = compiler.ToString(piece);
-			var (amount, matName) = extractMaterial(txt);
 
+			if(priceHint.HasValue)
+				return new Component(display, consumed, used, tag, priceHint.Value.CopperPieces);
+
+			var (amount, matName) = extractMaterial(txt);
 			var (price, reference) = Manifest.ResolveComponent(Log.At(piece), amount, matName);
 
-			return new Component(display, consumed, used, price, reference);
+			return new Component(display, consumed, used, tag, price, reference);
 		}).ToArray();
 
 	Spell IGame<Spell>.ExtractLatexSpell(Compiler comp, Config.Book book, Chain<Token> body)
