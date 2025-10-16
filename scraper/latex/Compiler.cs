@@ -106,6 +106,9 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 	private static Macro discard()
 		=> new([], []);
 
+	private static Macro discard(int num)
+		=> new(ArgType.SimpleSignature(num), []);
+
 	private static Macro hyperref(Config.LatexOptions conf)
 	{
 		var p0 = new Position("builtin/hyperref", 0, 0);
@@ -157,7 +160,8 @@ public record Compiler(Config.LatexOptions Conf, Log Log)
 		// only expanded on material misparse (TODO: emit log message)
 		{ "grPrice", new([ new StarArg(), new MandatoryArg() ], [  ]) },
 		// not implemented
-		{ "vspace", discard() },
+		{ "vspace", discard(1) },
+		{ "hspace", discard(1) },
 		// TODO
 		{ "Calc", discard() }
 	};
