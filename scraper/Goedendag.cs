@@ -592,7 +592,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			comp.ToHTML(getProp("duration")),
 			ct,
 			extractComponents(comp, getProp("components")),
-			comp.ToHTML(getProp("brief")),
+			prop.ContainsKey("brief") ? comp.ToHTML(getProp("brief")) : "",
 			comp.ToHTML(getProp("effect")),
 			comp.ToHTML(getProp("crit")),
 			comp.ToHTML(getProp("fail")),
