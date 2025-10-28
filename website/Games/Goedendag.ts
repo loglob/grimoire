@@ -14,7 +14,8 @@ namespace Games.Goedendag
 		Conjuration: 4,
 		Divine: 5,
 		Ritual: 6,
-		Wytch: 7
+		Wytch: 7,
+		Celestial: 8
 	} as const;
 
 	export const PowerLevelDCs = {
