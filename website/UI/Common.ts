@@ -122,7 +122,7 @@ namespace UI
 	{
 		if(window.location.hash)
 		{
-			var list = getSpellList(window.location.hash.substring(1));
+			var list = getSpellList(decodeURIComponent(window.location.hash.substring(1)));
 			var prepared = new Set(list.prepared);
 
 			return await withGameNamed(list.game, async function(g) {
