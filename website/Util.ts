@@ -114,6 +114,39 @@ namespace Util
 		return bind(value);
 	}
 
+	export function nSum(...xs : (number | null)[]) : number | null
+	{
+		let acc = 0.0
+
+		for(const x of xs)
+		{
+			if(x === null)
+				return null
+
+			acc += x
+		}
+
+		return acc
+	}
+
+	export function nSub(...xs : (number | null)[]) : number | null
+	{
+		let acc = xs.shift()
+
+		if(acc === null || acc === undefined)
+			return null
+
+		for(const x of xs)
+		{
+			if(x === null)
+				return null
+
+			acc -= x
+		}
+
+		return acc
+	}
+
 	/** null-aware multiplication */
 	export function nMul(...xs : (number | null)[]) : number | null
 	{
@@ -130,20 +163,22 @@ namespace Util
 		return acc
 	}
 
-	export function nDiv(x : number|null, ...ys : (number | null)[]) : number | null
+	export function nDiv(...xs : (number | null)[]) : number | null
 	{
-		if(x === null)
+		var acc = xs.shift()
+
+		if(acc === null || acc === undefined)
 			return null
 
-		for(const y of ys)
+		for(const y of xs)
 		{
 			if(y === null)
 				return null
 
-			x /= y
+			acc /= y
 		}
 
-		return x
+		return acc
 	}
 
 	export function getElement(id : string) : HTMLElement

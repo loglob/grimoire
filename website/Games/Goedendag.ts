@@ -90,6 +90,72 @@ namespace Games.Goedendag
 		"[m]": 365.2425*24*60*60 / 12
 	}
 
+	/** produces a symbolic value for a computation using + - * /
+	 * returns null on invalid expression, does not log an error message
+	 */
+	function normalizeComputation(n : string, stage : number = -1) : number|null
+	{
+		switch(stage)
+		{
+			case -1: return normalizeComputation(n.replaceAll(/<[^>]*>/g, '') , 0) // strip out HTML tags
+			case 0: return Util.nSum(... n.split('+').map(x => normalizeComputation(x, 1)))
+			case 1: return Util.nSub(... n.split('-').map(x => normalizeComputation(x, 2)))
+			case 2: return Util.nMul(... n.split(/·|&#183;|&#xB7;|&centerdot;/i).map(x => normalizeComputation(x, 3)))
+			case 3: return Util.nDiv(... n.split('/').map(x => normalizeComputation(x, 4)))
+			default: {
+				if(/\s*\d+\s*/.test(n))
+					return Number(n);
+				// don't bother with an exhaustive list of every class and stat the game
+				// pick 6 as universal constant for those
+				if(/\s*\w+\s*/.test(n))
+					return 6;
+
+				return null
+			}
+		}
+	}
+
+	export function normalizeDuration(n : string) : number|null
+	{
+		// stage 0: keywords
+		if(/^instant$/i.test(n))
+			return 0.1;
+		if(/^eternal\s*\(.*\)$/i.test(n))
+			return 1e20; // eternal with conditions
+		if(/^eternal$/i.test(n))
+			return Infinity;
+		if(/^(varies|see\s+effect)$/i.test(n))
+			return null;
+
+		const unit = n.match(/^(.*)\s+(\[.*\])$/)
+
+		if(!unit)
+		{
+			console.log(`Malformed duration ${n}`)
+			return null
+		}
+
+		const tu = timeUnits[unit[2]]
+
+		if(tu === undefined)
+		{
+			console.log(`Invalid duration unit ${tu}`)
+			return null
+		}
+
+		const x = normalizeComputation(unit[1])
+
+		if(x === null || isNaN(x))
+		{
+			console.log(`Malformed duration ${n}, invalid calculation`)
+			return null
+		}
+
+		console.log(`${n} = ${x} · ${tu} = ${x*tu}`)
+
+		return x * tu
+	}
+
 	export function normalizeDistance(n : string, stage : number = 0) : number|null
 	{
 		// stage 0: keywords
@@ -97,9 +163,9 @@ namespace Games.Goedendag
 		{
 			if(/^touch$/i.test(n))
 				return 0.1;
-			else if(/^any$/i.test(n))
+			if(/^any$/i.test(n))
 				return Infinity;
-			else if(/^vision$/i.test(n))
+			if(/^vision$/i.test(n))
 				return 5000;
 		}
 
@@ -134,32 +200,7 @@ namespace Games.Goedendag
 			return null;
 		}
 
-		// stage 3: operator resolution
-		if(stage <= 3)
-		{
-			const mul = n.split(/·|&#183;|&#xB7;|&centerdot;/i)
-
-			if(mul.length > 1)
-				return mul.reduce((p,c) => Util.nMul(p, normalizeDistance(c.trim(), 4)), 1 as number|null);
-
-			const div = n.split('/', 2)
-
-			if(div.length == 2)
-				return Util.nDiv(normalizeDistance(div[0], 4), normalizeDistance(div[1], 4));
-		}
-
-		// stage 4: variable/constant decision
-		if(stage <= 4)
-		{
-			if(/\d+/.test(n))
-				return Number(n);
-			// don't bother with an exhaustive list of every class and stat the game
-			// pick 6 as universal constant for those
-			if(/\w+/.test(n))
-				return 6;
-		}
-
-		return null;
+		return normalizeComputation(n)
 	}
 
 	export class MaterialContext extends IMaterialContext<Spell, Component>
@@ -204,13 +245,14 @@ namespace Games.Goedendag
 	export class Game extends IGame<Spell>
 	{
 		override readonly tableHeaders: (keyof Spell)[] = [
-			"powerLevel", "arcanum", "castingTime", "distance", "combat", "reaction"
+			"powerLevel", "arcanum", "castingTime", "duration", "distance", "combat", "reaction"
 		] as const
 
 		override readonly customComparers = {
 			"powerLevel": cmpPowerLevel,
 			"arcanum": cmpArcana,
 			"castingTime": (x : Spell, y : Spell) => Games.compareQuantities(timeUnits, x.castingTime, y.castingTime),
+			"duration": (x : Spell, y : Spell) => Games.compareNorm(normalizeDuration, x.duration, y.duration),
 			"distance": (x : Spell, y : Spell) => Games.compareNorm(normalizeDistance, x.distance, y.distance)
 		} as const
 
