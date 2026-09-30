@@ -2,9 +2,9 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<script src="js/site.js"></script>
-		<script>
-			window.onload = _ => UI.initList();
+		<script type="module">
+			import { initList } from "./js/UI/List.js";
+			window.onload = _ => initList();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 		<link rel="shortcut icon" href="favicon.ico" />

@@ -2,9 +2,9 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<script src="js/site.js"></script>
-		<script>
-			window.onload = _ => UI.initIndex();
+		<script type="module">
+			import { initIndex } from "./js/UI/Index.js";
+			window.onload = _ => initIndex();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 		<link rel="shortcut icon" href="favicon.ico" />

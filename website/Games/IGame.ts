@@ -1,256 +1,256 @@
-namespace Games
+import type * as Data from "../Data.js"
+import * as Util from "../Util.js"
+
+/**
+ * @param gold Number of silver pieces per gold piece
+ * @param silver Number of copper pieces per silver piece
+ */
+export type Denominations = { readonly gold: number, readonly silver : number }
+export type IsPrepared<TSpell> = ((sp : TSpell) => boolean)|null;
+
+export function compareNorm(normalize : (s : string) => number|null, l : string, r : string) : number
 {
-	/**
-	 * @param gold Number of silver pieces per gold piece
-	 * @param silver Number of copper pieces per silver piece
-	 */
-	export type Denominations = { readonly gold: number, readonly silver : number }
-	export type IsPrepared<TSpell> = ((sp : TSpell) => boolean)|null;
+	const lv = normalize(l), rv = normalize(r)
 
-	export function compareNorm(normalize : (s : string) => number|null, l : string, r : string) : number
+	if(lv && rv)
+		return lv - rv
+	else if(lv)
+		return -1
+	else if(rv)
+		return +1
+	else
+		return l > r ? +1 : l < r ? -1 : 0;
+}
+
+/** Compares two quantities with specified units.
+	Orders all valid quantities as smaller than all invalid quantities.
+	Understands alternatives separated by `or`, `,` or `/`.
+	@param units Expects unit names to be case-insensitive and given in all lowercase
+ */
+export function compareQuantities(units : { [unit : string] : number }, l : string, r : string) : number
+{
+	const unitRegex = /^(\d+)\s+(.+)$/;
+	const sep = /\s*(\sor\s|\/|,)\s*/
+
+	function normalize(str : string) : number|null
 	{
-		const lv = normalize(l), rv = normalize(r)
+		const xs = str.split(sep).map(x =>
+		{
+			const m = x.match(unitRegex)
 
-		if(lv && rv)
-			return lv - rv
-		else if(lv)
-			return -1
-		else if(rv)
-			return +1
-		else
-			return l > r ? +1 : l < r ? -1 : 0;
+			if(m === null)
+				return null;
+
+			const unit = m[2].toLowerCase(), v = Number(m[1])
+
+			return unit in units ? units[unit] * v : null
+		}).filter(x => x !== null);
+
+		if(xs.length)
+			return Math.min(...xs);
+
+		console.log(`Bad quantity: ${str}`);
+		return null;
 	}
 
-	/** Compares two quantities with specified units.
-		Orders all valid quantities as smaller than all invalid quantities.
-		Understands alternatives separated by `or`, `,` or `/`.
-		@param units Expects unit names to be case-insensitive and given in all lowercase
-	 */
-	export function compareQuantities(units : { [unit : string] : number }, l : string, r : string) : number
-	{
-		const unitRegex = /^(\d+)\s+(.+)$/;
-		const sep = /\s*(\sor\s|\/|,)\s*/
+	return compareNorm(normalize, l, r);
+}
 
-		function normalize(str : string) : number|null
-		{
-			const xs = str.split(sep).map(x =>
+/** Context in which materials can be resolved to prices, respective to some spell type */
+export abstract class IMaterialContext<TSpell extends Data.ISpell, TMaterial extends Data.IMaterial>
+{
+	/** Gives the size of coin denominations for formatting */
+	abstract readonly denominations : Denominations
+	readonly game : IGame<TSpell>
+
+	constructor(game : IGame<TSpell>)
+	{
+		this.game = game
+	}
+
+	/** Extracts the materials required by a spell */
+	abstract getMaterials(spell : TSpell) : TMaterial[]
+
+	/** Formats a single material
+	 * @param withTags If true, also put tags (consumed etc.)
+	 * @param withPrice If true, also append the material price
+	 */
+	abstract formatMaterial(mat : TMaterial, withTags : boolean) : HTMLElement
+
+	/** @returns Whether the given material has no price attached (skips putting price) */
+	priceless(mat : TMaterial) : boolean
+	{
+		return false
+	}
+
+	/** Formats a full material list
+	 * @param materials The materials to format
+	 * @param withTags Whether to include tags (i.e. consumed)
+	 * @param forcePrice If true, always place price even if unknown
+	 * @param richSep Whether to use the `material-sep` CSS class for separators
+	 * @returns HTML objects for the formatted material list
+	 */
+	formatMaterials(materials : TMaterial[], withTags : boolean, forcePrice : boolean, richSep : boolean) : Data.HtmlContent
+	{
+		const formatted = materials.map(m => {
+			const html = this.formatMaterial(m, withTags)
+
+			if((forcePrice || m.price !== null) && !this.priceless(m))
 			{
-				const m = x.match(unitRegex)
+				var priceContainer = Util.child(html, "b");
+				priceContainer.className = "price";
 
-				if(m === null)
-					return null;
-
-				const unit = m[2].toLowerCase(), v = Number(m[1])
-
-				return unit in units ? units[unit] * v : null
-			}).filter(x => x !== null);
-
-			if(xs.length)
-				return Math.min(...xs);
-
-			console.log(`Bad quantity: ${str}`);
-			return null;
-		}
-
-		return compareNorm(normalize, l, r);
-	}
-
-	/** Context in which materials can be resolved to prices, respective to some spell type */
-	export abstract class IMaterialContext<TSpell extends Data.ISpell, TMaterial extends Data.IMaterial>
-	{
-		/** Gives the size of coin denominations for formatting */
-		abstract readonly denominations : Denominations
-		readonly game : IGame<TSpell>
-
-		constructor(game : IGame<TSpell>)
-		{
-			this.game = game
-		}
-
-		/** Extracts the materials required by a spell */
-		abstract getMaterials(spell : TSpell) : TMaterial[]
-
-		/** Formats a single material
-		 * @param withTags If true, also put tags (consumed etc.)
-		 * @param withPrice If true, also append the material price
-		 */
-		abstract formatMaterial(mat : TMaterial, withTags : boolean) : HTMLElement
-
-		/** @returns Whether the given material has no price attached (skips putting price) */
-		priceless(mat : TMaterial) : boolean
-		{
-			return false
-		}
-
-		/** Formats a full material list
-		 * @param materials The materials to format
-		 * @param withTags Whether to include tags (i.e. consumed)
-		 * @param forcePrice If true, always place price even if unknown
-		 * @param richSep Whether to use the `material-sep` CSS class for separators
-		 * @returns HTML objects for the formatted material list
-		 */
-		formatMaterials(materials : TMaterial[], withTags : boolean, forcePrice : boolean, richSep : boolean) : Data.HtmlContent
-		{
-			const formatted = materials.map(m => {
-				const html = this.formatMaterial(m, withTags)
-
-				if((forcePrice || m.price !== null) && !this.priceless(m))
+				if(m.reference)
 				{
-					var priceContainer = Util.child(html, "b");
-					priceContainer.className = "price";
-
-					if(m.reference)
-					{
-						const linkContainer = Util.child(priceContainer, "a") as HTMLLinkElement
-						linkContainer.href = m.reference
-						priceContainer = linkContainer
-					}
-
-					priceContainer.append(' (')
-
-					if(m.price !== null)
-						priceContainer.append(this.formatPrice(m.price))
-					else
-						priceContainer.append('?')
-
-					priceContainer.append(')')
+					const linkContainer = Util.child(priceContainer, "a") as HTMLLinkElement
+					linkContainer.href = m.reference
+					priceContainer = linkContainer
 				}
 
-				return html
-			});
+				priceContainer.append(' (')
 
-			return richSep ? Util.intercalate(formatted, _ => {
-				const e = document.createElement("span")
-				e.className = "material-sep"
-				e.innerText = ","
-				return [e]
-			}) : Util.join(formatted)
-		}
+				if(m.price !== null)
+					priceContainer.append(this.formatPrice(m.price))
+				else
+					priceContainer.append('?')
 
-		/** Formats price according to `denominations` */
-		formatPrice(totalCopper : number) : HTMLElement
-		{
-			const container = document.createElement("span")
-			const cuPerAu = this.denominations.gold * this.denominations.silver
-			const wasZero = totalCopper == 0
-
-			if(totalCopper >= cuPerAu)
-			{
-				container.appendChild(document.createTextNode(Math.floor(totalCopper / cuPerAu).toString()))
-				totalCopper %= cuPerAu;
-
-				var coin = document.createElement("b")
-				coin.className = "gold"
-				coin.innerText = "Ⓖ"
-				container.appendChild(coin)
+				priceContainer.append(')')
 			}
 
-			if(totalCopper >= this.denominations.silver)
-			{
-				container.appendChild(document.createTextNode(Math.floor(totalCopper / this.denominations.silver).toString()))
-				totalCopper %= this.denominations.silver;
+			return html
+		});
 
-				var coin = document.createElement("b")
-				coin.className = "silver"
-				coin.innerText = "Ⓢ"
-				container.appendChild(coin)
-			}
-
-			if(totalCopper > 0 || wasZero)
-			{
-				container.appendChild(document.createTextNode(totalCopper.toFixed(1).replace(".0", ""))) // wow JS
-
-				var coin = document.createElement("b")
-				coin.className = "copper"
-				coin.innerText = "Ⓒ"
-				container.appendChild(coin)
-			}
-
-			return container
-		}
+		return richSep ? Util.intercalate(formatted, _ => {
+			const e = document.createElement("span")
+			e.className = "material-sep"
+			e.innerText = ","
+			return [e]
+		}) : Util.join(formatted)
 	}
 
-	/**
-	 * @template TSpell The local spell type
-	 */
-	export abstract class IGame<TSpell extends Data.ISpell>
+	/** Formats price according to `denominations` */
+	formatPrice(totalCopper : number) : HTMLElement
 	{
-		/** A unique shorthand identifying this game */
-		readonly shorthand : string;
-		/** The full name for this game */
-		readonly fullName : string;
-		/** All sources available for this game. Dynamically read from the DB index. */
-		readonly books : Data.BookIndex;
+		const container = document.createElement("span")
+		const cuPerAu = this.denominations.gold * this.denominations.silver
+		const wasZero = totalCopper == 0
 
-		/** The fields that are listed in index view */
-		readonly abstract tableHeaders : (keyof TSpell)[];
-		/** A set of custom comparers to use for table sorting */
-		readonly abstract customComparers : Partial<{ [key in keyof TSpell] : ((a : TSpell, b : TSpell) => number); }>
-
-		/** Overwritten by some front-ends with a predicate that checks whether a function is prepared */
-		isPrepared : ((sp : TSpell) => boolean)|null = null
-
-		constructor(shorthand : string, fullName : string, books : Data.BookIndex)
+		if(totalCopper >= cuPerAu)
 		{
-			this.shorthand = shorthand;
-			this.fullName = fullName;
-			this.books = books;
+			container.appendChild(document.createTextNode(Math.floor(totalCopper / cuPerAu).toString()))
+			totalCopper %= cuPerAu;
+
+			var coin = document.createElement("b")
+			coin.className = "gold"
+			coin.innerText = "Ⓖ"
+			container.appendChild(coin)
 		}
 
-		/** Checks whether a spell matches a single search term
-		 * @param term A single search term, without joining operators or the negation operator
-		 * @param spell A spell to check against
-		 * @param isPrepared Determines whether a spell is prepared, if that is sensible on the current endpoint
-		 * @returns true iff the spell is selected by the term
-		 */
-		abstract spellMatchesTerm(term : string, spell : TSpell) : boolean;
-
-		spellMatchesQuery(query : Data.Query, s : TSpell) : boolean
+		if(totalCopper >= this.denominations.silver)
 		{
-			return query
-				.every(x => x
-					.some(y => y
-						.every(z =>
-							(z[0] === '!')
-								? !this.spellMatchesTerm(z.substring(1), s)
-								: this.spellMatchesTerm(z, s)
-				)	)	);
+			container.appendChild(document.createTextNode(Math.floor(totalCopper / this.denominations.silver).toString()))
+			totalCopper %= this.denominations.silver;
+
+			var coin = document.createElement("b")
+			coin.className = "silver"
+			coin.innerText = "Ⓢ"
+			container.appendChild(coin)
 		}
 
-		/** @returns All spells from that source */
-		async fetchSource(source : string) : Promise<TSpell[]>
+		if(totalCopper > 0 || wasZero)
 		{
-			const tag = this.books[source].tag
-			return await (await fetch(`db/${this.shorthand}/${source}-${tag}.json`)).json();
+			container.appendChild(document.createTextNode(totalCopper.toFixed(1).replace(".0", ""))) // wow JS
+
+			var coin = document.createElement("b")
+			coin.className = "copper"
+			coin.innerText = "Ⓒ"
+			container.appendChild(coin)
 		}
 
-		/** @returns All spells from those sources */
-		async fetchSources(...sources : string[]) : Promise<TSpell[]>
-		{
-			return (await Promise.all(sources.map(s => this.fetchSource(s)))).flat();
-		}
-
-		/** Generates a single spell card as a self-contained HTML element
-			@param book The full name of the source
-		*/
-		abstract spellCard(spell : TSpell, book : string) : HTMLDivElement;
-
-		/** Brings a list of spells into default card order. May be in-place.  */
-		abstract cardOrder(spells : TSpell[]) : TSpell[];
-
-		/** Formats a spell's details and embeds them into the given <div> */
-		abstract details(spell : TSpell, book : string, div : HTMLDivElement) : void;
-
-		/** @returns The URL for a spell's details page */
-		spellURL(spell : TSpell) : string
-		{
-			return `details.html?game=${this.shorthand}&from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`
-		}
-
-		/** Finds this game's material context, or returns `null` if no context  */
-		withMaterials<A>(consumer : <TMaterial extends Data.IMaterial>(ctx : IMaterialContext<TSpell, TMaterial>) => A) : A | null
-		{
-			return null
-		}
-	};
+		return container
+	}
 }
+
+/**
+ * @template TSpell The local spell type
+ */
+export abstract class IGame<TSpell extends Data.ISpell>
+{
+	/** A unique shorthand identifying this game */
+	readonly shorthand : string;
+	/** The full name for this game */
+	readonly fullName : string;
+	/** All sources available for this game. Dynamically read from the DB index. */
+	readonly books : Data.BookIndex;
+
+	/** The fields that are listed in index view */
+	readonly abstract tableHeaders : (keyof TSpell)[];
+	/** A set of custom comparers to use for table sorting */
+	readonly abstract customComparers : Partial<{ [key in keyof TSpell] : ((a : TSpell, b : TSpell) => number); }>
+
+	/** Overwritten by some front-ends with a predicate that checks whether a function is prepared */
+	isPrepared : ((sp : TSpell) => boolean)|null = null
+
+	constructor(shorthand : string, fullName : string, books : Data.BookIndex)
+	{
+		this.shorthand = shorthand;
+		this.fullName = fullName;
+		this.books = books;
+	}
+
+	/** Checks whether a spell matches a single search term
+	 * @param term A single search term, without joining operators or the negation operator
+	 * @param spell A spell to check against
+	 * @param isPrepared Determines whether a spell is prepared, if that is sensible on the current endpoint
+	 * @returns true iff the spell is selected by the term
+	 */
+	abstract spellMatchesTerm(term : string, spell : TSpell) : boolean;
+
+	spellMatchesQuery(query : Data.Query, s : TSpell) : boolean
+	{
+		return query
+			.every(x => x
+				.some(y => y
+					.every(z =>
+						(z[0] === '!')
+							? !this.spellMatchesTerm(z.substring(1), s)
+							: this.spellMatchesTerm(z, s)
+			)	)	);
+	}
+
+	/** @returns All spells from that source */
+	async fetchSource(source : string) : Promise<TSpell[]>
+	{
+		const tag = this.books[source].tag
+		return await (await fetch(`db/${this.shorthand}/${source}-${tag}.json`)).json();
+	}
+
+	/** @returns All spells from those sources */
+	async fetchSources(...sources : string[]) : Promise<TSpell[]>
+	{
+		return (await Promise.all(sources.map(s => this.fetchSource(s)))).flat();
+	}
+
+	/** Generates a single spell card as a self-contained HTML element
+		@param book The full name of the source
+	*/
+	abstract spellCard(spell : TSpell, book : string) : HTMLDivElement;
+
+	/** Brings a list of spells into default card order. May be in-place.  */
+	abstract cardOrder(spells : TSpell[]) : TSpell[];
+
+	/** Formats a spell's details and embeds them into the given <div> */
+	abstract details(spell : TSpell, book : string, div : HTMLDivElement) : void;
+
+	/** @returns The URL for a spell's details page */
+	spellURL(spell : TSpell) : string
+	{
+		return `details.html?game=${this.shorthand}&from=${encodeURIComponent(spell.source)}&spell=${encodeURIComponent(spell.name)}`
+	}
+
+	/** Finds this game's material context, or returns `null` if no context  */
+	withMaterials<A>(consumer : <TMaterial extends Data.IMaterial>(ctx : IMaterialContext<TSpell, TMaterial>) => A) : A | null
+	{
+		return null
+	}
+};

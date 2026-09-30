@@ -2,9 +2,9 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<script src="js/site.js"></script>
-		<script>
-			window.onload = _ => UI.initMaterials();
+		<script type="module">
+			import { initMaterials } from "./js/UI/Materials.js";
+			window.onload = _ => initMaterials();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 		<link rel="shortcut icon" href="favicon.ico" />

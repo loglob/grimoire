@@ -1,192 +1,192 @@
+import type * as Data from "../Data.js"
+import * as Util from "../Util.js"
+import type { IGame } from "../Games/IGame.js"
+import { loading, loadSpellList, setHidden, withGame } from "./Common.js"
+import { Table } from "./Table.js"
 
 /** Handles the index.html UI */
-namespace UI
+export class Index<TSpell extends Data.ISpell>
 {
-	import IGame = Games.IGame
+	private readonly game : IGame<TSpell>;
+	private readonly table : Table<TSpell>;
+	private readonly books : Data.BookIndex
 
-	export class Index<TSpell extends Data.ISpell>
+	/** Initializes an the page UI */
+	static async init<TSpell extends Data.ISpell>(game : IGame<TSpell>) : Promise<Index<TSpell>>
 	{
-		private readonly game : IGame<TSpell>;
-		private readonly table : Table<TSpell>;
-		private readonly books : Data.BookIndex
+		const p = new URLSearchParams(window.location.search);
+		const ind = new Index(game, new Table(game, p.get("q"), p.get("sort")), game.books);
 
-		/** Initializes an the page UI */
-		static async init<TSpell extends Data.ISpell>(game : IGame<TSpell>) : Promise<Index<TSpell>>
-		{
-			const p = new URLSearchParams(window.location.search);
-			const ind = new Index(game, new Table(game, p.get("q"), p.get("sort")), game.books);
-
-			game.withMaterials(_ => {
-				setHidden(Util.getElement("materials-view"), false)
-			});
-
-			await ind.makeSourceSelector(p.has("from") ? p.getAll("from") : null)
-
-			return ind;
-		}
-
-		/** Handles setting up UI callbacks and creation the source selectors */
-		private constructor(game : IGame<TSpell>, table : Table<TSpell>, books : Data.BookIndex)
-		{
-			this.game = game;
-			this.table = table;
-			this.books = books;
-
-			document.title = `Grimoire: ${game.fullName} Spells`
-
-			Util.getElement("static-link").onclick = _ => {
-				const url = `${window.location.origin}${window.location.pathname}?${this.urlParams()}`;
-				console.log(url);
-				navigator.clipboard.writeText(url)
-				return false;
-			}
-
-			Util.getElement("create-list").onclick = _ => this.makeSpellList({
-				query : table.query,
-				sources : this.selectedSources(),
-				prepared : [],
-				game : this.game.shorthand
-			});
-
-			{
-				const uploadButton = Util.getElement("faux-upload-list") as HTMLButtonElement;
-				const uploadInput = Util.getElement("upload-list") as HTMLInputElement;
-
-				uploadButton.onclick = _ => uploadInput.click();
-				uploadButton.ondragover = ev => ev.preventDefault();
-				uploadButton.ondrop = async ev => {
-					ev.preventDefault();
-
-					if(!ev.dataTransfer)
-						return;
-
-					await this.filesToSpellList(ev.dataTransfer.files);
-				}
-				uploadInput.oninput = async _ => {
-					if(uploadInput.files === null)
-						console.error("input event fired but no file upload happened")
-					else
-						await this.filesToSpellList(uploadInput.files);
-				}
-			}
-
-			Util.getElement("spell-card-view").onclick = _ => window.location.href = `cards.html?${this.urlParams()}`;
-			Util.getElement("materials-view").onclick = _ => window.location.href = `materials.html?${this.urlParams()}`;
-		}
-
-
-		/** Creates the source selector
-		 * @param preload A list of book IDs to import immediately, if any
-		*/
-		private async makeSourceSelector(preload : string[] | null)
-		{
-			let elem = document.getElementById("source-selector");
-			document.getElementById("source-selector-placeholder")?.remove();
-
-			// if there is only one source, load it and hide the selector
-			if(Object.keys(this.books).length == 1)
-			{
-				const id = Object.keys(this.books)[0];
-				this.table.insert(await this.game.fetchSource(id));
-				return;
-			}
-
-			// without any "from" parameters, preload the first three book listed in the index
-			if(preload === null)
-				preload = Object.keys(this.books).slice(0, 3)
-
-			for (const id in this.books)
-			{
-				let container = document.createElement("div");
-				container.innerText = this.books[id].title;
-
-				let l = loading();
-				setHidden(l, true);
-				let select = document.createElement("input");
-
-				select.type = "checkbox";
-				select.id = `source_${id}`;
-				select.checked = false;
-
-				select.onchange = async _ => {
-					if(select.checked)
-					{
-						setHidden(l, false);
-						this.table.insert(await this.game.fetchSource(id));
-						setHidden(l, true);
-					}
-					else
-						this.table.deleteIf(s => s.source === id);
-				}
-
-				container.appendChild(select);
-				container.appendChild(l);
-				elem?.appendChild(container);
-
-				if(preload.some(x => x.toUpperCase() === id))
-				{
-					select.checked = true;
-					select.onchange(null!);
-				}
-			}
-		}
-
-		/** Reproduces a query string (without leading '?') that encodes the current selected sources and query */
-		private urlParams() : string
-		{
-			var par = this.selectedSources()
-				.map(x => `from=${encodeURIComponent(x)}`)
-				.concat(
-					`q=${encodeURIComponent(this.table.searchField.value)}`,
-					`game=${encodeURIComponent(this.game.shorthand)}`
-				)
-			const s = this.table.getSorting()
-
-			if(s)
-				par.push(`sort=${s}`)
-
-			return par.join('&');
-		}
-
-		/** The sources that are currently selected */
-		private selectedSources() : string[]
-		{
-			const k = Object.keys(this.books);
-
-			return (k.length == 1)
-				? [ k[0] ]
-				: k.filter(id => (document.getElementById(`source_${id}`) as HTMLInputElement).checked);
-		}
-
-		/** Creates a spell list from the current filter and switches location to its list view */
-		private makeSpellList(list : Data.SpellList)
-		{
-			const name = prompt("Name for spell list?");
-
-			if(!name)
-				return;
-
-			window.localStorage.setItem(name, JSON.stringify(list));
-			window.location.href = `list.html#${name}`
-		}
-
-		/** Creates a spell list from a file supplied via upload that contains .json generated by saving a list */
-		private async filesToSpellList(files : FileList)
-		{
-			if(!files || files.length != 1 || files[0].type != "application/json")
-				return;
-
-			const data = loadSpellList(JSON.parse(await files[0].text()));
-
-			this.makeSpellList({ query: data.query, sources: data.sources, prepared : data.prepared, game : data.game });
-		}
-	}
-
-	/** Initializes the index UI. Called from html on page load. */
-	export function initIndex()
-	{
-		withGame(async function(g) {
-			await Index.init(g);
+		game.withMaterials(_ => {
+			setHidden(Util.getElement("materials-view"), false)
 		});
+
+		await ind.makeSourceSelector(p.has("from") ? p.getAll("from") : null)
+
+		return ind;
 	}
+
+	/** Handles setting up UI callbacks and creation the source selectors */
+	private constructor(game : IGame<TSpell>, table : Table<TSpell>, books : Data.BookIndex)
+	{
+		this.game = game;
+		this.table = table;
+		this.books = books;
+
+		document.title = `Grimoire: ${game.fullName} Spells`
+
+		Util.getElement("static-link").onclick = _ => {
+			const url = `${window.location.origin}${window.location.pathname}?${this.urlParams()}`;
+			console.log(url);
+			navigator.clipboard.writeText(url)
+			return false;
+		}
+
+		Util.getElement("create-list").onclick = _ => this.makeSpellList({
+			query : table.query,
+			sources : this.selectedSources(),
+			prepared : [],
+			game : this.game.shorthand
+		});
+
+		{
+			const uploadButton = Util.getElement("faux-upload-list") as HTMLButtonElement;
+			const uploadInput = Util.getElement("upload-list") as HTMLInputElement;
+
+			uploadButton.onclick = _ => uploadInput.click();
+			uploadButton.ondragover = ev => ev.preventDefault();
+			uploadButton.ondrop = async ev => {
+				ev.preventDefault();
+
+				if(!ev.dataTransfer)
+					return;
+
+				await this.filesToSpellList(ev.dataTransfer.files);
+			}
+			uploadInput.oninput = async _ => {
+				if(uploadInput.files === null)
+					console.error("input event fired but no file upload happened")
+				else
+					await this.filesToSpellList(uploadInput.files);
+			}
+		}
+
+		Util.getElement("spell-card-view").onclick = _ => window.location.href = `cards.html?${this.urlParams()}`;
+		Util.getElement("materials-view").onclick = _ => window.location.href = `materials.html?${this.urlParams()}`;
+	}
+
+
+	/** Creates the source selector
+	 * @param preload A list of book IDs to import immediately, if any
+	*/
+	private async makeSourceSelector(preload : string[] | null)
+	{
+		let elem = document.getElementById("source-selector");
+		document.getElementById("source-selector-placeholder")?.remove();
+
+		// if there is only one source, load it and hide the selector
+		if(Object.keys(this.books).length == 1)
+		{
+			const id = Object.keys(this.books)[0];
+			this.table.insert(await this.game.fetchSource(id));
+			return;
+		}
+
+		// without any "from" parameters, preload the first three book listed in the index
+		if(preload === null)
+			preload = Object.keys(this.books).slice(0, 3)
+
+		for (const id in this.books)
+		{
+			let container = document.createElement("div");
+			container.innerText = this.books[id].title;
+
+			let l = loading();
+			setHidden(l, true);
+			let select = document.createElement("input");
+
+			select.type = "checkbox";
+			select.id = `source_${id}`;
+			select.checked = false;
+
+			select.onchange = async _ => {
+				if(select.checked)
+				{
+					setHidden(l, false);
+					this.table.insert(await this.game.fetchSource(id));
+					setHidden(l, true);
+				}
+				else
+					this.table.deleteIf(s => s.source === id);
+			}
+
+			container.appendChild(select);
+			container.appendChild(l);
+			elem?.appendChild(container);
+
+			if(preload.some(x => x.toUpperCase() === id))
+			{
+				select.checked = true;
+				select.onchange(null!);
+			}
+		}
+	}
+
+	/** Reproduces a query string (without leading '?') that encodes the current selected sources and query */
+	private urlParams() : string
+	{
+		var par = this.selectedSources()
+			.map(x => `from=${encodeURIComponent(x)}`)
+			.concat(
+				`q=${encodeURIComponent(this.table.searchField.value)}`,
+				`game=${encodeURIComponent(this.game.shorthand)}`
+			)
+		const s = this.table.getSorting()
+
+		if(s)
+			par.push(`sort=${s}`)
+
+		return par.join('&');
+	}
+
+	/** The sources that are currently selected */
+	private selectedSources() : string[]
+	{
+		const k = Object.keys(this.books);
+
+		return (k.length == 1)
+			? [ k[0] ]
+			: k.filter(id => (document.getElementById(`source_${id}`) as HTMLInputElement).checked);
+	}
+
+	/** Creates a spell list from the current filter and switches location to its list view */
+	private makeSpellList(list : Data.SpellList)
+	{
+		const name = prompt("Name for spell list?");
+
+		if(!name)
+			return;
+
+		window.localStorage.setItem(name, JSON.stringify(list));
+		window.location.href = `list.html#${name}`
+	}
+
+	/** Creates a spell list from a file supplied via upload that contains .json generated by saving a list */
+	private async filesToSpellList(files : FileList)
+	{
+		if(!files || files.length != 1 || files[0].type != "application/json")
+			return;
+
+		const data = loadSpellList(JSON.parse(await files[0].text()));
+
+		this.makeSpellList({ query: data.query, sources: data.sources, prepared : data.prepared, game : data.game });
+	}
+}
+
+/** Initializes the index UI. Called from html on page load. */
+export function initIndex()
+{
+	withGame(async function(g) {
+		await Index.init(g);
+	});
 }

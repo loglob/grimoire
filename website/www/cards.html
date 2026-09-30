@@ -2,9 +2,9 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<script src="js/site.js"></script>
-		<script>
-			window.onload = _ => UI.initCards();
+		<script type="module">
+			import { initCards } from "./js/UI/Cards.js";
+			window.onload = _ => initCards();
 		</script>
 		<link rel="stylesheet" type="text/css" href="style.css" />
 		<link rel="shortcut icon" href="favicon.ico" />
