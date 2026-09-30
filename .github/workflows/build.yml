@@ -28,10 +28,10 @@ jobs:
         working-directory: website/www
         run: zip -r ../../website.zip . -x 'db/*'
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: website
           path: website.zip
+          archive: false
           if-no-files-found: error
 
   scraper:
@@ -57,19 +57,21 @@ jobs:
           -p:DebugType=none
           -o ../out/scraper-linux-x64
 
-      - name: Rename executable
-        run: cp out/scraper-linux-x64/scraper scraper-linux-x64
+      - name: Package
+        run: |
+          (cd out/scraper-dll && zip -r ../../scraper-dll.zip .)
+          cp out/scraper-linux-x64/scraper scraper-linux-x64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: scraper-dll
-          path: out/scraper-dll/
+          path: scraper-dll.zip
+          archive: false
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: scraper-linux-x64
           path: scraper-linux-x64
+          archive: false
           if-no-files-found: error
 
   release:
@@ -80,21 +82,22 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      # Artifacts are uploaded unarchived, so this fetches the exact files the build jobs produced
+      - uses: actions/download-artifact@v8
         with:
           path: dist
+          merge-multiple: true
 
-      - name: Package scraper dll
+      - name: Check artifacts
         run: |
-          (cd dist/scraper-dll && zip -r ../../scraper-dll.zip .)
-          chmod +x dist/scraper-linux-x64/scraper-linux-x64
+          ls -l dist
+          for f in website.zip scraper-dll.zip scraper-linux-x64; do
+            [ -f "dist/$f" ] || { echo "Missing artifact: $f"; exit 1; }
+          done
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$GITHUB_REF_NAME"
-          dist/website/website.zip
-          scraper-dll.zip
-          dist/scraper-linux-x64/scraper-linux-x64
+          gh release create "$GITHUB_REF_NAME" dist/*
           --repo "$GITHUB_REPOSITORY" --generate-notes
