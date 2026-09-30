@@ -21,9 +21,8 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Compile TypeScript
-        working-directory: website
-        run: npx --yes -p typescript@6 tsc
+      - name: Build
+        run: npx --yes -p typescript@6 -p esbuild@0.28 -c website/build.sh
 
       - name: Package website (without db)
         working-directory: website/www
