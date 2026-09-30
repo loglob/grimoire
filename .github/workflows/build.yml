@@ -1,0 +1,101 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  website:
+    name: Website
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Compile TypeScript
+        working-directory: website
+        run: npx --yes -p typescript@6 tsc
+
+      - name: Package website (without db)
+        working-directory: website/www
+        run: zip -r ../../website.zip . -x 'db/*'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website
+          path: website.zip
+          if-no-files-found: error
+
+  scraper:
+    name: Scraper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish framework-dependent dll
+        working-directory: scraper
+        run: dotnet publish -c Release -p:UseAppHost=false -o ../out/scraper-dll
+
+      - name: Publish portable linux executable
+        working-directory: scraper
+        run: >
+          dotnet publish -c Release -r linux-x64 --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+          -o ../out/scraper-linux-x64
+
+      - name: Rename executable
+        run: cp out/scraper-linux-x64/scraper scraper-linux-x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scraper-dll
+          path: out/scraper-dll/
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scraper-linux-x64
+          path: scraper-linux-x64
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ website, scraper ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Package scraper dll
+        run: |
+          (cd dist/scraper-dll && zip -r ../../scraper-dll.zip .)
+          chmod +x dist/scraper-linux-x64/scraper-linux-x64
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME"
+          dist/website/website.zip
+          scraper-dll.zip
+          dist/scraper-linux-x64/scraper-linux-x64
+          --repo "$GITHUB_REPOSITORY" --generate-notes
