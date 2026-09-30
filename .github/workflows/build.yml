@@ -82,11 +82,13 @@ jobs:
     permissions:
       contents: write
     steps:
-      # Artifacts are uploaded unarchived, so this fetches the exact files the build jobs produced
+      # Artifacts are uploaded unarchived, so this fetches the exact files the build jobs produced.
+      # skip-decompress stops it from unpacking the files that are themselves zips.
       - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
+          skip-decompress: true
 
       - name: Check artifacts
         run: |
