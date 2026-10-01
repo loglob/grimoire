@@ -12,7 +12,7 @@ public class Program
 	private record class Processed(Config.Game game, int count, Dictionary<string, string> tags);
 	private record class BookEntry(string title, string tag);
 
-	public const string USAGE = @"USAGE: {0} [<-n|--noprogress>] [<config.json>]";
+	public const string USAGE = @"USAGE: {0} [<-n|--noprogress>] [<config.json>] [<output directory>]";
 
 	public static readonly JsonSerializerOptions JsonOptions = new() {
 		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -44,7 +44,7 @@ public class Program
 		=> conjugate(xs.Count);
 
 
-	private static async Task<Processed> processGame<TSpell>(IGame<TSpell> game) where TSpell : ISpell
+	private static async Task<Processed> processGame<TSpell>(IGame<TSpell> game, string outDir) where TSpell : ISpell
 	{
 		var spellsByBook = game.Conf.Books.ToDictionary(x => x.Key, x => new List<TSpell>());
 		var warnedAbout = new HashSet<string>();
@@ -71,7 +71,7 @@ public class Program
 				Log.DEFAULT.Warn($"Discarding unknown source '{game.Conf.Shorthand}/{sp.Source}'");
 		}
 
-		var path = $"db/{game.Conf.Shorthand}";
+		var path = Path.Combine(outDir, game.Conf.Shorthand);
 
 		if(Directory.Exists(path))
 			Directory.Delete(path, true);
@@ -84,7 +84,7 @@ public class Program
 		foreach (var kvp in spellsByBook)
 		{
 			total += kvp.Value.Count;
-			var tmpPath = $"db/{game.Conf.Shorthand}/{kvp.Key}.json";
+			var tmpPath = Path.Combine(path, $"{kvp.Key}.json");
 			await store(tmpPath, kvp.Value);
 
 			if(kvp.Value.Count == 0)
@@ -94,7 +94,7 @@ public class Program
 			var hash = await MD5.HashDataAsync(f);
 			var tag = ((hash[0] << 16) | (hash[1] << 8) | hash[2]).ToString("X6");
 
-			File.Move(tmpPath, $"db/{game.Conf.Shorthand}/{kvp.Key}-{tag}.json");
+			File.Move(tmpPath, Path.Combine(path, $"{kvp.Key}-{tag}.json"));
 			tags[kvp.Key] = tag;
 		}
 
@@ -102,12 +102,12 @@ public class Program
 		return new(game.Conf, total, tags);
 	}
 
-	private static Task<Processed> processGame(Config.Game conf)
+	private static Task<Processed> processGame(Config.Game conf, string outDir)
 		=> conf.Shorthand switch
 		{
-			"dnd5e" => processGame(new DnD5e(conf)),
-			"gd" => processGame(new Goedendag(conf)),
-			"pf2e" => processGame(new Pf2e(conf)),
+			"dnd5e" => processGame(new DnD5e(conf), outDir),
+			"gd" => processGame(new Goedendag(conf), outDir),
+			"pf2e" => processGame(new Pf2e(conf), outDir),
 			var s => throw new ArgumentException($"Invalid game shorthand: {s}")
 		};
 
@@ -136,18 +136,19 @@ public class Program
 				break;
 			}
 		}
-		if(args.Count > 1)
+		if(args.Count > 2)
 			goto usage;
 
 		var games = (await Config.Load(args.Count > 0 ? args[0] : "config.json")).Values;
+		var outDir = args.Count > 1 ? args[1] : "db";
 
 		var sourceCount = games.Sum(g => g.Books.Count);
 		Log.DEFAULT.Emit($"Processing {games.Count} game{conjugate(games)} with {sourceCount} source{conjugate(sourceCount)}...");
-		Directory.CreateDirectory("db");
+		Directory.CreateDirectory(outDir);
 		int total = 0;
 		var tagsByGame = new Dictionary<string, Dictionary<string, string>>();
 
-		foreach(var (game, count, tags) in await Task.WhenAll(games.Select(processGame)))
+		foreach(var (game, count, tags) in await Task.WhenAll(games.Select(g => processGame(g, outDir))))
 		{
 			if(count == 0)
 				Log.DEFAULT.Warn($"No spells for game '{game.Shorthand}'");
@@ -156,7 +157,7 @@ public class Program
 			total += count;
 		}
 
-		await store($"db/index.json",
+		await store(Path.Combine(outDir, "index.json"),
 			games.ToDictionary(
 				g => g.Shorthand,
 				g => g.Books.Values.ToDictionary(b => b.Shorthand, b => new BookEntry(

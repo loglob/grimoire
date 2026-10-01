@@ -11,10 +11,12 @@ The supported sources are:
 - An overleaf instance
 
 ## Usage
-Running `dotnet run [<config.json>]` processes all sources configured in the given file and outputs a spell database in the `./db/` directory.
+Running `dotnet run [<config.json> [<db>]]` processes all sources configured in the given file and outputs a spell database in the given output directory.
 
 ## Configuration
 A single json file containing an object with the fields `books` and `sources`.
+
+Any path is resolved relative to the location of the config file that contains it.
 
 ### books
 Gives the recognized source books. A map from (unique) book shorthands onto an object with
@@ -48,7 +50,7 @@ Expects an object with the fields:
 #### overleaf
 Processes files from an overleaf server.
 
-- `latex`: A latex object as described above. Paths are relative to the project root.
+- `latex`: A latex object as described above.
 - `localMacros`: A list of local files to import macros from
 - `cacheLifetime`: The maximum age for a cached project in seconds.
 - `auth` Either a string which is a latex share link for the project, or an object containing:
