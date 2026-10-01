@@ -22,7 +22,9 @@ public record LatexFiles<TSpell>(IGame<TSpell> Game, Config.LatexSource Conf) : 
 		{
 			using var f = File.OpenRead(Conf.LocalManifest);
 			var manifest = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(f, Program.JsonOptions)!;
-			files.UnionAll(manifest);
+			// paths in the manifest are relative to the manifest itself
+			var dir = Path.GetDirectoryName(Path.GetFullPath(Conf.LocalManifest))!;
+			files.UnionAll(manifest.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Select(p => Path.GetFullPath(p, dir)).ToList()));
 		}
 
 		if(files.Remove(Config.LatexOptions.MACROS_SOURCE_NAME, out var macroFiles))

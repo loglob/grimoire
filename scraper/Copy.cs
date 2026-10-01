@@ -3,19 +3,12 @@ using static Grimoire.Util.Extensions;
 
 namespace Grimoire;
 
-public class Copy<TSpell> : ISource<TSpell>
+public class Copy<TSpell>(IGame<TSpell> game, Config.CopySource conf) : ISource<TSpell>
 {
-	readonly string[] files;
-	readonly Log log;
+	readonly string[] files = [.. conf.From];
+	readonly Log log = game.Log.AddTags(conf.Discriminate("copy"));
 
-	public IGame<TSpell> Game { get; }
-
-	public Copy(IGame<TSpell> game, Config.CopySource conf)
-	{
-		this.Game = game;
-		this.log = game.Log.AddTags(conf.Discriminate("copy"));
-		this.files = conf.From.ToArray();
-	}
+	public IGame<TSpell> Game { get; } = game;
 
 	public async IAsyncEnumerable<TSpell> Spells()
 	{

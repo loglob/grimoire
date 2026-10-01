@@ -25,12 +25,12 @@ public static class Config
 			}
 		}
 
-		public static Game Parse(string shorthand, JsonObject o)
+		public static Game Parse(string shorthand, JsonObject o, string baseDir)
 		{
 			var x = new Game(
 				shorthand,
 				o["books"]!.AsObject().ToDictionary(kvp => kvp.Key, kvp => Book.Parse(kvp.Key, kvp.Value!)),
-				o["sources"]!.AsArray().Select(n => Source.Parse(n!)).ToArray()
+				[.. o["sources"]!.AsArray().Select(n => Source.Parse(n!, baseDir))]
 			);
 			x.trackSourceDiscriminators();
 			return x;
@@ -89,12 +89,13 @@ public static class Config
 		public string Discriminate(string root)
 			=> Discriminator > 0 ? root + "#" + Discriminator : root;
 
-		public static Source Parse(JsonNode n)
+		/// <param name="baseDir"> The directory that local paths are resolved relative to </param>
+		public static Source Parse(JsonNode n, string baseDir)
 			=> (n is JsonObject o ? (string)o["type"]! : (string)n!) switch {
 				"dndwiki" => DndWikiSource.Parse(n),
-				"overleaf" => OverleafSource.Parse(n.AsObject()!),
-				"latex" => LatexSource.Parse(n.AsObject()!),
-				"copy" => CopySource.Parse(n.AsObject()!),
+				"overleaf" => OverleafSource.Parse(n.AsObject()!, baseDir),
+				"latex" => LatexSource.Parse(n.AsObject()!, baseDir),
+				"copy" => CopySource.Parse(n.AsObject()!, baseDir),
 				"aon" => NethysSource.Parse(n.AsObject()),
 				var x => throw new FormatException($"Invalid source type {x.Show()}")
 			};
@@ -102,7 +103,7 @@ public static class Config
 
 	public abstract record OnlineSource(TimeSpan? RateLimit, float CacheLifetime) : Source(CacheLifetime)
 	{
-		new internal static (TimeSpan? rateLimit, float cacheLifetime) Parse(JsonNode n)
+		internal static (TimeSpan? rateLimit, float cacheLifetime) Parse(JsonNode n)
 		{
 			var o = n as JsonObject;
 			return (
@@ -116,7 +117,7 @@ public static class Config
 
 	public sealed record NethysSource(TimeSpan? RateLimit, float CacheLifetime, bool Legacy) : Source(CacheLifetime)
 	{
-		new internal static NethysSource Parse(JsonNode n)
+		internal static NethysSource Parse(JsonNode n)
 		{
 			var (rl,cl) = OnlineSource.Parse(n);
 			return new(rl, cl, (bool?)(n as JsonObject)?["legacy"] ?? false);
@@ -125,7 +126,7 @@ public static class Config
 
 	public sealed record DndWikiSource(TimeSpan? RateLimit, float CacheLifetime) : Source(CacheLifetime)
 	{
-		new internal static DndWikiSource Parse(JsonNode n)
+		internal static DndWikiSource Parse(JsonNode n)
 		{
 			var (rl,cl) = OnlineSource.Parse(n);
 			return new(rl, cl);
@@ -181,19 +182,20 @@ public static class Config
 	public sealed record OverleafSource(OverleafAuth Auth, float CacheLifetime, string[] LocalMacros, LatexSource Latex)
 		: Source(CacheLifetime)
 	{
-		internal static OverleafSource Parse(JsonObject o)
+		internal static OverleafSource Parse(JsonObject o, string baseDir)
 			=> new(
 				OverleafAuth.Parse(o["auth"]!),
 				((float?)o["cacheLifetime"]) ?? float.PositiveInfinity,
-				o["localMacros"]?.AsArray()?.Select(x => (string)x!)?.ToArray() ?? [],
-				LatexSource.Parse(o["latex"]!.AsObject())
+				[.. strArray(o["localMacros"]).Select(p => Path.GetFullPath(p, baseDir))],
+				// paths are relative to the overleaf project, not the local file system
+				LatexSource.Parse(o["latex"]!.AsObject(), null)
 			);
 	}
 
 	public sealed record LatexSource(LatexOptions Options, Dictionary<string, string[]> Files, float CacheLifetime, string? LocalManifest = null)
 		: Source(CacheLifetime)
 	{
-		private static Dictionary<string, string[]> parseFiles(JsonObject o)
+		private static Dictionary<string, string[]> parseFiles(JsonObject o, string? baseDir)
 		{
 			Dictionary<string, List<string>> acc = [];
 
@@ -201,21 +203,28 @@ public static class Config
 			{
 				var fs = kvp.Value is JsonValue f ? [(string)f!] : strArray(kvp.Value);
 
+				if(baseDir is not null)
+					fs = [.. fs.Select(p => Path.GetFullPath(p, baseDir))];
+
 				if(acc.TryGetValue(kvp.Key, out var v))
 					v.AddRange(fs);
 				else
-					acc[kvp.Key] = new List<string>(fs);
+					acc[kvp.Key] = [.. fs];
 			}
 
 			return acc.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ToArray());
 		}
 
-		internal static LatexSource Parse(JsonObject o)
+		/// <param name="baseDir">
+		///  The directory to resolve file paths relative to,
+		///  or null if they aren't local paths and should be left as-is
+		/// </param>
+		internal static LatexSource Parse(JsonObject o, string? baseDir)
 			=> new(
 				LatexOptions.Parse(o) ,
-				parseFiles(o["files"]!.AsObject()) ,
+				parseFiles(o["files"]!.AsObject(), baseDir) ,
 				((float?)o["cacheLifetime"]) ?? float.PositiveInfinity ,
-				(string?)o["localManifest"]
+				(string?)o["localManifest"] is string m ? (baseDir is null ? m : Path.GetFullPath(m, baseDir)) : null
 			);
 
 		public override string ToString()
@@ -224,8 +233,8 @@ public static class Config
 
 	public sealed record CopySource(string[] From) : Source(0.0f)
 	{
-		internal static CopySource Parse(JsonObject o)
-			=> new( strArray(o["from"]) );
+		internal static CopySource Parse(JsonObject o, string baseDir)
+			=> new([.. strArray(o["from"]).Select(p => Path.GetFullPath(p, baseDir))]);
 
 		public override string ToString()
 			=> $"CopySource( {nameof(From)} = {From.Show()} )";
@@ -264,9 +273,20 @@ public static class Config
 			=> $"{nameof(LatexOptions)}( {nameof(SpellAnchor)} = {SpellAnchor}, {nameof(UpcastAnchor)} = {UpcastAnchor}, {nameof(Environments)} = {Environments.Show()}, {nameof(Images)} = {Images.Show()}, {nameof(MaximumExpansions)} = {MaximumExpansions} )";
 	}
 
-	public static Dictionary<string, Game> Parse(JsonObject o)
-		=> o.ToDictionary(kvp => kvp.Key, kvp => Game.Parse(kvp.Key, kvp.Value!.AsObject()));
+	/// <param name="baseDir"> The directory that local paths are resolved relative to </param>
+	public static Dictionary<string, Game> Parse(JsonObject o, string baseDir)
+		=> o.ToDictionary(kvp => kvp.Key, kvp => Game.Parse(kvp.Key, kvp.Value!.AsObject(), baseDir));
 
-	public static Dictionary<string, Game> Parse(string str)
-		=> Parse(JsonNode.Parse(str)!.AsObject());
+	/// <param name="baseDir"> The directory that local paths are resolved relative to </param>
+	public static Dictionary<string, Game> Parse(string str, string baseDir)
+		=> Parse(JsonNode.Parse(str)!.AsObject(), baseDir);
+
+	/// <summary>
+	///  Loads a config file, resolving local paths in it relative to the file's location
+	/// </summary>
+	public static async Task<Dictionary<string, Game>> Load(string path)
+	{
+		var full = Path.GetFullPath(path);
+		return Parse(await File.ReadAllTextAsync(full), Path.GetDirectoryName(full)!);
+	}
 }

@@ -139,7 +139,7 @@ public class Program
 		if(args.Count > 1)
 			goto usage;
 
-		var games = Config.Parse(await File.ReadAllTextAsync(args.Count > 0 ? args[0] : "config.json")).Values;
+		var games = (await Config.Load(args.Count > 0 ? args[0] : "config.json")).Values;
 
 		var sourceCount = games.Sum(g => g.Books.Count);
 		Log.DEFAULT.Emit($"Processing {games.Count} game{conjugate(games)} with {sourceCount} source{conjugate(sourceCount)}...");
