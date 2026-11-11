@@ -20,7 +20,8 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 		Nature,
 		Wytch,
 		Ritual,
-		Celestial
+		Celestial,
+		Mage
 	}
 
 	public enum PowerLevel
@@ -558,6 +559,7 @@ public record class Goedendag(Config.Game Conf) : IGame<Goedendag.Spell>
 			[_, "conj", _] => Arcanum.Conjuration,
 			[_, "wytch", _] => Arcanum.Wytch,
 			[_, "star", _] => Arcanum.Celestial,
+			[_, "mage", _] => Arcanum.Mage,
 			_ => throw new FormatException($"Unexpected label format {tag.Show()}")
 		};
 
